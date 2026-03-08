@@ -1,0 +1,138 @@
+[project]
+name = "ShortsMaker"
+version = "0.2.0"
+description = "A python project to make and upload Youtube shorts video"
+authors = [
+    {name = "rajathjn",email = "rajathjnx@gmail.com"}
+]
+license = "AGPL-3.0-or-later"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "accelerate>=1.3.0",
+    "beautifulsoup4>=4.13.3",
+    "colorlog>=6.9.0",
+    "diffusers>=0.32.2",
+    "discord-webhook>=1.3.1",
+    "ftfy>=6.3.1",
+    "h11>=0.16.0",
+    "jinja2>=3.1.6",
+    "langchain-ollama>=0.3.2",
+    "language-tool-python>=2.8.2",
+    "lxml>=5.3.1",
+    "moviepy>=2.1.2",
+    "ollama>=0.4.7",
+    "praw>=7.8.1",
+    "psutil>=6.1.1",
+    "pydub>=0.25.1",
+    "pyyaml>=6.0.2",
+    "rapidfuzz>=3.12.1",
+    "requests>=2.32.3",
+    "setuptools>=75.8.0",
+    "transformers>=4.48.2",
+    "unidecode>=1.3.8",
+    "wheel>=0.45.1",
+    "whisperx>=3.3.1",
+    "yt-dlp>=2025.3.31",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.1.0",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "requests-mock>=1.12.1",
+    "ruff>=0.9.5",
+]
+
+[project.optional-dependencies]
+cpu = [
+    "torch>=2.7.0",
+    "torchaudio>=2.7.0",
+    "torchvision>=0.22.0",
+]
+cu128 = [
+    "torch>=2.7.0",
+    "torchaudio>=2.7.0",
+    "torchvision>=0.22.0",
+]
+
+[tool.uv]
+conflicts = [
+  [
+    { extra = "cpu" },
+    { extra = "cu128" },
+  ],
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu128", extra = "cu128" },
+]
+torchvision = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu128", extra = "cu128" },
+]
+torchaudio = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu128", extra = "cu128" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+
+[tool.ruff]
+# Set the maximum line length to 79.
+exclude = [
+    ".git",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".tox",
+    "_build",
+    "build",
+    "venv",
+    ".pytest_cache",
+    ".venv",
+    ".vscode",
+    ".idea"
+]
+line-length = 100
+indent-width = 4
+fix = true
+
+[tool.ruff.lint]
+extend-select = [
+    "UP",  # pyupgrade
+    "I",   # isort
+]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

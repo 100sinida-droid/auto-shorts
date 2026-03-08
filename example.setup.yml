@@ -1,0 +1,54 @@
+---
+# Used only for fetching models for Image Generation
+hugging_face_access_token: "your_hugging_face_access_token_here"
+
+# A cache dir for storing results
+cache_dir: "cache"
+
+# A dir in which your background_videos, background_music, credits and fonts folders are located
+assets_dir: "assets"
+
+# Best to leave this as is
+retry:
+  max_retries: 3
+  delay: 5
+  notify: False
+
+# Refer to https://business.reddithelp.com/s/article/Create-a-Reddit-Application
+# for more information on how to create a Reddit application
+# and get your client_id and client_secret
+reddit_praw:
+  client_id: "your_reddit_client_id"
+  client_secret: "your_reddit_client_secret"
+  user_agent: "your_user_agent_here"
+
+# Replace with your own subreddit name
+reddit_post_getter:
+  subreddit_name: "your_subreddit_name"
+  record_file_json: "post.json"
+  record_file_txt: "post.txt"
+
+# If you are not using your cuda device, set device to "cpu"
+# Refer https://github.com/m-bain/whisperX for more information
+audio:
+  output_script_file: "generated_audio_script.txt"
+  output_audio_file: "output.wav"
+  transcript_json: "transcript.json"
+  device: "cpu" # or "cuda"
+  model: "large-v2" # or "medium"
+  batch_size: 16 # or 32
+  compute_type: "int8" # or "float16"
+
+# Replace with the video URLs and music URLs you want to use
+# Only YouTube URLs are supported
+# Note: If you want to avoid setting this,
+# Pass the path to the respective objects, when initializing the MoviepyCreateVideo class
+video:
+  background_videos_urls:
+  # https://www.youtube.com/watch?v=n_Dv4JMiwK8
+    - "https://www.youtube.com/watch?v=example_video_id"
+  background_music_urls:
+  # https://www.youtube.com/watch?v=G8a45UZJGh4&t=1s
+    - "https://www.youtube.com/watch?v=example_music_id"
+  font_dir: "fonts"
+  credits_dir: "credits"
