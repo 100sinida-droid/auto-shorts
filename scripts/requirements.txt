@@ -1,7 +1,0 @@
-openai
-requests
-python-dotenv
-google-auth-oauthlib
-google-api-python-client
-moviepy==1.0.3
-tqdm
