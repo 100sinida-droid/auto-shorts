@@ -1,0 +1,32 @@
+name: Generate Shorts
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install ffmpeg
+      run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run program
+      run: python example.py
+
+    - name: Upload output
+      uses: actions/upload-artifact@v4
+      with:
+        name: shorts-video
+        path: .
