@@ -167,14 +167,19 @@
   .src-line{font-size:11px;color:var(--dim);margin-top:10px}
   .fetch-status{font-size:11px;color:var(--dim);margin-top:4px;min-height:1.3em}
 
-  .cctv-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
-    border:1px solid var(--line);background:#000}
-  .cctv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-  .cctv-overlay{position:absolute;right:10px;bottom:10px;z-index:2;
-    background:rgba(7,16,29,.82);border:1px solid var(--line);border-radius:8px;
-    padding:7px 11px;font-size:11px;color:var(--ink);text-decoration:none;line-height:1.4;text-align:right}
-  .cctv-overlay:hover{border-color:var(--moon);color:var(--moon)}
-  .cctv-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .cctv-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.cctv-cards{grid-template-columns:1fr}}
+  .cctv-card{position:relative;display:block;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
+    border:1px solid var(--line);background:#0a1420 center/cover no-repeat;text-decoration:none;transition:border-color .2s,transform .15s}
+  .cctv-card:hover{border-color:var(--moon);transform:translateY(-2px)}
+  .cctv-card .thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .cctv-card .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,16,29,.1),rgba(7,16,29,.85))}
+  .cctv-card .cc-label{position:absolute;left:12px;bottom:11px;right:12px;z-index:2;color:#fff;font-size:13px;font-weight:700;line-height:1.35}
+  .cctv-card .cc-live{position:absolute;left:11px;top:11px;z-index:2;background:#e0263c;color:#fff;
+    font-size:10px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.06em}
+  .cctv-card .cc-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;
+    width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,.55);border:2px solid #fff;
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px}
   .cctv-tab{padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:none;
     color:var(--dim);font-size:12px;cursor:pointer;font-family:inherit}
   .cctv-tab:hover{color:var(--ink)}
@@ -315,26 +320,15 @@
     </section>
 
     <section>
-      <h2>한강 실시간 CCTV <small>24시간 라이브 스트리밍</small></h2>
-      <div class="cctv-tabs" id="cctvTabs"></div>
-      <div class="cctv-frame">
-        <iframe id="cctvFrame"
-          src=""
-          title="한강 실시간 라이브캠"
-          allow="autoplay; accelerometer; encrypted-media; picture-in-picture"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen loading="lazy"></iframe>
-        <a class="cctv-overlay" id="cctvOverlay" href="https://www.youtube.com/@DailySeoul/live" target="_blank" rel="noopener">
-          <span>영상이 안 보이면 여기를 눌러<br>유튜브에서 바로 보기 ▶</span>
-        </a>
-      </div>
+      <h2>한강 실시간 CCTV <small>클릭하면 유튜브 라이브로</small></h2>
+      <div class="cctv-cards" id="cctvCards"></div>
       <div class="cctv-links">
-        <a href="https://www.youtube.com/watch?v=vk5BHoDxXf0" target="_blank" rel="noopener">▶ 여의도·마포 4K 라이브</a>
-        <a href="https://www.youtube.com/@DailySeoul/live" target="_blank" rel="noopener">▶ 반포대교 (Daily Seoul)</a>
         <a href="https://www.hrfco.go.kr/sumun/cctvRtmp.do" target="_blank" rel="noopener">한강홍수통제소 수위 CCTV</a>
         <a href="https://cctv.kwater.or.kr/sub/han_cctv.do" target="_blank" rel="noopener">K-water 한강 CCTV</a>
+        <a href="https://topis.seoul.go.kr/" target="_blank" rel="noopener">서울시 교통 CCTV (TOPIS)</a>
+        <a href="https://www.utic.go.kr/map/map.do?menu=cctv" target="_blank" rel="noopener">전국 CCTV (UTIC)</a>
       </div>
-      <div class="cctv-note">일부 채널(반포대교 Daily Seoul 등)은 저작권상 임베드가 막혀 있어 위 버튼으로 새 탭에서 열어야 합니다. 탭의 라이브는 사이트 안에서 바로 재생됩니다.</div>
+      <div class="cctv-note">유튜브 한강 라이브 채널들은 저작권상 사이트 내 삽입(임베드)을 막아둬서, 카드를 누르면 유튜브에서 바로 재생됩니다. 사이트 안에서 바로 보려면 위의 공식 CCTV 링크(임베드 제한 없음)를 이용하세요.</div>
     </section>
   </div>
 
@@ -521,7 +515,7 @@ const CONFIGURED = true;
 
    ※ JSONBIN_KEY 를 비워두면 자동으로 Cloudflare KV(/api/chat) 방식으로 넘어갑니다.
    ══════════════════════════════════════════════════════════════════ */
-const JSONBIN_KEY_HARD = "여기에_X-Master-Key_붙여넣기";     // (선택) 여기에 넣거나, 사이트 설정창에서 입력
+const JSONBIN_KEY_HARD = "$2a$10$8VUnF/r11ALI5oDE0rOpX.CYXUkGpP4gYKdMJVobVnw2kXuYZAiqu";     // JSONBin X-Master-Key
 const CHAT_BIN    = "6a465f65da38895dfe2250cd";     // 채팅용 (내용: {"messages":[]})
 const VISIT_BIN   = "6a465f75da38895dfe225129";     // 방문자용 (내용: {"days":{},"total":0})
 // 키는 코드(위) 또는 사이트 설정창(localStorage) 중 어디에 넣어도 됩니다.
@@ -930,7 +924,7 @@ function loadLocal(){
     if(raw){ chatCache = merge(chatCache, JSON.parse(raw)); }
   }catch(e){}
 }
-setInterval(pollChat, 4000);
+setInterval(()=>{ if(!document.hidden) pollChat(); }, 8000);
 
 document.getElementById("nickBtn").addEventListener("click", enter);
 document.getElementById("nickInput").addEventListener("keydown", e=>{ if(e.key==="Enter") enter(); });
@@ -1061,51 +1055,31 @@ async function countVisit(){
   }
 }
 
-/* ─────────── 한강 CCTV ───────────
-   유튜브 라이브는 영상 ID가 자주 바뀌므로, 특정 영상 대신
-   '채널의 현재 라이브'를 자동 재생(embed/live_stream?channel=)한다.
-   임베드가 막힌 채널은 새 탭 링크로만 제공. */
+/* ─────────── 한강 CCTV (썸네일 카드 → 클릭 시 유튜브) ───────────
+   유튜브 라이브 채널들이 임베드를 막아둬서, 삽입 대신
+   라이브 썸네일 이미지를 보여주고 클릭하면 유튜브에서 재생. */
 const CCTV_SOURCES = [
-  { label: "247 Seoul (분수·세빛섬)", channel: "UCuTaHTWV4TjZE9r8Vjcfaog", watch: "https://www.youtube.com/@247SeoulLiveCam/live" },
-  { label: "여의도·마포 4K",          videoId: "vk5BHoDxXf0",             watch: "https://www.youtube.com/watch?v=vk5BHoDxXf0" },
-  { label: "반포대교 (새 탭)",         external: true,                     watch: "https://www.youtube.com/@DailySeoul/live" },
+  { label: "여의도·마포 4K 한강 라이브", videoId: "vk5BHoDxXf0", watch: "https://www.youtube.com/watch?v=vk5BHoDxXf0" },
+  { label: "반포대교 한강 라이브 (Daily Seoul)", channelLive: "https://www.youtube.com/@DailySeoul/live", videoId: null },
+  { label: "247 Seoul (달빛분수·세빛섬)", channelLive: "https://www.youtube.com/@247SeoulLiveCam/live", videoId: null },
+  { label: "한남동 한강 로파이 (Seoul Vibes)", videoId: "jF8-FvIj4-E", watch: "https://www.youtube.com/watch?v=jF8-FvIj4-E" },
 ];
-let cctvIdx = 0;
-function loadCctv(i){
-  cctvIdx = i;
-  const src = CCTV_SOURCES[i];
-  const frame = document.getElementById("cctvFrame");
-  const overlay = document.getElementById("cctvOverlay");
-  if(src.external){
-    // 임베드 불가 채널: 프레임 비우고 큰 안내 오버레이
-    frame.src = "about:blank";
-    overlay.style.inset = "0";
-    overlay.style.display = "flex";
-    overlay.innerHTML = "<span>이 채널은 저작권상 사이트 내 재생이<br>불가능합니다. 여기를 눌러<br>유튜브에서 바로 보기 ▶</span>";
-  } else {
-    overlay.style.inset = "";
-    overlay.style.display = "";
-    overlay.innerHTML = "<span>영상이 안 보이면 여기를 눌러<br>유튜브에서 바로 보기 ▶</span>";
-    if(src.channel){
-      frame.src = `https://www.youtube.com/embed/live_stream?channel=${src.channel}&autoplay=1&mute=1`;
-    } else if(src.videoId){
-      frame.src = `https://www.youtube.com/embed/${src.videoId}?autoplay=1&mute=1`;
-    }
-  }
-  overlay.href = src.watch;
-  document.querySelectorAll(".cctv-tab").forEach((t,idx)=>{
-    t.classList.toggle("active", idx===i);
-  });
-}
 function initCctv(){
-  const tabs = document.getElementById("cctvTabs");
-  tabs.innerHTML = CCTV_SOURCES.map((s,i)=>
-    `<button class="cctv-tab${i===0?" active":""}" data-i="${i}">${esc(s.label)}</button>`
-  ).join("");
-  tabs.querySelectorAll(".cctv-tab").forEach(btn=>{
-    btn.addEventListener("click", ()=> loadCctv(Number(btn.dataset.i)));
-  });
-  loadCctv(0);
+  const box = document.getElementById("cctvCards");
+  box.innerHTML = CCTV_SOURCES.map(s=>{
+    const href = s.watch || s.channelLive;
+    // 영상 ID가 있으면 유튜브 썸네일, 없으면 그라데이션 배경
+    const thumb = s.videoId
+      ? `<img class="thumb" src="https://i.ytimg.com/vi/${s.videoId}/hqdefault.jpg" alt="" loading="lazy" onerror="this.style.display='none'">`
+      : `<div class="thumb" style="background:linear-gradient(135deg,#123044,#0a1420)"></div>`;
+    return `<a class="cctv-card" href="${href}" target="_blank" rel="noopener">
+      ${thumb}
+      <div class="veil"></div>
+      <span class="cc-live">● LIVE</span>
+      <span class="cc-play">▶</span>
+      <span class="cc-label">${esc(s.label)}</span>
+    </a>`;
+  }).join("");
 }
 
 /* ─────────── 놀거리 위젯 ─────────── */
