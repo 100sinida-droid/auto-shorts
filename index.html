@@ -170,6 +170,10 @@
   .cctv-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
     border:1px solid var(--line);background:#000}
   .cctv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .cctv-overlay{position:absolute;right:10px;bottom:10px;z-index:2;
+    background:rgba(7,16,29,.82);border:1px solid var(--line);border-radius:8px;
+    padding:7px 11px;font-size:11px;color:var(--ink);text-decoration:none;line-height:1.4;text-align:right}
+  .cctv-overlay:hover{border-color:var(--moon);color:var(--moon)}
   .cctv-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
   .cctv-tab{padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:none;
     color:var(--dim);font-size:12px;cursor:pointer;font-family:inherit}
@@ -204,6 +208,23 @@
   .notice{font-size:11px;color:var(--dim);padding:0 15px 10px}
   .config-warn{background:#3a2312;border:1px solid #7a4a1e;color:#ffcf9e;font-size:12px;
     padding:10px 15px;margin:0;line-height:1.6;display:none}
+
+  /* 한강 정보 포털 */
+  .portal{max-width:1060px;margin:0 auto;padding:10px 22px 40px}
+  .portal-title{font-size:13px;color:var(--dim);letter-spacing:.22em;font-weight:700;
+    margin-bottom:16px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .portal-title small{letter-spacing:0;font-weight:400;font-size:11px}
+  .portal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+  .portal-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;
+    display:flex;flex-direction:column;gap:2px;transition:border-color .2s}
+  .portal-card:hover{border-color:var(--line)}
+  .pc-head{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:9px;letter-spacing:.02em}
+  .portal-card a{color:var(--dim);text-decoration:none;font-size:13px;padding:5px 0;
+    border-bottom:1px solid transparent;transition:color .15s}
+  .portal-card a:hover{color:var(--moon)}
+  .portal-help{margin-top:18px;padding:12px 16px;background:var(--surface);border:1px solid var(--line);
+    border-radius:12px;font-size:12px;color:var(--dim);text-align:center}
+  .portal-help b{color:var(--moon)}
 
   footer{max-width:1060px;margin:0 auto;padding:0 22px 40px;font-size:11px;color:var(--dim);line-height:1.8}
 </style>
@@ -278,9 +299,12 @@
         <iframe id="cctvFrame"
           src=""
           title="한강 실시간 라이브캠"
-          allow="accelerometer; encrypted-media; picture-in-picture"
+          allow="autoplay; accelerometer; encrypted-media; picture-in-picture"
           referrerpolicy="strict-origin-when-cross-origin"
           allowfullscreen loading="lazy"></iframe>
+        <a class="cctv-overlay" id="cctvOverlay" href="https://www.youtube.com/@DailySeoul/live" target="_blank" rel="noopener">
+          <span>영상이 안 보이면 여기를 눌러<br>유튜브에서 바로 보기 ▶</span>
+        </a>
       </div>
       <div class="cctv-links">
         <a href="https://www.youtube.com/@DailySeoul/live" target="_blank" rel="noopener">▶ 반포대교 라이브 (Daily Seoul)</a>
@@ -315,6 +339,64 @@
     </div>
   </section>
 </main>
+
+<section class="portal">
+  <h2 class="portal-title">한강 정보 포털 <small>수온 보러 온 김에, 한강 즐기기에 필요한 것들</small></h2>
+  <div class="portal-grid">
+
+    <div class="portal-card">
+      <div class="pc-head">🌡️ 수질·수온 원본</div>
+      <a href="https://hangang.life/" target="_blank" rel="noopener">한강라이프 실시간 수온</a>
+      <a href="https://hangang.ivlis.kr/" target="_blank" rel="noopener">실시간 한강 수온 (ivlis)</a>
+      <a href="https://data.seoul.go.kr/dataList/OA-15488/S/1/datasetView.do" target="_blank" rel="noopener">서울시 한강 수질측정 자료</a>
+      <a href="https://www.koreawqi.go.kr/" target="_blank" rel="noopener">환경부 물환경정보시스템</a>
+    </div>
+
+    <div class="portal-card">
+      <div class="pc-head">🌊 수위·홍수·안전</div>
+      <a href="https://www.hrfco.go.kr/" target="_blank" rel="noopener">한강홍수통제소</a>
+      <a href="https://www.hrfco.go.kr/sumun/cctvRtmp.do" target="_blank" rel="noopener">한강 수위 CCTV</a>
+      <a href="https://hangang.seoul.go.kr/" target="_blank" rel="noopener">서울시 한강사업본부</a>
+      <a href="https://www.safekorea.go.kr/" target="_blank" rel="noopener">국민재난안전포털</a>
+    </div>
+
+    <div class="portal-card">
+      <div class="pc-head">🌤️ 날씨·미세먼지</div>
+      <a href="https://www.weather.go.kr/w/index.do" target="_blank" rel="noopener">기상청 날씨누리</a>
+      <a href="https://www.airkorea.or.kr/" target="_blank" rel="noopener">에어코리아 미세먼지</a>
+      <a href="https://www.weather.go.kr/w/weather/uvindex.do" target="_blank" rel="noopener">자외선 지수</a>
+      <a href="https://www.kma.go.kr/" target="_blank" rel="noopener">기상청 홈페이지</a>
+    </div>
+
+    <div class="portal-card">
+      <div class="pc-head">🏞️ 한강공원·나들이</div>
+      <a href="https://hangang.seoul.go.kr/www/contents/688.do" target="_blank" rel="noopener">한강공원 안내 (11개 지구)</a>
+      <a href="https://hangang.seoul.go.kr/www/contents/705.do" target="_blank" rel="noopener">수영장·물놀이장 운영</a>
+      <a href="https://www.sisul.or.kr/open_content/ddream/" target="_blank" rel="noopener">따릉이 (서울 공공자전거)</a>
+      <a href="https://map.naver.com/p/search/한강공원" target="_blank" rel="noopener">한강공원 길찾기 (네이버지도)</a>
+    </div>
+
+    <div class="portal-card">
+      <div class="pc-head">🚣 수상레저·투어</div>
+      <a href="https://hangang.seoul.go.kr/www/contents/709.do" target="_blank" rel="noopener">수상레저 (카약·윈드서핑)</a>
+      <a href="https://www.elandcruise.com/" target="_blank" rel="noopener">이랜드 한강 유람선</a>
+      <a href="https://hangang.seoul.go.kr/www/contents/703.do" target="_blank" rel="noopener">캠핑장·그늘막 존</a>
+      <a href="https://hangang.seoul.go.kr/www/contents/720.do" target="_blank" rel="noopener">낚시 가능 구역 안내</a>
+    </div>
+
+    <div class="portal-card">
+      <div class="pc-head">🚨 긴급·문의</div>
+      <a href="tel:112">112 · 경찰</a>
+      <a href="tel:119">119 · 소방·구조 (수난사고)</a>
+      <a href="tel:120">120 · 서울시 다산콜센터</a>
+      <a href="https://www.129.go.kr/" target="_blank" rel="noopener">129 · 보건복지상담</a>
+    </div>
+
+  </div>
+  <div class="portal-help">
+    마음이 힘든 날엔 잠시 쉬어가요 — 자살예방 상담 <b>109</b> · 정신건강 상담 <b>1577-0199</b> (24시간)
+  </div>
+</section>
 
 <footer>
   <strong>데이터 출처</strong> — 코스피/종목 시세는 야후 파이낸스를, 한강 수온은 서울시 열린데이터광장의 수질자동측정소 자료를 Cloudflare가 중계해 제공합니다. 수온은 매시간 갱신되는 확정 전 실시간 자료(참고용)이며, 여러 측정소의 평균값입니다. 실측 조회에 실패하면 계절 평균 추정치로 자동 전환되고 화면에 그 사실이 표시됩니다. 시세는 투자 판단의 근거로 사용하지 마세요.<br>
@@ -503,28 +585,57 @@ function render(){
   applyMarketFx();
 }
 
-/* ─────────── 실제 수온 (Pages Function /api/watertemp) ─────────── */
+/* ─────────── 실제 수온 (백엔드 우선 → hangang.life 직접 폴백) ─────────── */
+function applyTempData(avgTemp, stations, measuredAt, source){
+  state.temp = avgTemp;
+  state.tempLive = true;
+  state.tempStations = stations || [];
+  state.tempMeasuredAt = measuredAt || null;
+  state.tempSource = source || null;
+}
 async function fetchWaterTemp(){
+  // 1) 우리 백엔드(/api/watertemp) 시도
   try{
     const r = await fetch(API_BASE + "/api/watertemp", { cache: "no-store" });
     const ctype = r.headers.get("content-type") || "";
-    if(!ctype.includes("json")) throw new Error("BACKEND_NOT_ACTIVE");
-    const data = await r.json();
-    if(data.ok && typeof data.avgTemp === "number"){
-      state.temp = data.avgTemp;
-      state.tempLive = true;
-      state.tempStations = Array.isArray(data.stations) ? data.stations : [];
-      state.tempMeasuredAt = data.measuredAt || null;
-      state.tempSource = data.source || null;
-    } else {
-      state.tempLive = false;
-      console.warn("수온 실측 실패:", data.reason, data.message, data.sampleKeys || "");
+    if(ctype.includes("json")){
+      const data = await r.json();
+      if(data.ok && typeof data.avgTemp === "number"){
+        applyTempData(data.avgTemp, data.stations, data.measuredAt, data.source);
+        render(); return;
+      }
     }
+    throw new Error("backend watertemp unavailable");
   }catch(e){
-    state.tempLive = false;
-    console.warn("수온 조회 실패:", e.message);
+    console.warn("백엔드 수온 실패, hangang.life 직접 시도:", e.message);
   }
-  render();
+  // 2) hangang.life 공개 API 직접 호출 (CORS 허용, 무인증)
+  try{
+    const r = await fetch("https://api.hangang.life/", { cache:"no-store" });
+    const data = await r.json();
+    const han = data?.DATAs?.DATA?.HANGANG;
+    if(han){
+      const stations = []; let latest = null;
+      for(const name in han){
+        const t = parseFloat(han[name]?.TEMP);
+        if(!isNaN(t) && t>-5 && t<45){
+          stations.push({ name, temp:t });
+          const lu = han[name]?.LAST_UPDATE;
+          if(lu && (!latest || lu>latest)) latest = lu;
+        }
+      }
+      if(stations.length){
+        const avg = Math.round(stations.reduce((s,x)=>s+x.temp,0)/stations.length*10)/10;
+        applyTempData(avg, stations, latest, { name:"hangang.life (한강라이프)", url:"https://hangang.life/" });
+        render(); return;
+      }
+    }
+    throw new Error("hangang.life shape");
+  }catch(e){
+    console.warn("hangang.life 직접 호출 실패:", e.message);
+    state.tempLive = false;
+    render();
+  }
 }
 
 /* ─────────── 실시간 시세 (Worker /api/quotes) ─────────── */
@@ -624,13 +735,23 @@ function renderChat(){
   if(nearBottom) box.scrollTop=box.scrollHeight;
 }
 async function pollChat(){
-  if(!nick) return;
   const remote = await loadRemote();
   if(remote !== null){
     chatCache = merge(chatCache, remote);
     chatCache.forEach(m => delete m.pending);
+    saveLocal();   // 성공 시 로컬에도 백업
   }
   renderChat();
+}
+// 로컬 백업: KV가 잠깐 죽거나 새로고침해도 최소한 내가 본 메시지는 유지
+function saveLocal(){
+  try{ localStorage.setItem("hangang-chat-cache", JSON.stringify(chatCache.slice(-200))); }catch(e){}
+}
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem("hangang-chat-cache");
+    if(raw){ chatCache = merge(chatCache, JSON.parse(raw)); }
+  }catch(e){}
 }
 setInterval(pollChat, 4000);
 
@@ -659,11 +780,11 @@ async function send(){
     const server = await saveRemote(nick, t);
     if(server){ chatCache = merge(chatCache, server); chatCache.forEach(m=>delete m.pending); }
     else { mine.pending=false; }
-    lastSig=""; renderChat();
+    lastSig=""; renderChat(); saveLocal();
   }catch(e){
     console.error("전송 실패:", e);
     document.getElementById("fetchStatus").textContent="채팅 전송 실패 — 잠시 후 다시 시도해 주세요.";
-    // 실패해도 화면에서 지우지 않음 (pending 상태로 유지)
+    saveLocal(); // 실패해도 로컬엔 남김
   }
 }
 document.getElementById("sendBtn").addEventListener("click", send);
@@ -711,30 +832,49 @@ function applyDaypart(){
 }
 
 /* ─────────── 방문자 카운터 (/api/visit) ─────────── */
+function fmtVisit(today, total){
+  const el = document.getElementById("visitCount");
+  el.innerHTML = `🏊 오늘 <b>${today.toLocaleString("ko-KR")}</b>명 뛰어듦`;
+  el.title = `오늘 ${today.toLocaleString("ko-KR")}명 · 누적 ${(total||0).toLocaleString("ko-KR")}명`;
+}
 async function countVisit(){
   const el = document.getElementById("visitCount");
-  try{
-    // 세션당 1회만 증가 (같은 탭 새로고침으로 뻥튀기 방지)
-    const counted = sessionStorage.getItem("visited");
-    const method = counted ? "GET" : "POST";
+  const counted = sessionStorage.getItem("visited");
+  // POST(첫 방문) 실패 시 GET으로 재시도 → 405 등에도 최소한 현재 수치는 표시
+  async function hit(method){
     const r = await fetch(API_BASE + "/api/visit", { method, cache:"no-store" });
-    const d = await r.json();
-    if(!counted) sessionStorage.setItem("visited","1");
-    if(typeof d.today === "number"){
-      el.textContent = `👣 오늘 ${d.today.toLocaleString("ko-KR")}명`;
-      el.title = `오늘 방문 ${d.today}명 · 누적 ${d.total||0}명` + (d.kv===false ? " (KV 미연결: 집계 안 됨)" : "");
-      if(d.kv === false) el.textContent = "👣 --";
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }
+  try{
+    let d;
+    if(counted){
+      d = await hit("GET");
+    } else {
+      try{ d = await hit("POST"); }
+      catch(e){ d = await hit("GET"); }   // POST 막히면 GET으로라도
+      sessionStorage.setItem("visited","1");
+    }
+    if(d && typeof d.today === "number"){
+      if(d.kv === false){
+        el.innerHTML = "🏊 방문 집계 대기";
+        el.title = "KV(CHAT) 미연결 — 배포가이드 ③ 참고";
+      } else {
+        fmtVisit(d.today, d.total);
+      }
     }
   }catch(e){
-    el.textContent = "👣 --";
+    console.warn("방문자 카운트 실패:", e.message);
+    el.innerHTML = "🏊 --";
+    el.title = "방문 집계 실패: " + e.message;
   }
 }
 
 /* ─────────── 한강 CCTV (채널 라이브 자동 재생) ─────────── */
 // 특정 영상 ID 대신 채널 ID로 "현재 라이브"를 재생 → 방송 영상이 바뀌어도 안 죽음
 const CCTV_SOURCES = [
-  { label: "반포대교 (Daily Seoul)", channel: "UCQKQTgZJo3PlxA-9V1Z51XA" },
-  { label: "247 Seoul Live",        channel: "UCuTaHTWV4TjZE9r8Vjcfaog" },
+  { label: "반포대교 (Daily Seoul)", channel: "UCQKQTgZJo3PlxA-9V1Z51XA", live: "https://www.youtube.com/@DailySeoul/live" },
+  { label: "247 Seoul Live",        channel: "UCuTaHTWV4TjZE9r8Vjcfaog", live: "https://www.youtube.com/@247SeoulLiveCam/live" },
 ];
 let cctvIdx = 0;
 function loadCctv(i){
@@ -742,6 +882,7 @@ function loadCctv(i){
   const src = CCTV_SOURCES[i];
   document.getElementById("cctvFrame").src =
     `https://www.youtube.com/embed/live_stream?channel=${src.channel}&autoplay=1&mute=1`;
+  document.getElementById("cctvOverlay").href = src.live;
   document.querySelectorAll(".cctv-tab").forEach((t,idx)=>{
     t.classList.toggle("active", idx===i);
   });
@@ -764,7 +905,10 @@ countVisit();
 fetchQuotes();
 fetchWaterTemp();
 initCctv();
-setInterval(applyDaypart, 60*1000); // 1분마다 시간대 확인
+loadLocal();      // 로컬 백업 먼저 표시 (F5 후에도 남게)
+renderChat();
+pollChat();       // 서버 히스토리 로드 (닉네임 없어도)
+setInterval(applyDaypart, 60*1000);
 </script>
 </body>
 </html>
