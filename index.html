@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>한강 수온 라이브</title>
+<style>
+  :root{
+    --deep:#07101d; --water:#0e2438; --water2:#14324c;
+    --surface:#122c42; --line:#1e3d58;
+    --ink:#dce9f5; --dim:#7d97ad; --moon:#f2d29b;
+    --up:#ff5a5a; --down:#5a9bff;
+  }
+  body.mood-hot   {--water:#173a4a;--water2:#1e4a58;--moon:#ffb45e}
+  body.mood-cool  {--water:#0d2233;--water2:#123044}
+  body.mood-freeze{--water:#26445c;--water2:#3a5d78;--moon:#bfe3ff}
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--deep);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;transition:background 1s;
+  }
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+  a{color:var(--moon)}
+
+  header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:16px 22px;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:rgba(7,16,29,.85);backdrop-filter:blur(8px);z-index:30;
+  }
+  .brand{font-weight:800;font-size:15px;letter-spacing:.06em}
+  .brand em{color:var(--moon);font-style:normal}
+  .head-right{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--dim)}
+  .src-badge{padding:3px 9px;border:1px solid var(--line);border-radius:99px;font-size:11px}
+  .src-badge.live{border-color:var(--moon);color:var(--moon)}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--ink);
+    padding:6px 13px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit}
+  button.ghost:hover{border-color:var(--moon);color:var(--moon)}
+  button.ghost:disabled{opacity:.45;cursor:wait}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--moon);outline-offset:2px}
+
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line);transition:background 1.5s}
+  body.mood-hot .hero{background:radial-gradient(ellipse at 50% -20%,rgba(255,150,60,.18),transparent 60%)}
+  body.mood-freeze .hero{background:radial-gradient(ellipse at 50% -20%,rgba(170,215,255,.12),transparent 60%)}
+  .hero-inner{max-width:1060px;margin:0 auto;padding:54px 22px 0;
+    display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;z-index:3}
+  .hero .label{font-size:13px;color:var(--dim);letter-spacing:.28em;margin-bottom:6px}
+  .temp{font-size:clamp(84px,18vw,168px);font-weight:800;line-height:1;color:#fff;position:relative;
+    text-shadow:0 8px 40px rgba(20,60,90,.9);transition:text-shadow 1s}
+  body.mood-hot .temp{text-shadow:0 0 60px rgba(255,140,50,.55)}
+  body.mood-freeze .temp{text-shadow:0 0 50px rgba(160,215,255,.6)}
+  .temp .unit{font-size:.32em;font-weight:600;color:var(--moon);vertical-align:.9em}
+  .temp-emoji{font-size:clamp(30px,5vw,52px);margin-top:6px;min-height:1.2em}
+  .hero .sub{font-size:14px;color:var(--dim);margin-top:8px}
+  .hero .updated{font-size:12px;color:var(--dim);opacity:.85;margin-top:4px;padding-bottom:2px}
+  .hero .source-line{font-size:11px;color:var(--dim);padding-bottom:8px}
+
+  .river{position:relative;height:120px;margin-top:-20px}
+  .river svg.waves{position:absolute;bottom:0;left:0;width:200%;height:92%}
+  .wave1{animation:drift 14s linear infinite;opacity:.9}
+  .wave2{animation:drift 22s linear infinite reverse;opacity:.5}
+  body.mood-freeze .wave1{animation-duration:60s}
+  body.mood-freeze .wave2{animation-duration:90s}
+  @keyframes drift{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .wave1 path{fill:var(--water);transition:fill 1.5s}
+  .wave2 path{fill:var(--water2);transition:fill 1.5s}
+  .bridge{position:absolute;bottom:56px;left:50%;transform:translateX(-50%);width:min(720px,92%);opacity:.35;z-index:1}
+
+  .floaters{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
+  .floater{position:absolute;bottom:26px;font-size:26px;animation:swim linear infinite;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+  @keyframes swim{
+    from{transform:translateX(-60px) translateY(0)}
+    25%{transform:translateX(25vw) translateY(-5px)}
+    50%{transform:translateX(50vw) translateY(2px)}
+    75%{transform:translateX(75vw) translateY(-4px)}
+    to{transform:translateX(105vw) translateY(0)}
+  }
+  .sky{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+  .drop{position:absolute;top:-10%;animation:fall linear infinite}
+  @keyframes fall{
+    from{transform:translateY(-5vh) rotate(0deg);opacity:0}
+    10%{opacity:1}
+    to{transform:translateY(110vh) rotate(240deg);opacity:.8}
+  }
+  .sparkle{position:absolute;font-size:11px;color:#fff;animation:twinkle 2.6s ease-in-out infinite;z-index:4;pointer-events:none}
+  @keyframes twinkle{0%,100%{opacity:0}50%{opacity:.9}}
+  @media (prefers-reduced-motion: reduce){
+    .wave1,.wave2,.floater,.drop,.sparkle{animation:none !important}
+    .drop,.sparkle{display:none}
+  }
+
+  main{max-width:1060px;margin:0 auto;padding:26px 22px 60px;
+    display:grid;grid-template-columns:1.4fr 1fr;gap:22px}
+  @media(max-width:860px){main{grid-template-columns:1fr}}
+  .col{display:flex;flex-direction:column;gap:26px}
+
+  section h2{font-size:13px;color:var(--dim);letter-spacing:.22em;font-weight:700;
+    margin-bottom:12px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  section h2 small{letter-spacing:0;font-weight:400;font-size:11px}
+
+  .market{position:relative}
+  .kospi-head{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;
+    position:relative;overflow:hidden;transition:border-color .6s, box-shadow .6s}
+  .market.bull .kospi-head{border-color:rgba(255,90,90,.6);box-shadow:0 0 34px rgba(255,90,90,.16)}
+  .market.bear .kospi-head{border-color:rgba(90,155,255,.6);box-shadow:0 0 34px rgba(90,155,255,.16)}
+  .kospi-head .name{font-size:13px;color:var(--dim)}
+  .kospi-head .val{font-size:26px;font-weight:800}
+  .kospi-mood{font-size:34px;line-height:1}
+  .chg{font-size:13px;font-weight:700}
+  .chg.up{color:var(--up)} .chg.down{color:var(--down)} .chg.flat{color:var(--dim)}
+  .market-caption{font-size:12px;color:var(--dim);margin:-4px 0 12px;min-height:1.4em}
+  .stocks{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;position:relative;z-index:1}
+  .stock{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px;transition:border-color .2s}
+  .stock:hover{border-color:var(--moon)}
+  .stock .nm{font-size:13px;color:var(--dim);margin-bottom:6px}
+  .stock .pr{font-size:19px;font-weight:800}
+  .stock .pc{font-size:12px;font-weight:700;margin-top:3px}
+  .market-fx{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2;border-radius:14px}
+  .rocket{position:absolute;bottom:-10%;font-size:22px;animation:launch ease-in infinite}
+  @keyframes launch{
+    from{transform:translateY(0) scale(.9);opacity:0}
+    15%{opacity:1}
+    to{transform:translateY(-120vh) scale(1.15);opacity:0}
+  }
+  .src-line{font-size:11px;color:var(--dim);margin-top:10px}
+  .fetch-status{font-size:11px;color:var(--dim);margin-top:4px;min-height:1.3em}
+
+  .cctv-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
+    border:1px solid var(--line);background:#000}
+  .cctv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .cctv-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .cctv-links a{display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:99px;
+    font-size:12px;text-decoration:none;color:var(--ink)}
+  .cctv-links a:hover{border-color:var(--moon);color:var(--moon)}
+  .cctv-note{font-size:11px;color:var(--dim);margin-top:8px}
+
+  .chat{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    display:flex;flex-direction:column;height:520px;overflow:hidden}
+  .chat-head{padding:12px 15px;border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim)}
+  .chat-msgs{flex:1;overflow-y:auto;padding:14px 15px;display:flex;flex-direction:column;gap:9px}
+  .msg{font-size:13px;line-height:1.5;word-break:break-word}
+  .msg .nick{font-weight:700;color:var(--moon);margin-right:6px}
+  .msg .time{font-size:10px;color:var(--dim);margin-left:6px}
+  .msg.mine .nick{color:#8fd3c8}
+  .msg.pending{opacity:.55}
+  .chat-empty{color:var(--dim);font-size:13px;text-align:center;margin:auto}
+  .chat-input{display:flex;gap:8px;padding:11px;border-top:1px solid var(--line)}
+  .chat-input input{flex:1;background:var(--deep);border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);padding:9px 12px;font-size:13px;font-family:inherit}
+  .chat-input button{background:var(--moon);color:#1d1608;border:none;border-radius:8px;
+    padding:0 16px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+  .chat-input button:disabled{opacity:.5;cursor:default}
+  .nick-row{display:flex;gap:8px;padding:11px;border-bottom:1px solid var(--line)}
+  .nick-row input{flex:1;background:var(--deep);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px 12px;font-size:13px;font-family:inherit}
+  .nick-row button{background:none;border:1px solid var(--moon);color:var(--moon);border-radius:8px;padding:0 14px;font-size:12px;cursor:pointer;font-family:inherit}
+  .notice{font-size:11px;color:var(--dim);padding:0 15px 10px}
+  .config-warn{background:#3a2312;border:1px solid #7a4a1e;color:#ffcf9e;font-size:12px;
+    padding:10px 15px;margin:0;line-height:1.6;display:none}
+
+  footer{max-width:1060px;margin:0 auto;padding:0 22px 40px;font-size:11px;color:var(--dim);line-height:1.8}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">한강 수온 <em>LIVE</em></div>
+  <div class="head-right">
+    <span class="src-badge" id="srcBadge">불러오는 중</span>
+    <button class="ghost" id="refreshBtn">새로고침</button>
+  </div>
+</header>
+
+<div class="hero" id="hero">
+  <div class="sky" id="skyFx" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <div class="label">HANGANG WATER TEMP</div>
+    <div class="temp num"><span id="tempVal">--.-</span><span class="unit">°C</span></div>
+    <div class="temp-emoji" id="tempEmoji" aria-hidden="true"></div>
+    <div class="sub" id="tempSub">오늘의 한강, 오늘의 시장. 다들 버티는 중.</div>
+    <div class="updated" id="updatedAt">데이터 로딩 중…</div>
+    <div class="source-line" id="tempSource">수온 출처: 조회 전</div>
+  </div>
+  <div class="river">
+    <svg class="bridge" viewBox="0 0 720 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M0,78 L720,78" stroke="#3a5a78" stroke-width="4"/>
+      <path d="M40,78 Q180,-30 360,78 Q540,-30 680,78" fill="none" stroke="#3a5a78" stroke-width="3"/>
+      <g stroke="#3a5a78" stroke-width="2">
+        <line x1="120" y1="42" x2="120" y2="78"/><line x1="200" y1="18" x2="200" y2="78"/>
+        <line x1="280" y1="30" x2="280" y2="78"/><line x1="440" y1="30" x2="440" y2="78"/>
+        <line x1="520" y1="18" x2="520" y2="78"/><line x1="600" y1="42" x2="600" y2="78"/>
+      </g>
+    </svg>
+    <svg class="waves wave2" viewBox="0 0 1440 110" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M0,55 C120,35 240,75 360,55 C480,35 600,75 720,55 C840,35 960,75 1080,55 C1200,35 1320,75 1440,55 L1440,110 L0,110 Z"/>
+    </svg>
+    <svg class="waves wave1" viewBox="0 0 1440 110" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M0,70 C120,50 240,90 360,70 C480,50 600,90 720,70 C840,50 960,90 1080,70 C1200,50 1320,90 1440,70 L1440,110 L0,110 Z"/>
+    </svg>
+    <div class="floaters" id="riverFx" aria-hidden="true"></div>
+  </div>
+</div>
+
+<main>
+  <div class="col">
+    <section class="market" id="marketSec">
+      <h2>코스피 주요 종목 <small id="stockNote">야후 파이낸스 실시간 시세</small></h2>
+      <div class="kospi-head">
+        <div>
+          <div class="name">KOSPI 지수</div>
+          <div class="val num" id="kospiVal">-,---.--</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="chg num" id="kospiChg">--</div>
+          <div class="kospi-mood" id="kospiMood" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="market-caption" id="marketCaption"></div>
+      <div class="stocks" id="stockGrid"></div>
+      <div class="market-fx" id="marketFx" aria-hidden="true"></div>
+      <div class="src-line" id="stockSource">시세 출처: 조회 전</div>
+      <div class="fetch-status" id="fetchStatus"></div>
+    </section>
+
+    <section>
+      <h2>한강 실시간 CCTV <small>24시간 라이브 스트리밍</small></h2>
+      <div class="cctv-frame">
+        <iframe id="cctvFrame"
+          src="https://www.youtube.com/embed/-JhoMGoAfFc?autoplay=0&mute=1"
+          title="한강 반포대교 24시간 라이브캠"
+          allow="accelerometer; encrypted-media; picture-in-picture"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen loading="lazy"></iframe>
+      </div>
+      <div class="cctv-links">
+        <a href="https://www.youtube.com/watch?v=-JhoMGoAfFc" target="_blank" rel="noopener">▶ 반포대교 4K 라이브 (YouTube)</a>
+        <a href="https://www.youtube.com/@247SeoulLiveCam" target="_blank" rel="noopener">▶ 247 Seoul Live Cam</a>
+        <a href="https://www.hrfco.go.kr/sumun/cctvRtmp.do" target="_blank" rel="noopener">한강홍수통제소 수위 CCTV</a>
+        <a href="https://cctv.kwater.or.kr/sub/han_cctv.do" target="_blank" rel="noopener">K-water 한강 CCTV</a>
+      </div>
+      <div class="cctv-note">임베드 영상이 재생되지 않는 환경에서는 위 링크로 새 탭에서 열어보세요.</div>
+    </section>
+  </div>
+
+  <section>
+    <h2>자유 채팅 <small>24시간 보관 · 모두에게 공유</small></h2>
+    <div class="chat">
+      <div class="config-warn" id="configWarn"></div>
+      <div class="nick-row" id="nickRow">
+        <input id="nickInput" maxlength="12" placeholder="닉네임 (최대 12자)" aria-label="닉네임 입력">
+        <button id="nickBtn">입장</button>
+      </div>
+      <div class="chat-head" id="chatHead" style="display:none">
+        <span id="chatNickLabel"></span>
+        <span id="chatCount"></span>
+      </div>
+      <div class="chat-msgs" id="chatMsgs">
+        <div class="chat-empty">닉네임을 정하고 입장하면 채팅이 시작돼요</div>
+      </div>
+      <div class="chat-input">
+        <input id="msgInput" maxlength="200" placeholder="메시지 입력…" aria-label="메시지 입력" disabled>
+        <button id="sendBtn" disabled>전송</button>
+      </div>
+      <div class="notice">메시지는 24시간 동안 보관되며 이 앱의 모든 방문자에게 공개됩니다. 개인정보는 적지 마세요.</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <strong>데이터 출처</strong> — 코스피/종목 시세는 야후 파이낸스를 Cloudflare Worker가 중계해 제공합니다(30초 캐시, 약간의 지연 가능). 수온은 계절 평균 기반 추정치이며, 정확한 실측치는 아래 한강홍수통제소 링크에서 확인하세요. 시세는 투자 판단의 근거로 사용하지 마세요.<br>
+  마음이 많이 힘든 날엔 잠시 쉬어가요. 자살예방 상담전화 <strong>109</strong> · 정신건강 상담 <strong>1577-0199</strong> (24시간)
+</footer>
+
+<script>
+/* 백엔드(/api/quotes, /api/chat)는 이 사이트와 같은 도메인에서
+   Cloudflare Pages Functions로 함께 배포됩니다. 별도 설정이 없습니다. */
+const API_BASE = "";        // 같은 도메인 → 상대경로 사용
+const CONFIGURED = true;
+
+/* ─────────── 상태 ─────────── */
+let state = {
+  temp: seasonalTemp(),
+  kospi: { value: null, changePct: 0 },
+  stocks: [],
+  live: false,
+  lastUpdate: null,
+};
+let nick = null;
+let currentTempMood = null;
+let currentMarketMood = null;
+
+/* ─────────── 유틸 ─────────── */
+function seasonalTemp(){
+  const m = new Date().getMonth();
+  const table = [3.2,3.8,7.5,13.5,18.5,22.5,25.5,26.5,23.5,17.5,11.0,5.5];
+  return table[m] + (Math.random()*1.2 - 0.6);
+}
+const fmt = n => Math.round(n).toLocaleString("ko-KR");
+const pct = n => (n>0?"+":"") + n.toFixed(2) + "%";
+function chgClass(n){ return n>0.001 ? "up" : n<-0.001 ? "down" : "flat"; }
+function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+/* ─────────── 수온 이펙트 ─────────── */
+const TEMP_MOODS = {
+  hot:   {emoji:"🏊 참방참방", floaters:["🦆","🦆","🛟","⛵","🍉"], drops:[],            sub:"물이 미지근해요. 오리들도 여유롭네요.", cls:"mood-hot"},
+  warm:  {emoji:"🦆 둥둥",    floaters:["🦆","🦆","⛵"],          drops:[],            sub:"딱 좋은 수온. 강바람 쐬기 좋은 날.",   cls:""},
+  cool:  {emoji:"🧥 쌀쌀",    floaters:["🦆"],                    drops:["🍂","🍁"],   sub:"물이 차가워졌어요. 따뜻하게 입으세요.", cls:"mood-cool"},
+  freeze:{emoji:"🥶 꽁꽁",    floaters:["🧊","🧊","⛸️"],          drops:["❄️","❄️","🌨️"], sub:"한강이 꽁꽁. 얼음 위로 고양이가 걸어다닐 기세.", cls:"mood-freeze"},
+};
+function tempMoodKey(t){ return t>=24?"hot":t>=15?"warm":t>=5?"cool":"freeze"; }
+function applyTempFx(){
+  const key = tempMoodKey(state.temp);
+  if(key === currentTempMood) return;
+  currentTempMood = key;
+  const m = TEMP_MOODS[key];
+  document.body.classList.remove("mood-hot","mood-cool","mood-freeze");
+  if(m.cls) document.body.classList.add(m.cls);
+  document.getElementById("tempEmoji").textContent = m.emoji;
+  const river = document.getElementById("riverFx"); river.innerHTML = "";
+  m.floaters.forEach(f => {
+    const el = document.createElement("span");
+    el.className="floater"; el.textContent=f;
+    el.style.animationDuration=(26+Math.random()*20)+"s";
+    el.style.animationDelay=(-Math.random()*30)+"s";
+    el.style.bottom=(20+Math.random()*14)+"px";
+    el.style.fontSize=(20+Math.random()*12)+"px";
+    river.appendChild(el);
+  });
+  if(key==="hot"||key==="warm"){
+    for(let i=0;i<10;i++){
+      const s=document.createElement("span");
+      s.className="sparkle"; s.textContent="✦";
+      s.style.left=(Math.random()*96)+"%";
+      s.style.bottom=(8+Math.random()*40)+"px";
+      s.style.animationDelay=(Math.random()*2.6)+"s";
+      river.appendChild(s);
+    }
+  }
+  const sky=document.getElementById("skyFx"); sky.innerHTML="";
+  if(m.drops.length){
+    for(let i=0;i<20;i++){
+      const d=document.createElement("span");
+      d.className="drop"; d.textContent=m.drops[Math.floor(Math.random()*m.drops.length)];
+      d.style.left=(Math.random()*100)+"%";
+      d.style.fontSize=(10+Math.random()*12)+"px";
+      d.style.animationDuration=(5+Math.random()*7)+"s";
+      d.style.animationDelay=(-Math.random()*10)+"s";
+      sky.appendChild(d);
+    }
+  }
+}
+
+/* ─────────── 코스피 이펙트 ─────────── */
+function marketMoodKey(p){
+  return p>=1.5?"moon":p>=0.3?"bull":p<=-1.5?"storm":p<=-0.3?"bear":"flat";
+}
+const MARKET_MOODS = {
+  moon: {icon:"🚀🌕", caption:"가즈아아아 — 로켓 발사 구간", cls:"bull", fx:"rockets"},
+  bull: {icon:"🐂",   caption:"빨간불 켜졌습니다. 소가 달려요.", cls:"bull", fx:null},
+  flat: {icon:"😐",   caption:"보합. 강물처럼 잔잔합니다.", cls:"", fx:null},
+  bear: {icon:"🐻",   caption:"파란불… 곰이 어슬렁거려요.", cls:"bear", fx:null},
+  storm:{icon:"🐻⛈️", caption:"우산 챙기세요. 파란 비가 내립니다.", cls:"bear", fx:"rain"},
+};
+function applyMarketFx(){
+  const key = marketMoodKey(state.kospi.changePct || 0);
+  if(key === currentMarketMood) return;
+  currentMarketMood = key;
+  const m = MARKET_MOODS[key];
+  const sec=document.getElementById("marketSec");
+  sec.classList.remove("bull","bear");
+  if(m.cls) sec.classList.add(m.cls);
+  document.getElementById("kospiMood").textContent=m.icon;
+  document.getElementById("marketCaption").textContent=m.caption;
+  const fx=document.getElementById("marketFx"); fx.innerHTML="";
+  if(m.fx==="rockets"){
+    for(let i=0;i<6;i++){
+      const r=document.createElement("span");
+      r.className="rocket"; r.textContent="🚀";
+      r.style.left=(5+Math.random()*90)+"%";
+      r.style.animationDuration=(3+Math.random()*3)+"s";
+      r.style.animationDelay=(Math.random()*4)+"s";
+      fx.appendChild(r);
+    }
+  } else if(m.fx==="rain"){
+    for(let i=0;i<26;i++){
+      const d=document.createElement("span");
+      d.className="drop"; d.textContent="💧";
+      d.style.left=(Math.random()*100)+"%";
+      d.style.fontSize=(8+Math.random()*8)+"px";
+      d.style.opacity=.55;
+      d.style.animationDuration=(2+Math.random()*2.5)+"s";
+      d.style.animationDelay=(-Math.random()*4)+"s";
+      fx.appendChild(d);
+    }
+  }
+}
+
+/* ─────────── 렌더 ─────────── */
+function render(){
+  document.getElementById("tempVal").textContent = state.temp.toFixed(1);
+  const k = state.kospi;
+  document.getElementById("kospiVal").textContent =
+    (typeof k.value === "number")
+      ? k.value.toLocaleString("ko-KR",{minimumFractionDigits:2,maximumFractionDigits:2})
+      : "-,---.--";
+  const kc = document.getElementById("kospiChg");
+  kc.textContent = (typeof k.value==="number") ? pct(k.changePct) : "--";
+  kc.className = "chg num " + chgClass(k.changePct);
+
+  const grid = document.getElementById("stockGrid");
+  grid.innerHTML = state.stocks.length
+    ? state.stocks.map(s => `
+      <div class="stock">
+        <div class="nm">${esc(s.name)}</div>
+        <div class="pr num">${fmt(s.price)}</div>
+        <div class="pc num chg ${chgClass(s.changePct)}">${pct(s.changePct)}</div>
+      </div>`).join("")
+    : '<div style="color:var(--dim);font-size:13px;padding:6px">시세를 불러오는 중…</div>';
+
+  const badge = document.getElementById("srcBadge");
+  badge.textContent = state.live ? "실시간" : "연결 대기";
+  badge.className = "src-badge" + (state.live ? " live" : "");
+  document.getElementById("updatedAt").textContent = state.lastUpdate
+    ? `수온 업데이트 ${state.lastUpdate.toLocaleTimeString("ko-KR")}`
+    : "수온 추정치 표시 중";
+  document.getElementById("tempSource").innerHTML =
+    '수온 출처: 계절 평균 추정 · 실측 → <a href="https://www.hrfco.go.kr/sumun/cctvRtmp.do" target="_blank" rel="noopener">한강홍수통제소</a>';
+  document.getElementById("stockSource").innerHTML = state.live
+    ? '시세 출처: <a href="https://finance.yahoo.com" target="_blank" rel="noopener">Yahoo Finance</a> (Worker 중계)'
+    : "시세 출처: 연결 대기 중";
+
+  document.getElementById("tempSub").textContent = TEMP_MOODS[tempMoodKey(state.temp)].sub;
+  applyTempFx();
+  applyMarketFx();
+}
+
+/* ─────────── 실시간 시세 (Worker /api/quotes) ─────────── */
+async function fetchQuotes(){
+  const btn = document.getElementById("refreshBtn");
+  const status = document.getElementById("fetchStatus");
+  btn.disabled = true;
+  status.textContent = "시세 조회 중…";
+  try{
+    const r = await fetch(API_BASE + "/api/quotes", { cache: "no-store" });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const data = await r.json();
+    if(data.kospi && typeof data.kospi.value === "number") state.kospi = data.kospi;
+    if(Array.isArray(data.stocks) && data.stocks.length) state.stocks = data.stocks;
+    state.live = true;
+    state.lastUpdate = new Date();
+    status.textContent = "";
+    document.getElementById("stockNote").textContent = "야후 파이낸스 실시간 · 30초 캐시";
+  }catch(e){
+    console.error("시세 조회 실패:", e);
+    state.live = false;
+    status.textContent = "시세 조회 실패 — 잠시 후 다시 시도해 주세요. (" + e.message + ")";
+  }
+  render();
+  btn.disabled = false;
+}
+document.getElementById("refreshBtn").addEventListener("click", fetchQuotes);
+setInterval(fetchQuotes, 60*1000); // 1분마다 자동 갱신
+
+/* ─────────── 공유 채팅 (Worker /api/chat) ─────────── */
+let chatCache = [];
+let lastSig = "";
+const msgKey = m => `${m.ts}|${m.n}|${m.t}`;
+function prune(msgs){
+  const cutoff = Date.now() - 24*60*60*1000;
+  return msgs.filter(m => m && m.ts > cutoff).sort((a,b)=>a.ts-b.ts).slice(-500);
+}
+function merge(a,b){
+  const map=new Map();
+  [...a,...b].forEach(m=>{ if(m&&m.ts&&m.n) map.set(msgKey(m),m); });
+  return prune([...map.values()]);
+}
+async function loadRemote(){
+  try{
+    const r = await fetch(API_BASE + "/api/chat", { cache:"no-store" });
+    if(!r.ok) return null;
+    const data = await r.json();
+    return Array.isArray(data.messages) ? data.messages : [];
+  }catch(e){ return null; }
+}
+async function saveRemote(nick, text){
+  const r = await fetch(API_BASE + "/api/chat", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ n: nick, t: text }),
+  });
+  if(!r.ok) throw new Error("HTTP " + r.status);
+  const data = await r.json();
+  return Array.isArray(data.messages) ? data.messages : null;
+}
+function renderChat(){
+  const box=document.getElementById("chatMsgs");
+  if(!chatCache.length){
+    box.innerHTML='<div class="chat-empty">아직 아무도 없어요. 첫 마디를 남겨보세요.</div>';
+    document.getElementById("chatCount").textContent=""; lastSig=""; return;
+  }
+  const sig=chatCache.length+"|"+chatCache[chatCache.length-1].ts;
+  if(sig===lastSig) return;
+  lastSig=sig;
+  const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<60;
+  box.innerHTML=chatCache.map(m=>`
+    <div class="msg${m.n===nick?" mine":""}${m.pending?" pending":""}">
+      <span class="nick">${esc(m.n)}</span>${esc(m.t)}
+      <span class="time">${new Date(m.ts).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}</span>
+    </div>`).join("");
+  document.getElementById("chatCount").textContent=`메시지 ${chatCache.length}개 · 24시간 보관`;
+  if(nearBottom) box.scrollTop=box.scrollHeight;
+}
+async function pollChat(){
+  if(!nick) return;
+  const remote = await loadRemote();
+  if(remote !== null){
+    chatCache = merge(chatCache, remote);
+    chatCache.forEach(m => delete m.pending);
+  }
+  renderChat();
+}
+setInterval(pollChat, 4000);
+
+document.getElementById("nickBtn").addEventListener("click", enter);
+document.getElementById("nickInput").addEventListener("keydown", e=>{ if(e.key==="Enter") enter(); });
+function enter(){
+  const v=document.getElementById("nickInput").value.trim();
+  if(!v) return;
+  nick=v;
+  document.getElementById("nickRow").style.display="none";
+  document.getElementById("chatHead").style.display="flex";
+  document.getElementById("chatNickLabel").textContent=`${nick} 님으로 참여 중`;
+  document.getElementById("msgInput").disabled=false;
+  document.getElementById("sendBtn").disabled=false;
+  document.getElementById("msgInput").focus();
+  pollChat();
+}
+async function send(){
+  const input=document.getElementById("msgInput");
+  const t=input.value.trim();
+  if(!t||!nick) return;
+  input.value="";
+  const mine={n:nick,t,ts:Date.now(),pending:true};
+  chatCache=merge(chatCache,[mine]); lastSig=""; renderChat();
+  try{
+    const server = await saveRemote(nick, t);
+    if(server){ chatCache = merge(chatCache, server); chatCache.forEach(m=>delete m.pending); }
+    else { mine.pending=false; }
+    lastSig=""; renderChat();
+  }catch(e){
+    console.error("전송 실패:", e);
+    document.getElementById("fetchStatus").textContent="채팅 전송 실패 — 잠시 후 다시 시도해 주세요.";
+    // 실패해도 화면에서 지우지 않음 (pending 상태로 유지)
+  }
+}
+document.getElementById("sendBtn").addEventListener("click", send);
+document.getElementById("msgInput").addEventListener("keydown", e=>{ if(e.key==="Enter") send(); });
+
+/* ─────────── 시작 ─────────── */
+render();
+fetchQuotes();
+</script>
+</body>
+</html>
