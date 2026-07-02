@@ -15,6 +15,44 @@
   body.mood-cool  {--water:#0d2233;--water2:#123044}
   body.mood-freeze{--water:#26445c;--water2:#3a5d78;--moon:#bfe3ff}
 
+  /* 시간대별 히어로 하늘 (KST 시각에 따라 daypart 클래스가 body에 붙음) */
+  .hero{
+    background:
+      linear-gradient(180deg, var(--sky-top,#0a1830) 0%, var(--sky-bot,#0d2338) 70%, transparent 100%);
+    transition: background 1.5s ease;
+  }
+  body.dp-dawn   {--sky-top:#2a3a63; --sky-bot:#c98a76}  /* 새벽 */
+  body.dp-morning{--sky-top:#4a86c4; --sky-bot:#bcd9ee}  /* 아침 */
+  body.dp-day    {--sky-top:#3d7fc4; --sky-bot:#9fc6e8}  /* 낮 */
+  body.dp-sunset {--sky-top:#3a3a72; --sky-bot:#e08a55}  /* 노을 */
+  body.dp-dusk   {--sky-top:#1f2a52; --sky-bot:#5a4a7a}  /* 땅거미 */
+  body.dp-night  {--sky-top:#070f22; --sky-bot:#0d1e38}  /* 밤 */
+
+  .celestial{position:absolute;top:0;left:0;right:0;height:100%;pointer-events:none;z-index:0;overflow:hidden}
+  .celestial .orb{
+    position:absolute;border-radius:50%;transition:all 2s ease;
+  }
+  .celestial .sun{
+    width:70px;height:70px;
+    background:radial-gradient(circle,#fff3c4 0%,#ffd45e 55%,rgba(255,180,60,0) 72%);
+    box-shadow:0 0 60px 20px rgba(255,200,90,.5);
+  }
+  .celestial .moon{
+    width:54px;height:54px;
+    background:radial-gradient(circle at 35% 35%,#fdfbf0,#d9e4f0 70%,rgba(200,215,235,0) 75%);
+    box-shadow:0 0 40px 8px rgba(210,225,245,.4);
+  }
+  .stars{position:absolute;inset:0;opacity:0;transition:opacity 2s}
+  body.dp-night .stars, body.dp-dusk .stars{opacity:1}
+  .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;
+    animation:tw 3s ease-in-out infinite}
+  @keyframes tw{0%,100%{opacity:.2}50%{opacity:.9}}
+
+  .visit-count{
+    padding:3px 10px;border:1px solid var(--line);border-radius:99px;font-size:11px;
+    color:var(--moon);white-space:nowrap;
+  }
+
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%}
   body{
@@ -175,15 +213,17 @@
 <header>
   <div class="brand">한강 수온 <em>LIVE</em></div>
   <div class="head-right">
+    <span class="visit-count" id="visitCount" title="오늘 이 사이트에 들어온 사람 수">👣 --</span>
     <span class="src-badge" id="srcBadge">불러오는 중</span>
     <button class="ghost" id="refreshBtn">새로고침</button>
   </div>
 </header>
 
 <div class="hero" id="hero">
+  <div class="celestial" id="celestial" aria-hidden="true"></div>
   <div class="sky" id="skyFx" aria-hidden="true"></div>
   <div class="hero-inner">
-    <div class="label">HANGANG WATER TEMP</div>
+    <div class="label" id="daypartLabel">HANGANG WATER TEMP</div>
     <div class="temp num"><span id="tempVal">--.-</span><span class="unit">°C</span></div>
     <div class="temp-emoji" id="tempEmoji" aria-hidden="true"></div>
     <div class="sub" id="tempSub">오늘의 한강, 오늘의 시장. 다들 버티는 중.</div>
@@ -277,7 +317,7 @@
 </main>
 
 <footer>
-  <strong>데이터 출처</strong> — 코스피/종목 시세는 야후 파이낸스를 Cloudflare Worker가 중계해 제공합니다(30초 캐시, 약간의 지연 가능). 수온은 계절 평균 기반 추정치이며, 정확한 실측치는 아래 한강홍수통제소 링크에서 확인하세요. 시세는 투자 판단의 근거로 사용하지 마세요.<br>
+  <strong>데이터 출처</strong> — 코스피/종목 시세는 야후 파이낸스를, 한강 수온은 서울시 열린데이터광장의 수질자동측정소 자료를 Cloudflare가 중계해 제공합니다. 수온은 매시간 갱신되는 확정 전 실시간 자료(참고용)이며, 여러 측정소의 평균값입니다. 실측 조회에 실패하면 계절 평균 추정치로 자동 전환되고 화면에 그 사실이 표시됩니다. 시세는 투자 판단의 근거로 사용하지 마세요.<br>
   마음이 많이 힘든 날엔 잠시 쉬어가요. 자살예방 상담전화 <strong>109</strong> · 정신건강 상담 <strong>1577-0199</strong> (24시간)
 </footer>
 
@@ -290,6 +330,10 @@ const CONFIGURED = true;
 /* ─────────── 상태 ─────────── */
 let state = {
   temp: seasonalTemp(),
+  tempLive: false,        // 실측 성공 여부
+  tempStations: [],       // 측정소별 [{name, temp}]
+  tempMeasuredAt: null,   // 측정 시각(문자열)
+  tempSource: null,       // {name, url}
   kospi: { value: null, changePct: 0 },
   stocks: [],
   live: false,
@@ -430,11 +474,26 @@ function render(){
   const badge = document.getElementById("srcBadge");
   badge.textContent = state.live ? "실시간" : "연결 대기";
   badge.className = "src-badge" + (state.live ? " live" : "");
-  document.getElementById("updatedAt").textContent = state.lastUpdate
-    ? `수온 업데이트 ${state.lastUpdate.toLocaleTimeString("ko-KR")}`
-    : "수온 추정치 표시 중";
-  document.getElementById("tempSource").innerHTML =
-    '수온 출처: 계절 평균 추정 · 실측 → <a href="https://www.hrfco.go.kr/sumun/cctvRtmp.do" target="_blank" rel="noopener">한강홍수통제소</a>';
+
+  // 수온: 실측이면 측정 시각을, 아니면 추정치임을 표시
+  if(state.tempLive){
+    const when = state.tempMeasuredAt ? ` · 측정 ${state.tempMeasuredAt}` : "";
+    document.getElementById("updatedAt").textContent = `실측 수온 (자동측정소 평균)${when}`;
+    const stationTxt = state.tempStations.length
+      ? " · " + state.tempStations.map(s => `${s.name} ${s.temp}°`).join(", ")
+      : "";
+    document.getElementById("tempSource").innerHTML =
+      "수온 출처: " +
+      (state.tempSource
+        ? `<a href="${state.tempSource.url}" target="_blank" rel="noopener">${esc(state.tempSource.name)}</a>`
+        : "서울시 수질측정") +
+      `<span style="opacity:.75">${esc(stationTxt)}</span>`;
+  } else {
+    document.getElementById("updatedAt").textContent = "수온 추정치 표시 중 (실측 조회 실패)";
+    document.getElementById("tempSource").innerHTML =
+      '수온 출처: 계절 평균 추정 · 실측 → <a href="https://data.seoul.go.kr/dataList/OA-15488/S/1/datasetView.do" target="_blank" rel="noopener">서울시 수질측정</a>';
+  }
+
   document.getElementById("stockSource").innerHTML = state.live
     ? '시세 출처: <a href="https://finance.yahoo.com" target="_blank" rel="noopener">Yahoo Finance</a> (Worker 중계)'
     : "시세 출처: 연결 대기 중";
@@ -442,6 +501,30 @@ function render(){
   document.getElementById("tempSub").textContent = TEMP_MOODS[tempMoodKey(state.temp)].sub;
   applyTempFx();
   applyMarketFx();
+}
+
+/* ─────────── 실제 수온 (Pages Function /api/watertemp) ─────────── */
+async function fetchWaterTemp(){
+  try{
+    const r = await fetch(API_BASE + "/api/watertemp", { cache: "no-store" });
+    const ctype = r.headers.get("content-type") || "";
+    if(!ctype.includes("json")) throw new Error("BACKEND_NOT_ACTIVE");
+    const data = await r.json();
+    if(data.ok && typeof data.avgTemp === "number"){
+      state.temp = data.avgTemp;
+      state.tempLive = true;
+      state.tempStations = Array.isArray(data.stations) ? data.stations : [];
+      state.tempMeasuredAt = data.measuredAt || null;
+      state.tempSource = data.source || null;
+    } else {
+      state.tempLive = false;
+      console.warn("수온 실측 실패:", data.reason, data.message, data.sampleKeys || "");
+    }
+  }catch(e){
+    state.tempLive = false;
+    console.warn("수온 조회 실패:", e.message);
+  }
+  render();
 }
 
 /* ─────────── 실시간 시세 (Worker /api/quotes) ─────────── */
@@ -477,8 +560,9 @@ async function fetchQuotes(){
   render();
   btn.disabled = false;
 }
-document.getElementById("refreshBtn").addEventListener("click", fetchQuotes);
-setInterval(fetchQuotes, 60*1000); // 1분마다 자동 갱신
+document.getElementById("refreshBtn").addEventListener("click", () => { fetchQuotes(); fetchWaterTemp(); });
+setInterval(fetchQuotes, 60*1000);        // 시세: 1분마다
+setInterval(fetchWaterTemp, 10*60*1000);  // 수온: 10분마다 (원본이 시간단위 갱신)
 
 /* ─────────── 공유 채팅 (Worker /api/chat) ─────────── */
 let chatCache = [];
@@ -493,11 +577,20 @@ function merge(a,b){
   [...a,...b].forEach(m=>{ if(m&&m.ts&&m.n) map.set(msgKey(m),m); });
   return prune([...map.values()]);
 }
+let kvWarned = false;
+function warnKV(){
+  if(kvWarned) return;
+  kvWarned = true;
+  const w = document.getElementById("configWarn");
+  w.style.display = "block";
+  w.innerHTML = "⚠️ 채팅 저장소(KV)가 연결되지 않아 메시지가 <b>저장되지 않습니다</b>. 새로고침하면 사라져요. 배포가이드 ③번(KV 네임스페이스를 <b>CHAT</b>으로 연결)을 따라 연결 후 재배포하세요.";
+}
 async function loadRemote(){
   try{
     const r = await fetch(API_BASE + "/api/chat", { cache:"no-store" });
     if(!r.ok) return null;
     const data = await r.json();
+    if(data.kv === false) warnKV();
     return Array.isArray(data.messages) ? data.messages : [];
   }catch(e){ return null; }
 }
@@ -509,6 +602,7 @@ async function saveRemote(nick, text){
   });
   if(!r.ok) throw new Error("HTTP " + r.status);
   const data = await r.json();
+  if(data.kv === false) warnKV();
   return Array.isArray(data.messages) ? data.messages : null;
 }
 function renderChat(){
@@ -575,6 +669,67 @@ async function send(){
 document.getElementById("sendBtn").addEventListener("click", send);
 document.getElementById("msgInput").addEventListener("keydown", e=>{ if(e.key==="Enter") send(); });
 
+/* ─────────── 시간대별 배경 (KST 시각 기준) ─────────── */
+function kstHour(){
+  // 사용자 시간대와 무관하게 한국 시각 기준
+  const utc = Date.now() + (new Date().getTimezoneOffset()*60000);
+  return new Date(utc + 9*3600000).getHours();
+}
+function daypart(h){
+  if(h>=5 && h<7)   return {cls:"dp-dawn",    label:"동틀 무렵의 한강", body:"sun",  frac:(h-5)/2*0.3};
+  if(h>=7 && h<11)  return {cls:"dp-morning", label:"아침의 한강",     body:"sun",  frac:0.3+(h-7)/4*0.2};
+  if(h>=11 && h<16) return {cls:"dp-day",     label:"한낮의 한강",     body:"sun",  frac:0.5+(h-11)/5*0.0}; // 정점 근처
+  if(h>=16 && h<19) return {cls:"dp-sunset",  label:"노을 지는 한강",   body:"sun",  frac:0.8+(h-16)/3*0.2};
+  if(h>=19 && h<21) return {cls:"dp-dusk",    label:"땅거미 지는 한강", body:"moon", frac:0.2};
+  return {cls:"dp-night", label:"밤의 한강", body:"moon", frac:0.5};
+}
+let currentDaypart = null;
+function applyDaypart(){
+  const h = kstHour();
+  const dp = daypart(h);
+  if(dp.cls === currentDaypart) return;
+  currentDaypart = dp.cls;
+  document.body.classList.remove("dp-dawn","dp-morning","dp-day","dp-sunset","dp-dusk","dp-night");
+  document.body.classList.add(dp.cls);
+  document.getElementById("daypartLabel").textContent = dp.label;
+
+  const cel = document.getElementById("celestial");
+  // 해/달이 하늘을 가로지르는 위치를 시각으로 결정 (0=왼쪽 아래 ~ 1=오른쪽 아래, 가운데=정점)
+  const x = 12 + (h/24)*76;                 // 가로 %
+  const arc = Math.sin((h/24)*Math.PI);      // 0~1 (정오/자정 근처가 높음)
+  const y = 74 - arc*54;                     // 세로 %: 높을수록 위
+  const isNight = dp.body === "moon";
+  let stars = "";
+  if(dp.cls==="dp-night" || dp.cls==="dp-dusk"){
+    for(let i=0;i<40;i++){
+      stars += `<span class="star" style="left:${Math.random()*100}%;top:${Math.random()*70}%;animation-delay:${Math.random()*3}s"></span>`;
+    }
+  }
+  cel.innerHTML =
+    `<div class="stars">${stars}</div>` +
+    `<div class="orb ${isNight?"moon":"sun"}" style="left:${x}%;top:${y}%"></div>`;
+}
+
+/* ─────────── 방문자 카운터 (/api/visit) ─────────── */
+async function countVisit(){
+  const el = document.getElementById("visitCount");
+  try{
+    // 세션당 1회만 증가 (같은 탭 새로고침으로 뻥튀기 방지)
+    const counted = sessionStorage.getItem("visited");
+    const method = counted ? "GET" : "POST";
+    const r = await fetch(API_BASE + "/api/visit", { method, cache:"no-store" });
+    const d = await r.json();
+    if(!counted) sessionStorage.setItem("visited","1");
+    if(typeof d.today === "number"){
+      el.textContent = `👣 오늘 ${d.today.toLocaleString("ko-KR")}명`;
+      el.title = `오늘 방문 ${d.today}명 · 누적 ${d.total||0}명` + (d.kv===false ? " (KV 미연결: 집계 안 됨)" : "");
+      if(d.kv === false) el.textContent = "👣 --";
+    }
+  }catch(e){
+    el.textContent = "👣 --";
+  }
+}
+
 /* ─────────── 한강 CCTV (채널 라이브 자동 재생) ─────────── */
 // 특정 영상 ID 대신 채널 ID로 "현재 라이브"를 재생 → 방송 영상이 바뀌어도 안 죽음
 const CCTV_SOURCES = [
@@ -604,8 +759,12 @@ function initCctv(){
 
 /* ─────────── 시작 ─────────── */
 render();
+applyDaypart();
+countVisit();
 fetchQuotes();
+fetchWaterTemp();
 initCctv();
+setInterval(applyDaypart, 60*1000); // 1분마다 시간대 확인
 </script>
 </body>
 </html>
