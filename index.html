@@ -226,6 +226,28 @@
     border-radius:12px;font-size:12px;color:var(--dim);text-align:center}
   .portal-help b{color:var(--moon)}
 
+  /* 놀거리 섹션 */
+  .fun{max-width:1060px;margin:0 auto;padding:10px 22px 20px}
+  .fun-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .fun-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;
+    display:flex;flex-direction:column;gap:6px;min-height:150px}
+  .fun-emoji{font-size:26px}
+  .fun-head{font-size:12px;color:var(--dim);letter-spacing:.04em;font-weight:700}
+  .fun-big{font-size:22px;font-weight:800;color:var(--moon);margin:2px 0}
+  .fun-desc{font-size:12px;color:var(--dim);line-height:1.5}
+  .fun-quote{font-size:14px;color:var(--ink);line-height:1.6;flex:1}
+  .fun-btn{align-self:flex-start;background:none;border:1px solid var(--line);color:var(--dim);
+    border-radius:8px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit;margin-top:6px}
+  .fun-btn:hover{border-color:var(--moon);color:var(--moon)}
+  .poll{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+  .poll-opt{background:var(--deep);border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:8px 11px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left}
+  .poll-opt:hover{border-color:var(--moon)}
+  .poll-opt.voted{border-color:var(--moon);color:var(--moon)}
+  .poll-result{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.7}
+  .poll-bar{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin:3px 0 6px}
+  .poll-bar span{display:block;height:100%;background:var(--moon)}
+
   footer{max-width:1060px;margin:0 auto;padding:0 22px 40px;font-size:11px;color:var(--dim);line-height:1.8}
 </style>
 </head>
@@ -307,12 +329,12 @@
         </a>
       </div>
       <div class="cctv-links">
-        <a href="https://www.youtube.com/@DailySeoul/live" target="_blank" rel="noopener">▶ 반포대교 라이브 (Daily Seoul)</a>
-        <a href="https://www.youtube.com/@247SeoulLiveCam/live" target="_blank" rel="noopener">▶ 247 Seoul Live Cam</a>
+        <a href="https://www.youtube.com/watch?v=vk5BHoDxXf0" target="_blank" rel="noopener">▶ 여의도·마포 4K 라이브</a>
+        <a href="https://www.youtube.com/@DailySeoul/live" target="_blank" rel="noopener">▶ 반포대교 (Daily Seoul)</a>
         <a href="https://www.hrfco.go.kr/sumun/cctvRtmp.do" target="_blank" rel="noopener">한강홍수통제소 수위 CCTV</a>
         <a href="https://cctv.kwater.or.kr/sub/han_cctv.do" target="_blank" rel="noopener">K-water 한강 CCTV</a>
       </div>
-      <div class="cctv-note">라이브는 채널의 현재 방송을 자동으로 재생합니다. 재생이 안 되면 위 버튼으로 채널에서 직접 열어보세요.</div>
+      <div class="cctv-note">일부 채널(반포대교 Daily Seoul 등)은 저작권상 임베드가 막혀 있어 위 버튼으로 새 탭에서 열어야 합니다. 탭의 라이브는 사이트 안에서 바로 재생됩니다.</div>
     </section>
   </div>
 
@@ -398,16 +420,111 @@
   </div>
 </section>
 
+<section class="fun">
+  <h2 class="portal-title">놀거리 · 볼거리 <small>수온 보러 온 김에 잠깐 놀다 가요</small></h2>
+  <div class="fun-grid">
+
+    <div class="fun-card" id="dipCard">
+      <div class="fun-emoji" id="dipEmoji">🏊</div>
+      <div class="fun-head">오늘의 입수 지수</div>
+      <div class="fun-big" id="dipScore">계산 중…</div>
+      <div class="fun-desc" id="dipDesc">현재 수온을 기준으로 물놀이 적합도를 알려드려요.</div>
+    </div>
+
+    <div class="fun-card">
+      <div class="fun-emoji">🎣</div>
+      <div class="fun-head">오늘의 한강 한마디</div>
+      <div class="fun-quote" id="quoteBox">불러오는 중…</div>
+      <button class="fun-btn" id="quoteBtn">다른 한마디 →</button>
+    </div>
+
+    <div class="fun-card">
+      <div class="fun-emoji">📊</div>
+      <div class="fun-head">지금 한강, 어때요?</div>
+      <div class="poll" id="pollBox">
+        <button class="poll-opt" data-k="good">🌤️ 산책 가고 싶다</button>
+        <button class="poll-opt" data-k="cold">🥶 춥다/덥다</button>
+        <button class="poll-opt" data-k="home">🛋️ 그냥 집이 좋다</button>
+      </div>
+      <div class="poll-result" id="pollResult"></div>
+    </div>
+
+    <div class="fun-card">
+      <div class="fun-emoji">🌉</div>
+      <div class="fun-head">한강 다리 랜덤 상식</div>
+      <div class="fun-quote" id="bridgeBox">불러오는 중…</div>
+      <button class="fun-btn" id="bridgeBtn">다른 다리 →</button>
+    </div>
+
+  </div>
+</section>
+
+<section class="portal">
+  <h2 class="portal-title">더 둘러보기 <small>한강 주변 이모저모</small></h2>
+  <div class="portal-grid">
+    <div class="portal-card">
+      <div class="pc-head">🍔 배달·편의</div>
+      <a href="https://www.ddangyo.com/" target="_blank" rel="noopener">한강 배달존 (땅요·씽스)</a>
+      <a href="https://map.naver.com/p/search/한강 편의점" target="_blank" rel="noopener">한강 편의점 찾기</a>
+      <a href="https://map.naver.com/p/search/한강 라면" target="_blank" rel="noopener">한강 라면 맛집</a>
+      <a href="https://map.naver.com/p/search/한강 치킨" target="_blank" rel="noopener">치킨 배달 (지도)</a>
+    </div>
+    <div class="portal-card">
+      <div class="pc-head">🎆 행사·축제</div>
+      <a href="https://hangang.seoul.go.kr/www/contents/674.do" target="_blank" rel="noopener">한강 문화행사 일정</a>
+      <a href="https://hangang.seoul.go.kr/www/contents/706.do" target="_blank" rel="noopener">달빛무지개분수 시간표</a>
+      <a href="https://www.seoul.go.kr/main/index.jsp" target="_blank" rel="noopener">서울시 행사 안내</a>
+      <a href="https://www.visitseoul.net/" target="_blank" rel="noopener">비짓서울 (관광)</a>
+    </div>
+    <div class="portal-card">
+      <div class="pc-head">🚇 교통·주차</div>
+      <a href="https://map.naver.com/" target="_blank" rel="noopener">네이버 지도 길찾기</a>
+      <a href="https://www.seoulmetro.co.kr/" target="_blank" rel="noopener">서울 지하철 노선</a>
+      <a href="https://topis.seoul.go.kr/" target="_blank" rel="noopener">서울 교통정보 (TOPIS)</a>
+      <a href="https://hangang.seoul.go.kr/www/contents/700.do" target="_blank" rel="noopener">한강공원 주차장 안내</a>
+    </div>
+    <div class="portal-card">
+      <div class="pc-head">📷 볼거리 라이브</div>
+      <a href="https://www.youtube.com/watch?v=vk5BHoDxXf0" target="_blank" rel="noopener">여의도·마포 한강 라이브</a>
+      <a href="https://www.youtube.com/@DailySeoul/live" target="_blank" rel="noopener">반포대교 라이브</a>
+      <a href="https://tv.seoul.go.kr/" target="_blank" rel="noopener">라이브서울 (서울시 방송)</a>
+      <a href="https://www.youtube.com/results?search_query=한강+라이브" target="_blank" rel="noopener">한강 라이브 더 보기</a>
+    </div>
+  </div>
+</section>
+
 <footer>
   <strong>데이터 출처</strong> — 코스피/종목 시세는 야후 파이낸스를, 한강 수온은 서울시 열린데이터광장의 수질자동측정소 자료를 Cloudflare가 중계해 제공합니다. 수온은 매시간 갱신되는 확정 전 실시간 자료(참고용)이며, 여러 측정소의 평균값입니다. 실측 조회에 실패하면 계절 평균 추정치로 자동 전환되고 화면에 그 사실이 표시됩니다. 시세는 투자 판단의 근거로 사용하지 마세요.<br>
   마음이 많이 힘든 날엔 잠시 쉬어가요. 자살예방 상담전화 <strong>109</strong> · 정신건강 상담 <strong>1577-0199</strong> (24시간)
 </footer>
 
 <script>
-/* 백엔드(/api/quotes, /api/chat)는 이 사이트와 같은 도메인에서
-   Cloudflare Pages Functions로 함께 배포됩니다. 별도 설정이 없습니다. */
+/* 백엔드(/api/quotes, /api/watertemp)는 이 사이트와 같은 도메인의
+   Cloudflare Pages Functions로 함께 배포됩니다. */
 const API_BASE = "";        // 같은 도메인 → 상대경로 사용
 const CONFIGURED = true;
+
+/* ══════════════════════════════════════════════════════════════════
+   ⚙️ 채팅·방문자 저장소 설정 (KV 없이 작동하게 하는 부분)
+   ──────────────────────────────────────────────────────────────────
+   Cloudflare KV를 연결하기 번거로우면, 아래 JSONBin 방식을 쓰면
+   대시보드 설정 없이 채팅·방문자 수가 바로 작동합니다.
+
+   [설정 방법 — 5분]
+   1) https://jsonbin.io 가입(무료) → 로그인
+   2) 우측 상단 프로필 → API Keys → X-Master-Key 복사
+   3) 아래 JSONBIN_KEY 에 붙여넣기
+   4) JSONBin 대시보드에서 "Create Bin" 두 개 만들기:
+       - 하나는 채팅용: 내용에 {"messages":[]} 저장 → 생성된 BIN ID 를 CHAT_BIN 에
+       - 하나는 방문자용: 내용에 {"days":{},"total":0} 저장 → BIN ID 를 VISIT_BIN 에
+   5) 파일 저장 후 깃허브 push → 끝. (Cloudflare 재배포 자동)
+
+   ※ JSONBIN_KEY 를 비워두면 자동으로 Cloudflare KV(/api/chat) 방식으로 넘어갑니다.
+   ══════════════════════════════════════════════════════════════════ */
+const JSONBIN_KEY = "";     // 예: "$2a$10$xxxxxxxx..."
+const CHAT_BIN    = "";     // 예: "678f1a2b3c..."
+const VISIT_BIN   = "";     // 예: "678f1c4d5e..."
+const USE_JSONBIN = !!(JSONBIN_KEY && CHAT_BIN && VISIT_BIN);
 
 /* ─────────── 상태 ─────────── */
 let state = {
@@ -583,6 +700,7 @@ function render(){
   document.getElementById("tempSub").textContent = TEMP_MOODS[tempMoodKey(state.temp)].sub;
   applyTempFx();
   applyMarketFx();
+  updateDipIndex();
 }
 
 /* ─────────── 실제 수온 (백엔드 우선 → hangang.life 직접 폴백) ─────────── */
@@ -675,45 +793,88 @@ document.getElementById("refreshBtn").addEventListener("click", () => { fetchQuo
 setInterval(fetchQuotes, 60*1000);        // 시세: 1분마다
 setInterval(fetchWaterTemp, 10*60*1000);  // 수온: 10분마다 (원본이 시간단위 갱신)
 
-/* ─────────── 공유 채팅 (Worker /api/chat) ─────────── */
+/* ─────────── 공유 채팅 (JSONBin 우선 → Cloudflare KV 폴백) ─────────── */
 let chatCache = [];
 let lastSig = "";
-const msgKey = m => `${m.ts}|${m.n}|${m.t}`;
 function prune(msgs){
   const cutoff = Date.now() - 24*60*60*1000;
   return msgs.filter(m => m && m.ts > cutoff).sort((a,b)=>a.ts-b.ts).slice(-500);
 }
+// 중복 제거: 같은 닉+같은 내용이 5초 이내면 동일 메시지로 간주 (내 임시본 vs 서버본 ts 차이 흡수)
 function merge(a,b){
-  const map=new Map();
-  [...a,...b].forEach(m=>{ if(m&&m.ts&&m.n) map.set(msgKey(m),m); });
-  return prune([...map.values()]);
+  const all = [...a, ...b].filter(m => m && m.ts && typeof m.n==="string" && typeof m.t==="string");
+  all.sort((x,y)=>x.ts-y.ts);
+  const out = [];
+  for(const m of all){
+    const dup = out.find(o => o.n===m.n && o.t===m.t && Math.abs(o.ts - m.ts) < 5000);
+    if(dup){
+      // 서버 확정본(pending 없음)을 우선 유지
+      if(dup.pending && !m.pending){ dup.ts = m.ts; delete dup.pending; }
+    } else {
+      out.push({...m});
+    }
+  }
+  return prune(out);
 }
-let kvWarned = false;
-function warnKV(){
-  if(kvWarned) return;
-  kvWarned = true;
+
+let storeWarned = false;
+function warnStore(msg){
+  if(storeWarned) return;
+  storeWarned = true;
   const w = document.getElementById("configWarn");
   w.style.display = "block";
-  w.innerHTML = "⚠️ 채팅 저장소(KV)가 연결되지 않아 메시지가 <b>저장되지 않습니다</b>. 새로고침하면 사라져요. 배포가이드 ③번(KV 네임스페이스를 <b>CHAT</b>으로 연결)을 따라 연결 후 재배포하세요.";
+  w.innerHTML = msg;
 }
+
+/* JSONBin 헬퍼 */
+async function jsonbinGet(bin){
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${bin}/latest?meta=false`, {
+    headers: { "X-Master-Key": JSONBIN_KEY },
+    cache: "no-store",
+  });
+  if(!r.ok) throw new Error("jsonbin get " + r.status);
+  return r.json();
+}
+async function jsonbinPut(bin, data){
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${bin}`, {
+    method: "PUT",
+    headers: { "Content-Type":"application/json", "X-Master-Key": JSONBIN_KEY },
+    body: JSON.stringify(data),
+  });
+  if(!r.ok) throw new Error("jsonbin put " + r.status);
+  return r.json();
+}
+
+/* 채팅 읽기 (양쪽 저장소 공통 인터페이스) */
 async function loadRemote(){
   try{
+    if(USE_JSONBIN){
+      const d = await jsonbinGet(CHAT_BIN);
+      return Array.isArray(d.messages) ? d.messages : [];
+    }
     const r = await fetch(API_BASE + "/api/chat", { cache:"no-store" });
     if(!r.ok) return null;
     const data = await r.json();
-    if(data.kv === false) warnKV();
+    if(data.kv === false) warnStore("⚠️ 채팅 저장소가 연결되지 않아 메시지가 <b>저장되지 않습니다</b>. index.html 상단의 JSONBin 설정(5분)을 채우거나, 배포가이드의 KV 연결을 따라주세요.");
     return Array.isArray(data.messages) ? data.messages : [];
-  }catch(e){ return null; }
+  }catch(e){ console.warn("채팅 로드 실패:", e.message); return null; }
 }
+/* 채팅 쓰기: JSONBin은 read-modify-write, KV는 서버가 처리 */
 async function saveRemote(nick, text){
+  if(USE_JSONBIN){
+    let cur = [];
+    try{ const d = await jsonbinGet(CHAT_BIN); cur = Array.isArray(d.messages)?d.messages:[]; }catch(e){}
+    cur = merge(cur, [{ n:nick, t:text, ts:Date.now() }]);
+    await jsonbinPut(CHAT_BIN, { messages: cur });
+    return cur;
+  }
   const r = await fetch(API_BASE + "/api/chat", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
+    method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ n: nick, t: text }),
   });
   if(!r.ok) throw new Error("HTTP " + r.status);
   const data = await r.json();
-  if(data.kv === false) warnKV();
+  if(data.kv === false) warnStore("⚠️ 채팅 저장소가 연결되지 않아 메시지가 <b>저장되지 않습니다</b>. index.html 상단의 JSONBin 설정을 채우거나 KV를 연결하세요.");
   return Array.isArray(data.messages) ? data.messages : null;
 }
 function renderChat(){
@@ -722,7 +883,7 @@ function renderChat(){
     box.innerHTML='<div class="chat-empty">아직 아무도 없어요. 첫 마디를 남겨보세요.</div>';
     document.getElementById("chatCount").textContent=""; lastSig=""; return;
   }
-  const sig=chatCache.length+"|"+chatCache[chatCache.length-1].ts;
+  const sig=chatCache.map(m=>m.ts+m.t).join("|");
   if(sig===lastSig) return;
   lastSig=sig;
   const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<60;
@@ -738,12 +899,10 @@ async function pollChat(){
   const remote = await loadRemote();
   if(remote !== null){
     chatCache = merge(chatCache, remote);
-    chatCache.forEach(m => delete m.pending);
-    saveLocal();   // 성공 시 로컬에도 백업
+    saveLocal();
   }
   renderChat();
 }
-// 로컬 백업: KV가 잠깐 죽거나 새로고침해도 최소한 내가 본 메시지는 유지
 function saveLocal(){
   try{ localStorage.setItem("hangang-chat-cache", JSON.stringify(chatCache.slice(-200))); }catch(e){}
 }
@@ -769,23 +928,26 @@ function enter(){
   document.getElementById("msgInput").focus();
   pollChat();
 }
+let sending = false;
 async function send(){
+  if(sending) return;              // 연타로 인한 중복 전송 방지
   const input=document.getElementById("msgInput");
   const t=input.value.trim();
   if(!t||!nick) return;
+  sending = true;
   input.value="";
   const mine={n:nick,t,ts:Date.now(),pending:true};
   chatCache=merge(chatCache,[mine]); lastSig=""; renderChat();
   try{
     const server = await saveRemote(nick, t);
-    if(server){ chatCache = merge(chatCache, server); chatCache.forEach(m=>delete m.pending); }
-    else { mine.pending=false; }
+    if(server){ chatCache = merge(chatCache, server); }
+    else { const f=chatCache.find(m=>m===mine||( m.n===mine.n&&m.t===mine.t)); if(f) delete f.pending; }
     lastSig=""; renderChat(); saveLocal();
   }catch(e){
     console.error("전송 실패:", e);
     document.getElementById("fetchStatus").textContent="채팅 전송 실패 — 잠시 후 다시 시도해 주세요.";
-    saveLocal(); // 실패해도 로컬엔 남김
-  }
+    saveLocal();
+  }finally{ sending = false; }
 }
 document.getElementById("sendBtn").addEventListener("click", send);
 document.getElementById("msgInput").addEventListener("keydown", e=>{ if(e.key==="Enter") send(); });
@@ -831,58 +993,70 @@ function applyDaypart(){
     `<div class="orb ${isNight?"moon":"sun"}" style="left:${x}%;top:${y}%"></div>`;
 }
 
-/* ─────────── 방문자 카운터 (/api/visit) ─────────── */
+/* ─────────── 방문자 카운터 (JSONBin 우선 → /api/visit 폴백) ─────────── */
+function todayKST(){
+  const utc = Date.now() + (new Date().getTimezoneOffset()*60000);
+  return new Date(utc + 9*3600000).toISOString().slice(0,10);
+}
 function fmtVisit(today, total){
   const el = document.getElementById("visitCount");
-  el.innerHTML = `🏊 오늘 <b>${today.toLocaleString("ko-KR")}</b>명 뛰어듦`;
+  el.innerHTML = `🏊 오늘 <b>${today.toLocaleString("ko-KR")}</b>명 다녀감`;
   el.title = `오늘 ${today.toLocaleString("ko-KR")}명 · 누적 ${(total||0).toLocaleString("ko-KR")}명`;
 }
 async function countVisit(){
   const el = document.getElementById("visitCount");
   const counted = sessionStorage.getItem("visited");
-  // POST(첫 방문) 실패 시 GET으로 재시도 → 405 등에도 최소한 현재 수치는 표시
-  async function hit(method){
-    const r = await fetch(API_BASE + "/api/visit", { method, cache:"no-store" });
-    if(!r.ok) throw new Error("HTTP " + r.status);
-    return r.json();
-  }
+  const day = todayKST();
   try{
-    let d;
-    if(counted){
-      d = await hit("GET");
-    } else {
-      try{ d = await hit("POST"); }
-      catch(e){ d = await hit("GET"); }   // POST 막히면 GET으로라도
-      sessionStorage.setItem("visited","1");
-    }
-    if(d && typeof d.today === "number"){
-      if(d.kv === false){
-        el.innerHTML = "🏊 방문 집계 대기";
-        el.title = "KV(CHAT) 미연결 — 배포가이드 ③ 참고";
-      } else {
-        fmtVisit(d.today, d.total);
+    if(USE_JSONBIN){
+      let d = { days:{}, total:0 };
+      try{ d = await jsonbinGet(VISIT_BIN); }catch(e){}
+      d.days = d.days || {}; d.total = d.total || 0;
+      if(!counted){
+        d.days[day] = (d.days[day]||0) + 1;
+        d.total += 1;
+        // 오래된 날짜 정리(최근 14일만)
+        const keep = Object.keys(d.days).sort().slice(-14);
+        const nd = {}; keep.forEach(k=>nd[k]=d.days[k]); d.days = nd;
+        await jsonbinPut(VISIT_BIN, d);
+        sessionStorage.setItem("visited","1");
       }
+      fmtVisit(d.days[day]||0, d.total);
+      return;
+    }
+    // KV(/api/visit) 폴백
+    async function hit(method){
+      const r = await fetch(API_BASE + "/api/visit", { method, cache:"no-store" });
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }
+    let d;
+    if(counted){ d = await hit("GET"); }
+    else{ try{ d = await hit("POST"); }catch(e){ d = await hit("GET"); } sessionStorage.setItem("visited","1"); }
+    if(d && typeof d.today === "number"){
+      if(d.kv === false){ el.innerHTML="🏊 방문 집계 대기"; el.title="저장소 미연결"; }
+      else fmtVisit(d.today, d.total);
     }
   }catch(e){
     console.warn("방문자 카운트 실패:", e.message);
     el.innerHTML = "🏊 --";
-    el.title = "방문 집계 실패: " + e.message;
   }
 }
 
-/* ─────────── 한강 CCTV (채널 라이브 자동 재생) ─────────── */
-// 특정 영상 ID 대신 채널 ID로 "현재 라이브"를 재생 → 방송 영상이 바뀌어도 안 죽음
+/* ─────────── 한강 CCTV ───────────
+   임베드 가능한 개인 라이브를 영상 ID로 직접 재생.
+   (Daily Seoul 채널은 임베드/재게재를 막아둬서 '새 탭 링크'로만 제공) */
 const CCTV_SOURCES = [
-  { label: "반포대교 (Daily Seoul)", channel: "UCQKQTgZJo3PlxA-9V1Z51XA", live: "https://www.youtube.com/@DailySeoul/live" },
-  { label: "247 Seoul Live",        channel: "UCuTaHTWV4TjZE9r8Vjcfaog", live: "https://www.youtube.com/@247SeoulLiveCam/live" },
+  { label: "여의도·마포 4K", videoId: "vk5BHoDxXf0", watch: "https://www.youtube.com/watch?v=vk5BHoDxXf0" },
+  { label: "한남동 한강 로파이", videoId: "jF8-FvIj4-E", watch: "https://www.youtube.com/watch?v=jF8-FvIj4-E" },
 ];
 let cctvIdx = 0;
 function loadCctv(i){
   cctvIdx = i;
   const src = CCTV_SOURCES[i];
   document.getElementById("cctvFrame").src =
-    `https://www.youtube.com/embed/live_stream?channel=${src.channel}&autoplay=1&mute=1`;
-  document.getElementById("cctvOverlay").href = src.live;
+    `https://www.youtube.com/embed/${src.videoId}?autoplay=1&mute=1`;
+  document.getElementById("cctvOverlay").href = src.watch;
   document.querySelectorAll(".cctv-tab").forEach((t,idx)=>{
     t.classList.toggle("active", idx===i);
   });
@@ -898,6 +1072,84 @@ function initCctv(){
   loadCctv(0);
 }
 
+/* ─────────── 놀거리 위젯 ─────────── */
+// 입수 지수 (수온 기반) — render() 안에서 갱신 호출됨
+function updateDipIndex(){
+  const t = state.temp;
+  const emoji = document.getElementById("dipEmoji");
+  const score = document.getElementById("dipScore");
+  const desc  = document.getElementById("dipDesc");
+  if(!emoji) return;
+  let e, s, d;
+  if(t >= 26){ e="🥵"; s="수영은 OK, 더위 주의"; d="물은 따뜻하지만 한강 수영은 금지구역이 많아요. 발만 담그기 추천."; }
+  else if(t >= 22){ e="🏊"; s="물놀이 좋아요"; d="수온이 포근해요. 그늘막·물놀이장에서 즐기기 딱 좋은 날."; }
+  else if(t >= 16){ e="🚣"; s="레저 적당"; d="수영엔 살짝 서늘하지만 카약·SUP 같은 수상레저엔 무난해요."; }
+  else if(t >= 10){ e="🧥"; s="입수 비추"; d="물이 차가워요. 산책·자전거처럼 물 밖 활동을 추천해요."; }
+  else { e="🥶"; s="입수 금지 수준"; d="아주 차갑습니다. 따뜻한 커피 들고 강변 구경만 하세요."; }
+  emoji.textContent = e; score.textContent = s; desc.textContent = d;
+}
+
+const HAN_QUOTES = [
+  "한강은 오늘도 흐르고, 계좌도 흐른다. 둘 다 잔잔하길.",
+  "치맥은 죄가 없다. 한강이 부를 뿐.",
+  "라면은 원래 한강에서 먹어야 두 배 맛있다.",
+  "물멍 10분이면 웬만한 고민은 물살에 떠내려간다.",
+  "다리 위 노을은 공짜다. 오늘 안 보면 손해.",
+  "오리는 오늘도 페달을 밟는다. 우아하게 보이려고.",
+  "바람이 선선하면 그게 나들이 신호다.",
+  "한강 벤치는 선착순. 노을 맛집 자리는 미리.",
+];
+let quoteIdx = Math.floor(Math.random()*HAN_QUOTES.length);
+function showQuote(){
+  const box = document.getElementById("quoteBox");
+  if(box) box.textContent = "\u201C" + HAN_QUOTES[quoteIdx % HAN_QUOTES.length] + "\u201D";
+  quoteIdx++;
+}
+
+const BRIDGES = [
+  ["반포대교", "세계 최장 교량 분수 '달빛무지개분수'로 기네스북에 올랐어요. 잠수교와 2층 구조."],
+  ["한강대교", "1917년 개통된 한강 최초의 인도교. 노들섬을 가로질러요."],
+  ["성수대교", "1994년 붕괴 사고 후 재건. 지금은 튼튼한 트러스 구조로 유명."],
+  ["마포대교", "야경과 노을 명소. 여의도·마포를 잇는 출퇴근 동맥."],
+  ["광진교", "보행자 친화 다리. '광진교 8번가' 전망 공간이 있어요."],
+  ["잠실대교", "수중보가 있어 상류 수위를 유지. 자전거 라이딩 인기 코스."],
+  ["양화대교", "가수 자이언티 노래로 유명해진 다리. 선유도공원과 연결."],
+];
+let bridgeIdx = Math.floor(Math.random()*BRIDGES.length);
+function showBridge(){
+  const box = document.getElementById("bridgeBox");
+  if(box){ const b = BRIDGES[bridgeIdx % BRIDGES.length]; box.innerHTML = `<b style="color:var(--moon)">${b[0]}</b> — ${b[1]}`; }
+  bridgeIdx++;
+}
+
+// 미니 투표 (localStorage 기반, 개인 로컬 집계 — 재미용)
+function initPoll(){
+  const saved = JSON.parse(localStorage.getItem("hangang-poll") || '{"good":0,"cold":0,"home":0}');
+  const myVote = localStorage.getItem("hangang-poll-mine");
+  function renderPoll(){
+    const total = saved.good + saved.cold + saved.home || 1;
+    const labels = {good:"🌤️ 산책", cold:"🥶 춥다/덥다", home:"🛋️ 집이 좋다"};
+    document.getElementById("pollResult").innerHTML = Object.keys(labels).map(k=>{
+      const p = Math.round(saved[k]/total*100);
+      return `${labels[k]} ${p}%<div class="poll-bar"><span style="width:${p}%"></span></div>`;
+    }).join("");
+  }
+  document.querySelectorAll(".poll-opt").forEach(btn=>{
+    if(myVote===btn.dataset.k) btn.classList.add("voted");
+    btn.addEventListener("click", ()=>{
+      if(localStorage.getItem("hangang-poll-mine")) return; // 1회만
+      saved[btn.dataset.k] = (saved[btn.dataset.k]||0)+1;
+      localStorage.setItem("hangang-poll", JSON.stringify(saved));
+      localStorage.setItem("hangang-poll-mine", btn.dataset.k);
+      btn.classList.add("voted");
+      renderPoll();
+    });
+  });
+  if(myVote) renderPoll();
+}
+document.getElementById("quoteBtn").addEventListener("click", showQuote);
+document.getElementById("bridgeBtn").addEventListener("click", showBridge);
+
 /* ─────────── 시작 ─────────── */
 render();
 applyDaypart();
@@ -905,9 +1157,12 @@ countVisit();
 fetchQuotes();
 fetchWaterTemp();
 initCctv();
-loadLocal();      // 로컬 백업 먼저 표시 (F5 후에도 남게)
+loadLocal();
 renderChat();
-pollChat();       // 서버 히스토리 로드 (닉네임 없어도)
+pollChat();
+showQuote();
+showBridge();
+initPoll();
 setInterval(applyDaypart, 60*1000);
 </script>
 </body>
