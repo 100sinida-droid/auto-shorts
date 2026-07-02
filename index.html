@@ -521,10 +521,10 @@ const CONFIGURED = true;
 
    ※ JSONBIN_KEY 를 비워두면 자동으로 Cloudflare KV(/api/chat) 방식으로 넘어갑니다.
    ══════════════════════════════════════════════════════════════════ */
-const JSONBIN_KEY = "";     // 예: "$2a$10$xxxxxxxx..."
-const CHAT_BIN    = "";     // 예: "678f1a2b3c..."
-const VISIT_BIN   = "";     // 예: "678f1c4d5e..."
-const USE_JSONBIN = !!(JSONBIN_KEY && CHAT_BIN && VISIT_BIN);
+const JSONBIN_KEY = "여기에_X-Master-Key_붙여넣기";     // JSONBin → API KEYS 메뉴에서 복사
+const CHAT_BIN    = "6a465f65da38895dfe2250cd";     // 채팅용 (내용: {"messages":[]})
+const VISIT_BIN   = "6a465f75da38895dfe225129";     // 방문자용 (내용: {"days":{},"total":0})
+const USE_JSONBIN = !!(JSONBIN_KEY && CHAT_BIN && VISIT_BIN && !JSONBIN_KEY.includes("붙여넣기"));
 
 /* ─────────── 상태 ─────────── */
 let state = {
