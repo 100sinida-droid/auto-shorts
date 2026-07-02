@@ -132,6 +132,11 @@
   .cctv-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
     border:1px solid var(--line);background:#000}
   .cctv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .cctv-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .cctv-tab{padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:none;
+    color:var(--dim);font-size:12px;cursor:pointer;font-family:inherit}
+  .cctv-tab:hover{color:var(--ink)}
+  .cctv-tab.active{border-color:var(--moon);color:var(--moon)}
   .cctv-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   .cctv-links a{display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:99px;
     font-size:12px;text-decoration:none;color:var(--ink)}
@@ -228,21 +233,22 @@
 
     <section>
       <h2>한강 실시간 CCTV <small>24시간 라이브 스트리밍</small></h2>
+      <div class="cctv-tabs" id="cctvTabs"></div>
       <div class="cctv-frame">
         <iframe id="cctvFrame"
-          src="https://www.youtube.com/embed/-JhoMGoAfFc?autoplay=0&mute=1"
-          title="한강 반포대교 24시간 라이브캠"
+          src=""
+          title="한강 실시간 라이브캠"
           allow="accelerometer; encrypted-media; picture-in-picture"
           referrerpolicy="strict-origin-when-cross-origin"
           allowfullscreen loading="lazy"></iframe>
       </div>
       <div class="cctv-links">
-        <a href="https://www.youtube.com/watch?v=-JhoMGoAfFc" target="_blank" rel="noopener">▶ 반포대교 4K 라이브 (YouTube)</a>
-        <a href="https://www.youtube.com/@247SeoulLiveCam" target="_blank" rel="noopener">▶ 247 Seoul Live Cam</a>
+        <a href="https://www.youtube.com/@DailySeoul/live" target="_blank" rel="noopener">▶ 반포대교 라이브 (Daily Seoul)</a>
+        <a href="https://www.youtube.com/@247SeoulLiveCam/live" target="_blank" rel="noopener">▶ 247 Seoul Live Cam</a>
         <a href="https://www.hrfco.go.kr/sumun/cctvRtmp.do" target="_blank" rel="noopener">한강홍수통제소 수위 CCTV</a>
         <a href="https://cctv.kwater.or.kr/sub/han_cctv.do" target="_blank" rel="noopener">K-water 한강 CCTV</a>
       </div>
-      <div class="cctv-note">임베드 영상이 재생되지 않는 환경에서는 위 링크로 새 탭에서 열어보세요.</div>
+      <div class="cctv-note">라이브는 채널의 현재 방송을 자동으로 재생합니다. 재생이 안 되면 위 버튼으로 채널에서 직접 열어보세요.</div>
     </section>
   </div>
 
@@ -446,7 +452,12 @@ async function fetchQuotes(){
   status.textContent = "시세 조회 중…";
   try{
     const r = await fetch(API_BASE + "/api/quotes", { cache: "no-store" });
+    const ctype = r.headers.get("content-type") || "";
     if(!r.ok) throw new Error("HTTP " + r.status);
+    if(!ctype.includes("json")){
+      // /api/quotes 가 JSON이 아니라 HTML(index.html)을 돌려준 경우
+      throw new Error("BACKEND_NOT_ACTIVE");
+    }
     const data = await r.json();
     if(data.kospi && typeof data.kospi.value === "number") state.kospi = data.kospi;
     if(Array.isArray(data.stocks) && data.stocks.length) state.stocks = data.stocks;
@@ -457,7 +468,11 @@ async function fetchQuotes(){
   }catch(e){
     console.error("시세 조회 실패:", e);
     state.live = false;
-    status.textContent = "시세 조회 실패 — 잠시 후 다시 시도해 주세요. (" + e.message + ")";
+    if(e.message === "BACKEND_NOT_ACTIVE"){
+      status.innerHTML = "⚠️ 백엔드(/api/quotes)가 아직 켜지지 않았어요. Cloudflare Pages에서 <b>functions 폴더가 저장소 최상단</b>에 있는지, 배포가 끝났는지 확인하세요. (배포가이드 ④ 참고)";
+    } else {
+      status.textContent = "시세 조회 실패 — 잠시 후 다시 시도해 주세요. (" + e.message + ")";
+    }
   }
   render();
   btn.disabled = false;
@@ -560,9 +575,37 @@ async function send(){
 document.getElementById("sendBtn").addEventListener("click", send);
 document.getElementById("msgInput").addEventListener("keydown", e=>{ if(e.key==="Enter") send(); });
 
+/* ─────────── 한강 CCTV (채널 라이브 자동 재생) ─────────── */
+// 특정 영상 ID 대신 채널 ID로 "현재 라이브"를 재생 → 방송 영상이 바뀌어도 안 죽음
+const CCTV_SOURCES = [
+  { label: "반포대교 (Daily Seoul)", channel: "UCQKQTgZJo3PlxA-9V1Z51XA" },
+  { label: "247 Seoul Live",        channel: "UCuTaHTWV4TjZE9r8Vjcfaog" },
+];
+let cctvIdx = 0;
+function loadCctv(i){
+  cctvIdx = i;
+  const src = CCTV_SOURCES[i];
+  document.getElementById("cctvFrame").src =
+    `https://www.youtube.com/embed/live_stream?channel=${src.channel}&autoplay=1&mute=1`;
+  document.querySelectorAll(".cctv-tab").forEach((t,idx)=>{
+    t.classList.toggle("active", idx===i);
+  });
+}
+function initCctv(){
+  const tabs = document.getElementById("cctvTabs");
+  tabs.innerHTML = CCTV_SOURCES.map((s,i)=>
+    `<button class="cctv-tab${i===0?" active":""}" data-i="${i}">${esc(s.label)}</button>`
+  ).join("");
+  tabs.querySelectorAll(".cctv-tab").forEach(btn=>{
+    btn.addEventListener("click", ()=> loadCctv(Number(btn.dataset.i)));
+  });
+  loadCctv(0);
+}
+
 /* ─────────── 시작 ─────────── */
 render();
 fetchQuotes();
+initCctv();
 </script>
 </body>
 </html>

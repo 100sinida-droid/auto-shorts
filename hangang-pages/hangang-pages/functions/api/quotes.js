@@ -5,10 +5,14 @@ const SYMBOLS = [
   { sym: "^KS11",     name: "KOSPI",          kind: "index" },
   { sym: "005930.KS", name: "삼성전자",        kind: "stock" },
   { sym: "000660.KS", name: "SK하이닉스",      kind: "stock" },
-  { sym: "373220.KS", name: "LG에너지솔루션",  kind: "stock" },
+  { sym: "402340.KS", name: "SK스퀘어",        kind: "stock" },
+  { sym: "009150.KS", name: "삼성전기",        kind: "stock" },
   { sym: "005380.KS", name: "현대차",          kind: "stock" },
-  { sym: "035420.KS", name: "NAVER",           kind: "stock" },
-  { sym: "035720.KS", name: "카카오",          kind: "stock" },
+  { sym: "373220.KS", name: "LG에너지솔루션",  kind: "stock" },
+  { sym: "032830.KS", name: "삼성생명",        kind: "stock" },
+  { sym: "028260.KS", name: "삼성물산",        kind: "stock" },
+  { sym: "329180.KS", name: "HD현대중공업",    kind: "stock" },
+  { sym: "105560.KS", name: "KB금융",          kind: "stock" },
 ];
 
 async function fetchOne(sym) {
