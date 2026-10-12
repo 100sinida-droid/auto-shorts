@@ -1,3 +1,22 @@
+/* 글자 크기 */
+(function () {
+  var root = document.documentElement;
+  var btns = Array.prototype.slice.call(document.querySelectorAll(".fs-ctl button"));
+  function mark() {
+    var cur = root.getAttribute("data-fs") || "";
+    btns.forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-fs") === cur ? "true" : "false"); });
+  }
+  btns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var v = b.getAttribute("data-fs");
+      if (v) root.setAttribute("data-fs", v); else root.removeAttribute("data-fs");
+      try { localStorage.setItem("fs", v); } catch (e) {}
+      mark();
+    });
+  });
+  mark();
+})();
+
 /* 검색 */
 (function () {
   if (!document.getElementById("search-form")) return;
@@ -5,7 +24,8 @@
   var PAGE = 50;
   var data = [], shown = PAGE;
   var $ = function (id) { return document.getElementById(id); };
-  var q = $("sq"), sido = $("ssido"), kind = $("skind"), pmax = $("spmax"), sort = $("ssort");
+  var q = $("sq"), sido = $("ssido"), kind = $("skind"), pmax = $("spmax"), sort = $("ssort"), cat = $("scat");
+  var CAT = { b: "봉안당", f: "장례식장", c: "화장장" };
   var boxes = Array.prototype.slice.call(document.querySelectorAll("#search-form input[type=checkbox]"));
 
   function esc(s) {
@@ -21,6 +41,7 @@
     q.value = p.get("q") || "";
     sido.value = p.get("sido") || "";
     kind.value = p.get("kind") || "";
+    if (cat) cat.value = p.get("cat") || "";
     if (pmax) pmax.value = p.get("pmax") || "";
     if (sort) sort.value = p.get("sort") || "";
     var f = (p.get("f") || "").split(",");
@@ -31,6 +52,7 @@
     if (q.value) p.set("q", q.value);
     if (sido.value) p.set("sido", sido.value);
     if (kind.value) p.set("kind", kind.value);
+    if (cat && cat.value) p.set("cat", cat.value);
     if (pmax && pmax.value) p.set("pmax", pmax.value);
     if (sort && sort.value) p.set("sort", sort.value);
     var f = boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
@@ -45,8 +67,9 @@
     var list = data.filter(function (d) {
       if (sido.value && d.s !== sido.value) return false;
       if (kind.value && d.k !== kind.value) return false;
+      if (cat && cat.value && (d.c || "b") !== cat.value) return false;
       for (var i = 0; i < need.length; i++) if (d.f.indexOf(need[i]) < 0) return false;
-      if (pmax && pmax.value && !(d.pr && d.pr <= Number(pmax.value) * 10000)) return false;
+      if (pmax && pmax.value && (d.c || !(d.pr && d.pr <= Number(pmax.value) * 10000))) return false;
       if (terms.length) {
         var hay = norm(d.n + d.s + d.g + d.a);
         for (var j = 0; j < terms.length; j++) if (hay.indexOf(terms[j]) < 0) return false;
@@ -58,8 +81,10 @@
     var html = list.slice(0, shown).map(function (d) {
       var badge = d.k === "공설" ? "pub" : d.k === "사설" ? "pri" : "etc";
       var chips = d.f.map(function (k) { return '<span class="chip">' + esc(AMEN[k] || k) + "</span>"; }).join("");
-      return '<a class="result" href="../' + esc(d.u || ('facility/' + d.i + '.html')) + '"><strong>' + esc(d.n) + '</strong><span class="badge ' + badge + '">' + esc(d.k) +
-        '</span><span class="addr">' + esc(d.a || (d.s + " " + d.g)) + (d.p ? " · 최초 안치 " + esc(d.p) + "년" : "") + (d.pr ? " · <strong>" + won(d.pr) + "부터</strong>" : "") + "</span>" +
+      var c = d.c || "b";
+      var unit = c === "b" ? "부터" : c === "f" ? " (빈소 1일)" : " (관내 화장료)";
+      return '<a class="result cat-' + c + '" href="../' + esc(d.u || ('facility/' + d.i + '.html')) + '"><span class="cat-tag">' + CAT[c] + '</span><strong>' + esc(d.n) + '</strong><span class="badge ' + badge + '">' + esc(d.k) +
+        '</span><span class="addr">' + esc(d.a || (d.s + " " + d.g)) + (d.p ? " · 최초 안치 " + esc(d.p) + "년" : "") + (d.pr ? " · <strong>" + won(d.pr) + unit + "</strong>" : "") + "</span>" +
         (chips ? '<div style="margin-top:6px">' + chips + "</div>" : "") + "</a>";
     }).join("");
     if (list.length > shown) html += '<button class="more" type="button" id="more">더 보기 (' + (list.length - shown).toLocaleString() + "곳 남음)</button>";
@@ -73,7 +98,7 @@
   fetch("../data/search.json").then(function (r) { return r.json(); }).then(function (d) {
     data = d; readUrl(); render();
     q.addEventListener("input", update);
-    [sido, kind, pmax, sort].filter(Boolean).concat(boxes).forEach(function (el) { el.addEventListener("change", update); });
+    [sido, kind, pmax, sort, cat].filter(Boolean).concat(boxes).forEach(function (el) { el.addEventListener("change", update); });
   }).catch(function () {
     if (sort && sort.value === "price") list.sort(function (a, b) { return (a.pr || 1e15) - (b.pr || 1e15); });
     $("result-count").textContent = "데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";

@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>봉안시설 검색 | 봉안당 길잡이</title>
-<meta name="description" content="전국 봉안시설을 시설명, 주소, 지역, 공설·사설, 편의시설로 검색합니다.">
+<title>봉안당·장례식장·화장장 검색 | 봉안당 길잡이</title>
+<meta name="description" content="전국 봉안당, 장례식장, 화장시설을 이름, 주소, 지역, 공설·사설, 편의시설로 검색합니다.">
 <link rel="canonical" href="https://auto-shorts.pages.dev/pages/search.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="봉안시설 검색 | 봉안당 길잡이">
-<meta property="og:description" content="전국 봉안시설을 시설명, 주소, 지역, 공설·사설, 편의시설로 검색합니다.">
+<meta property="og:title" content="봉안당·장례식장·화장장 검색 | 봉안당 길잡이">
+<meta property="og:description" content="전국 봉안당, 장례식장, 화장시설을 이름, 주소, 지역, 공설·사설, 편의시설로 검색합니다.">
 <meta property="og:url" content="https://auto-shorts.pages.dev/pages/search.html">
 <meta property="og:site_name" content="봉안당 길잡이">
 
-<link rel="icon" href="../static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%232f5e4e%22/%3E%3Cpath%20d%3D%22M5%2014c4-1%207.5-3.5%2011-7%203.5%203.5%207%206%2011%207M7%2015v11h18V15M5%2026h22%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E" type="image/svg+xml">
+<script>try{var s=localStorage.getItem("fs");if(s)document.documentElement.setAttribute("data-fs",s)}catch(e){}</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="../static/style.css">
@@ -21,26 +22,21 @@
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false"><defs><symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M5 11v9h14v-9l-7-6z"/><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol><symbol id="i-bongan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M5 11h14v9H5z"/><path d="M2.5 10.5C6 9.5 9 7.5 12 4.5c3 3 6 5 9.5 6"/><path d="M4 11h16"/><path d="M5 11v9M19 11v9M3 20h18"/><rect x="8" y="13" width="2.6" height="2.6" rx=".4"/><rect x="13.4" y="13" width="2.6" height="2.6" rx=".4"/><path d="M10.5 20v-2.5h3V20"/></symbol><symbol id="i-funeral" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle fill="currentColor" stroke="none" opacity=".16" cx="12" cy="9" r="6"/><circle cx="12" cy="4.6" r="2.2"/><circle cx="16.2" cy="7.6" r="2.2"/><circle cx="14.6" cy="12.5" r="2.2"/><circle cx="9.4" cy="12.5" r="2.2"/><circle cx="7.8" cy="7.6" r="2.2"/><circle cx="12" cy="9" r="1.6" fill="currentColor"/><path d="M12 14.7V22M12 19.5c-1-2-3-3-5-3 .5 2 2.5 3.2 5 3M12 18c1-1.6 2.6-2.4 4.5-2.4-.5 1.7-2.2 2.6-4.5 2.4"/></symbol><symbol id="i-crematorium" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M3 21V11l6-3v3l6-3v13z"/><path d="M3 21V11l6-3v3l6-3v13M3 21h18"/><path d="M15 21V5h4v16"/><path d="M16 3c0-1 1-1.5 2-1.5"/><rect x="6" y="15" width="2.5" height="3"/><rect x="10.5" y="15" width="2.5" height="3"/></symbol><symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle fill="currentColor" stroke="none" opacity=".16" cx="10.5" cy="10.5" r="6.5"/><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5.5 5.5"/></symbol><symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol><symbol id="i-won" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle fill="currentColor" stroke="none" opacity=".16" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="m7.5 8 2 8 2.5-7 2.5 7 2-8M6.5 11.5h11"/></symbol><symbol id="i-recommend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H3z"/><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11v3"/><path d="M21 11h-4a2 2 0 0 0 0 4h4"/><circle cx="17" cy="13" r=".6" fill="currentColor"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8M9.5 18h5"/></symbol><symbol id="i-guide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M12 6.5C10 5 6.5 4.5 3 5v13c3.5-.5 7 0 9 1.5 2-1.5 5.5-2 9-1.5V5c-3.5-.5-7 0-9 1.5z"/><path d="M12 6.5C10 5 6.5 4.5 3 5v13c3.5-.5 7 0 9 1.5 2-1.5 5.5-2 9-1.5V5c-3.5-.5-7 0-9 1.5zM12 6.5v13"/></symbol><symbol id="i-parking" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect fill="currentColor" stroke="none" opacity=".16" x="3" y="3" width="18" height="18" rx="4"/><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9.5 17V7h3.5a3 3 0 0 1 0 6H9.5"/></symbol><symbol id="i-accessible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="1.8"/><path d="M12 7.5V13h5l2 5"/><path d="M8.5 10.5a5.5 5.5 0 1 0 7.2 7.3"/><path d="M9 9.5h5"/></symbol><symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle fill="currentColor" stroke="none" opacity=".16" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol><symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h3.5l1.8 4.5-2.3 1.4a11 11 0 0 0 6.6 6.6l1.4-2.3 4.5 1.8V19a2 2 0 0 1-2 2A17 17 0 0 1 3 5.5a2 2 0 0 1 2-2z"/></symbol><symbol id="i-compare" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect fill="currentColor" stroke="none" opacity=".16" x="3" y="3" width="18" height="18" rx="3"/><path d="M4 20h16M7 17v-5M12 17V7M17 17v-8"/></symbol><symbol id="i-public" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M4 9h16v10H4z"/><path d="M3 9h18L12 3.5zM5 9v10M9.5 9v10M14.5 9v10M19 9v10M3 20h18"/></symbol><symbol id="i-private" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M5 10h14v10H5z"/><path d="M3 11 12 4l9 7M5 10v10h14V10"/><circle cx="12" cy="14" r="2"/><path d="M12 16v2"/></symbol><symbol id="i-meal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M3 12h18a9 6 0 0 1-18 0z"/><path d="M3 12h18a9 6 0 0 1-18 0zM8 21h8M14 3l-3 7M19 4l-5 6"/></symbol><symbol id="i-sofa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" stroke="none" opacity=".16" d="M4 11h16v6H4z"/><path d="M6 11V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3M3 11a1.5 1.5 0 0 1 3 0v3h12v-3a1.5 1.5 0 0 1 3 0v6H3zM5 17v2M19 17v2"/></symbol><symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle fill="currentColor" stroke="none" opacity=".16" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol></defs></svg>
 <header class="site-header">
-  <div class="wrap header-inner">
-    <a class="brand" href="../index.html"><img src="../static/favicon.svg" alt="" width="28" height="28"><span>봉안당 길잡이</span></a>
-    <nav class="main-nav" aria-label="주 메뉴">
-      <a href="../pages/search.html">시설 검색</a>
-      <a href="../region/index.html">지역별</a>
-      <a href="../type/public.html">공설</a>
-      <a href="../type/private.html">사설</a>
-      <a href="../feature/price.html">가격 비교</a>
-      <a href="../pages/recommend.html">예산 추천</a>
-      <a href="../pages/ranking.html">순위</a>
-      <a href="../guides/index.html">가이드</a>
-    </nav>
+  <div class="wrap header-top">
+    <a class="brand" href="../index.html"><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%232f5e4e%22/%3E%3Cpath%20d%3D%22M5%2014c4-1%207.5-3.5%2011-7%203.5%203.5%207%206%2011%207M7%2015v11h18V15M5%2026h22%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E" alt="" width="36" height="36"><span>봉안당 길잡이</span></a>
+    <div class="fs-ctl" role="group" aria-label="글자 크기"><span class="fs-label">글자 크기</span><button type="button" data-fs="" aria-label="글자 보통">가</button><button type="button" data-fs="lg" aria-label="글자 크게">가</button><button type="button" data-fs="xl" aria-label="글자 아주 크게">가</button></div>
   </div>
+  <nav class="main-nav wrap" aria-label="주 메뉴"><a href="../index.html"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-home"/></svg><span>처음 화면</span></a><a href="../region/index.html"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-bongan"/></svg><span>봉안당</span></a><a href="../funeral/index.html"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-funeral"/></svg><span>장례식장·화장장</span></a><a href="../feature/price.html"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-won"/></svg><span>가격 비교</span></a><a href="../pages/recommend.html"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-recommend"/></svg><span>예산 추천</span></a><a href="../pages/ranking.html"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-trophy"/></svg><span>순위</span></a><a href="../guides/index.html"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-guide"/></svg><span>가이드</span></a><a href="../pages/search.html" aria-current="page" class="on"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-search"/></svg><span>검색</span></a></nav>
 </header>
 <main id="main" class="wrap">
+<div class="sec-strip" style="--sc:#2f5e4e"><span class="sec-ic"><svg class="ic xl" aria-hidden="true" focusable="false"><use href="#i-search"/></svg></span><span class="sec-txt"><strong>이름으로 검색</strong><span>시설 이름이나 동네 이름으로 찾습니다</span></span></div>
 <nav class="crumbs" aria-label="현재 위치"><a href="../index.html">홈</a><span class="sep">›</span><span aria-current="page">검색</span></nav>
-<header class="page-head"><h1>봉안시설 검색</h1><p class="lead">시설명·주소로 찾고, 지역과 조건으로 좁혀 보세요.</p></header>
+<header class="page-head"><h1>이름으로 검색</h1><p class="lead">봉안당·장례식장·화장장을 이름이나 동네 이름으로 찾아보세요.</p></header>
 <form id="search-form" class="filters" role="search" onsubmit="return false">
-  <label>검색어<input id="sq" type="search" placeholder="시설명, 시군구, 주소"></label>
+  <label>검색어<input id="sq" type="search" placeholder="예: 김포, 추모공원"></label>
+  <label>찾는 곳<select id="scat"><option value="">전체</option><option value="b">봉안당</option><option value="f">장례식장</option><option value="c">화장장</option></select></label>
   <label>시도<select id="ssido"><option value="">전체</option><option value="서울특별시">서울특별시</option><option value="부산광역시">부산광역시</option><option value="대구광역시">대구광역시</option><option value="인천광역시">인천광역시</option><option value="광주광역시">광주광역시</option><option value="대전광역시">대전광역시</option><option value="울산광역시">울산광역시</option><option value="세종특별자치시">세종특별자치시</option><option value="경기도">경기도</option><option value="강원특별자치도">강원특별자치도</option><option value="충청북도">충청북도</option><option value="충청남도">충청남도</option><option value="전북특별자치도">전북특별자치도</option><option value="전라남도">전라남도</option><option value="경상북도">경상북도</option><option value="경상남도">경상남도</option><option value="제주특별자치도">제주특별자치도</option></select></label>
   <label>구분<select id="skind"><option value="">전체</option><option>공설</option><option>사설</option></select></label>
   <label>최대 가격<select id="spmax"><option value="">제한 없음</option><option value="100">100만 원 이하</option><option value="300">300만 원 이하</option><option value="500">500만 원 이하</option><option value="1000">1,000만 원 이하</option></select></label>
@@ -55,13 +51,12 @@
 <p id="result-count" class="muted" aria-live="polite">불러오는 중…</p>
 <div id="results" class="results"></div>
 <noscript><p>검색 기능은 자바스크립트가 필요합니다. <a href="../region/index.html">지역별 목록</a>을 이용해 주세요.</p></noscript>
-<script src="../static/site.js" defer></script>
 </main>
 <footer class="site-footer">
   <div class="wrap footer-inner">
     <div>
       <p class="footer-brand">봉안당 길잡이</p>
-      <p class="muted">시설 정보 출처: 보건복지부 「전국 봉안시설 현황」(공공데이터포털). 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p>
+      <p class="muted">시설 정보 출처: 보건복지부 「전국 봉안시설 현황」(공공데이터포털), 한국장례문화진흥원 장사시설 현황·가격정보. 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p>
       <p class="muted">데이터 갱신일 2026-10-12</p>
     </div>
     <nav class="footer-nav" aria-label="사이트 정보">
@@ -73,5 +68,6 @@
     </nav>
   </div>
 </footer>
+<script src="../static/site.js" defer></script>
 </body>
 </html>

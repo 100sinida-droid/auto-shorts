@@ -8,7 +8,7 @@
 (저장소 맨 위)
 ├─ index.html      ← 사이트 첫 화면 (자동 생성)
 ├─ 404.html, robots.txt, sitemap.xml   (자동 생성)
-├─ facility/  region/  type/  feature/  guides/  pages/  static/  data/   (자동 생성)
+├─ region/  type/  feature/  compare/  funeral/  guides/  pages/  static/  data/   (자동 생성)
 ├─ _builder/       ← 사이트를 만드는 프로그램과 설정. 사람이 고치는 곳은 여기뿐
 └─ .github/        ← 자동 생성 설정
 ```
@@ -18,7 +18,7 @@
 
 ## 올리는 방법 (웹에서 한 번에 끌어다 놓기)
 
-전체 파일이 약 80개라 GitHub 웹 업로드 한도(100개) 안에 들어갑니다.
+전체 파일이 약 95개라 GitHub 웹 업로드 한도(100개) 안에 들어갑니다.
 받은 압축 파일에는 **사이트가 이미 만들어져 있습니다**(보건복지부 봉안시설 현황 2026-05-31 기준). 그대로 올려도 되고, 최신 데이터로 다시 만들려면 `_builder/build.bat` 를 실행하세요.
 
 1. (선택) `_builder/build.bat` 를 더블클릭해 실행합니다. API 호출이 실패하면 저장된 데이터나 들어 있는 공공데이터 파일로 자동으로 만듭니다.
@@ -56,6 +56,19 @@
 - `compare/regions.html` 지역별 비교 (시도별 중간 가격 그래프)
 - `pages/recommend.html` 예산 추천 (예산·형태·지역·편의시설 조건)
 - `pages/ranking.html` 봉안당 순위 (종합·주차·가격·안치기간 등 기준별 TOP 20, 첫 화면 배너로 연결)
+
+## 장례식장·화장장
+
+- `_builder/funeral/funeral_facilities_20230601.csv` : 전국 장례식장·화장시설 목록 (한국장례문화진흥원, 2023-06-01 기준)
+- `_builder/funeral/funeral_price_summary_20230601.csv` : 시설별 빈소 사용료·안치료·염습·관·수의 최저가와 화장료(관내·관외)
+- 만들어지는 페이지: `funeral/index.html`(전국 지역 선택·화장시설 표), `funeral/시도.html`(시군구별 장례식장 카드와 화장시설)
+- 새 자료로 바꿀 때는 같은 열 이름으로 CSV를 바꿔 넣고 `build.bat` 를 실행하세요.
+
+## 화면 구성 (어르신 친화)
+
+- 기본 글자를 크게(19px), 버튼·입력칸을 큼직하게 만들었습니다. 오른쪽 위 **글자 크기** 단추로 두 단계 더 키울 수 있습니다(선택한 크기는 기억됩니다).
+- 메뉴는 그림과 글자를 함께 보여 주고, 페이지 맨 위 색깔 띠에 지금 보고 있는 메뉴가 그림과 함께 표시됩니다.
+- 그림 아이콘은 `build.py` 의 `ICONS` 에 있습니다. 메뉴와 색깔은 `NAV`, `SECTIONS` 에서 고칩니다.
 
 ## 안치 규모·통계
 

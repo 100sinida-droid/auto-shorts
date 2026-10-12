@@ -376,7 +376,7 @@ def normalize(records):
             if f[k] == 0:
                 f[k] = None
         # 이 데이터는 99를 '미상·기타' 표시값으로 쓰는 것으로 보여 기간 계산에서 제외한다
-        for k in ("first_period", "ext_years"):
+        for k in ("first_period", "ext_years", "ext_count"):
             if isinstance(f[k], (int, float)) and f[k] >= 99:
                 f[k] = None
         if not f["first_period"] or not f["ext_years"]:
@@ -825,6 +825,75 @@ def adsense_head():
             'crossorigin="anonymous"></script>')
 
 
+# ---------------------------------------------------------------------------
+# 아이콘 (직접 그린 단순 선 그림. 페이지마다 한 번 넣고 <use>로 재사용)
+# ---------------------------------------------------------------------------
+_S = 'fill="currentColor" stroke="none" opacity=".16"'
+ICONS = {
+    "home": f'<path {_S} d="M5 11v9h14v-9l-7-6z"/><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+    "bongan": f'<path {_S} d="M5 11h14v9H5z"/><path d="M2.5 10.5C6 9.5 9 7.5 12 4.5c3 3 6 5 9.5 6"/><path d="M4 11h16"/><path d="M5 11v9M19 11v9M3 20h18"/>'
+              '<rect x="8" y="13" width="2.6" height="2.6" rx=".4"/><rect x="13.4" y="13" width="2.6" height="2.6" rx=".4"/><path d="M10.5 20v-2.5h3V20"/>',
+    "funeral": f'<circle {_S} cx="12" cy="9" r="6"/><circle cx="12" cy="4.6" r="2.2"/><circle cx="16.2" cy="7.6" r="2.2"/><circle cx="14.6" cy="12.5" r="2.2"/><circle cx="9.4" cy="12.5" r="2.2"/><circle cx="7.8" cy="7.6" r="2.2"/><circle cx="12" cy="9" r="1.6" fill="currentColor"/><path d="M12 14.7V22M12 19.5c-1-2-3-3-5-3 .5 2 2.5 3.2 5 3M12 18c1-1.6 2.6-2.4 4.5-2.4-.5 1.7-2.2 2.6-4.5 2.4"/>',
+    "crematorium": f'<path {_S} d="M3 21V11l6-3v3l6-3v13z"/><path d="M3 21V11l6-3v3l6-3v13M3 21h18"/><path d="M15 21V5h4v16"/><path d="M16 3c0-1 1-1.5 2-1.5"/><rect x="6" y="15" width="2.5" height="3"/><rect x="10.5" y="15" width="2.5" height="3"/>',
+    "search": f'<circle {_S} cx="10.5" cy="10.5" r="6.5"/><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5.5 5.5"/>',
+    "map": f'<path {_S} d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    "won": f'<circle {_S} cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="m7.5 8 2 8 2.5-7 2.5 7 2-8M6.5 11.5h11"/>',
+    "recommend": f'<path {_S} d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H3z"/><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11v3"/><path d="M21 11h-4a2 2 0 0 0 0 4h4"/><circle cx="17" cy="13" r=".6" fill="currentColor"/>',
+    "trophy": f'<path {_S} d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8M9.5 18h5"/>',
+    "guide": f'<path {_S} d="M12 6.5C10 5 6.5 4.5 3 5v13c3.5-.5 7 0 9 1.5 2-1.5 5.5-2 9-1.5V5c-3.5-.5-7 0-9 1.5z"/><path d="M12 6.5C10 5 6.5 4.5 3 5v13c3.5-.5 7 0 9 1.5 2-1.5 5.5-2 9-1.5V5c-3.5-.5-7 0-9 1.5zM12 6.5v13"/>',
+    "parking": f'<rect {_S} x="3" y="3" width="18" height="18" rx="4"/><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9.5 17V7h3.5a3 3 0 0 1 0 6H9.5"/>',
+    "accessible": '<circle cx="12" cy="4.5" r="1.8"/><path d="M12 7.5V13h5l2 5"/><path d="M8.5 10.5a5.5 5.5 0 1 0 7.2 7.3"/><path d="M9 9.5h5"/>',
+    "clock": f'<circle {_S} cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    "phone": '<path d="M5 3.5h3.5l1.8 4.5-2.3 1.4a11 11 0 0 0 6.6 6.6l1.4-2.3 4.5 1.8V19a2 2 0 0 1-2 2A17 17 0 0 1 3 5.5a2 2 0 0 1 2-2z"/>',
+    "compare": f'<rect {_S} x="3" y="3" width="18" height="18" rx="3"/><path d="M4 20h16M7 17v-5M12 17V7M17 17v-8"/>',
+    "public": f'<path {_S} d="M4 9h16v10H4z"/><path d="M3 9h18L12 3.5zM5 9v10M9.5 9v10M14.5 9v10M19 9v10M3 20h18"/>',
+    "private": f'<path {_S} d="M5 10h14v10H5z"/><path d="M3 11 12 4l9 7M5 10v10h14V10"/><circle cx="12" cy="14" r="2"/><path d="M12 16v2"/>',
+    "meal": f'<path {_S} d="M3 12h18a9 6 0 0 1-18 0z"/><path d="M3 12h18a9 6 0 0 1-18 0zM8 21h8M14 3l-3 7M19 4l-5 6"/>',
+    "sofa": f'<path {_S} d="M4 11h16v6H4z"/><path d="M6 11V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3M3 11a1.5 1.5 0 0 1 3 0v3h12v-3a1.5 1.5 0 0 1 3 0v6H3zM5 17v2M19 17v2"/>',
+    "info": f'<circle {_S} cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+}
+
+
+def icon(name, cls=""):
+    return f'<svg class="ic {cls}" aria-hidden="true" focusable="false"><use href="#i-{name}"/></svg>'
+
+
+SPRITE = ('<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false"><defs>'
+          + "".join(f'<symbol id="i-{k}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{v}</symbol>'
+                    for k, v in ICONS.items()) + "</defs></svg>")
+FAVICON = ("data:image/svg+xml," + urllib.parse.quote('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#2f5e4e"/>'
+           '<path d="M5 14c4-1 7.5-3.5 11-7 3.5 3.5 7 6 11 7M7 15v11h18V15M5 26h22" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'))
+
+# 페이지 묶음: (아이콘, 이름, 설명, 색)
+SECTIONS = {
+    "bongan": ("bongan", "봉안당 찾기", "지역·공설/사설·편의시설로 봉안당을 찾습니다", "#2f5e4e"),
+    "funeral": ("funeral", "장례식장·화장장", "지역별 장례식장과 화장시설, 전화번호와 비용", "#5a4a8a"),
+    "price": ("won", "가격 비교", "봉안당 가격을 업체·종류·지역별로 비교합니다", "#9a4f12"),
+    "recommend": ("recommend", "예산 추천", "가진 예산에 맞는 봉안당을 골라 드립니다", "#1f5b8f"),
+    "ranking": ("trophy", "봉안당 순위", "여러 기준으로 매긴 전국 봉안당 순위", "#80620a"),
+    "guide": ("guide", "장례·봉안 가이드", "처음 겪는 일, 차근차근 알려 드립니다", "#1d6b73"),
+    "search": ("search", "이름으로 검색", "시설 이름이나 동네 이름으로 찾습니다", "#2f5e4e"),
+    "home": ("home", "처음 화면", "", "#2f5e4e"),
+    "info": ("info", "사이트 안내", "사이트 소개와 문의", "#4b5563"),
+}
+NAV = [("home", "index.html", "처음 화면"), ("bongan", "region/index.html", "봉안당"), ("funeral", "funeral/index.html", "장례식장·화장장"),
+       ("price", "feature/price.html", "가격 비교"), ("recommend", "pages/recommend.html", "예산 추천"),
+       ("ranking", "pages/ranking.html", "순위"), ("guide", "guides/index.html", "가이드"), ("search", "pages/search.html", "검색")]
+
+
+def section_of(path):
+    if path.startswith("funeral/"):
+        return "funeral"
+    if path.startswith("compare/") or path == "feature/price.html":
+        return "price"
+    if path.startswith(("region/", "type/", "feature/", "facility/")):
+        return "bongan"
+    if path.startswith("guides/"):
+        return "guide"
+    return {"pages/recommend.html": "recommend", "pages/ranking.html": "ranking", "pages/search.html": "search"}.get(
+        path, "info" if path.startswith("pages/") else "")
+
+
 def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, noindex=False):
     r = rel(depth)
     full_title = title if title == SITE else f"{title} | {SITE}"
@@ -847,6 +916,13 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
         ld.extend(jsonld if isinstance(jsonld, list) else [jsonld])
     ld_html = "".join(f'<script type="application/ld+json">{json.dumps(x, ensure_ascii=False)}</script>' for x in ld)
     robots = '<meta name="robots" content="noindex">' if noindex else ""
+    sec = section_of(path)
+    on = ' aria-current="page" class="on"'
+    nav_html = "".join(f'<a href="{r}{u}"{on if k == sec else ""}>{icon(SECTIONS[k][0])}<span>{E(lbl)}</span></a>' for k, u, lbl in NAV)
+    strip = ""
+    if sec:
+        ic, nm, ds, col = SECTIONS[sec]
+        strip = f'<div class="sec-strip" style="--sc:{col}"><span class="sec-ic">{icon(ic, "xl")}</span><span class="sec-txt"><strong>{E(nm)}</strong><span>{E(ds)}</span></span></div>'
     return f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -861,7 +937,8 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 {f'<meta property="og:url" content="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:site_name" content="{E(SITE)}">
 {robots}
-<link rel="icon" href="{r}static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="{FAVICON}" type="image/svg+xml">
+<script>try{{var s=localStorage.getItem("fs");if(s)document.documentElement.setAttribute("data-fs",s)}}catch(e){{}}</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="{r}static/style.css">
@@ -870,22 +947,16 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
+{SPRITE}
 <header class="site-header">
-  <div class="wrap header-inner">
-    <a class="brand" href="{r}index.html"><img src="{r}static/favicon.svg" alt="" width="28" height="28"><span>{E(SITE)}</span></a>
-    <nav class="main-nav" aria-label="주 메뉴">
-      <a href="{r}pages/search.html">시설 검색</a>
-      <a href="{r}region/index.html">지역별</a>
-      <a href="{r}type/public.html">공설</a>
-      <a href="{r}type/private.html">사설</a>
-      <a href="{r}feature/price.html">가격 비교</a>
-      <a href="{r}pages/recommend.html">예산 추천</a>
-      <a href="{r}pages/ranking.html">순위</a>
-      <a href="{r}guides/index.html">가이드</a>
-    </nav>
+  <div class="wrap header-top">
+    <a class="brand" href="{r}index.html"><img src="{FAVICON}" alt="" width="36" height="36"><span>{E(SITE)}</span></a>
+    <div class="fs-ctl" role="group" aria-label="글자 크기"><span class="fs-label">글자 크기</span><button type="button" data-fs="" aria-label="글자 보통">가</button><button type="button" data-fs="lg" aria-label="글자 크게">가</button><button type="button" data-fs="xl" aria-label="글자 아주 크게">가</button></div>
   </div>
+  <nav class="main-nav wrap" aria-label="주 메뉴">{nav_html}</nav>
 </header>
 <main id="main" class="wrap">
+{strip}
 {crumb_html}
 {body}
 </main>
@@ -893,7 +964,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
   <div class="wrap footer-inner">
     <div>
       <p class="footer-brand">{E(SITE)}</p>
-      <p class="muted">시설 정보 출처: 보건복지부 「전국 봉안시설 현황」(공공데이터포털). 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p>
+      <p class="muted">시설 정보 출처: 보건복지부 「전국 봉안시설 현황」(공공데이터포털), 한국장례문화진흥원 장사시설 현황·가격정보. 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p>
       <p class="muted">데이터 갱신일 {TODAY}</p>
     </div>
     <nav class="footer-nav" aria-label="사이트 정보">
@@ -905,6 +976,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
     </nav>
   </div>
 </footer>
+<script src="{r}static/site.js" defer></script>
 </body>
 </html>
 """
@@ -1073,7 +1145,10 @@ def page_facility(out, f, same_sgg, same_sido):
     if f["first_period"]:
         segs = [f'<div class="seg first" style="flex:{f["first_period"]}"><span>최초 {f["first_period"]:g}년</span></div>']
         if f["ext_years"] and f["ext_count"]:
-            for i in range(int(f["ext_count"])):
+            n_ext = int(f["ext_count"])
+            if n_ext > 4:
+                segs.append(f'<div class="seg ext" style="flex:{f["ext_years"] * n_ext}"><span>+{f["ext_years"]:g}년 × {n_ext}회</span></div>')
+            for i in range(n_ext if n_ext <= 4 else 0):
                 segs.append(f'<div class="seg ext" style="flex:{f["ext_years"]}"><span>+{f["ext_years"]:g}년</span></div>')
         total = f["max_period"] or f["first_period"]
         period_html = (f'<section class="card"><h2>안치기간 한눈에 보기</h2><div class="period-bar" role="img" '
@@ -1331,22 +1406,46 @@ FEATURES = [("parking", "parking_lot", "주차장이 있는 봉안당", "자가�
             ("restaurant", "restaurant", "식당이 있는 봉안당", "외딴 곳에 있는 시설이 많아 안치 후 식사할 곳이 마땅치 않을 수 있습니다. 시설 안에 식당이 있으면 이동 부담이 줄어듭니다.")]
 
 
+FEAT_IC = {"parking": "parking", "accessible": "accessible", "waiting-room": "sofa", "restaurant": "meal"}
+
+
+def feature_url(slug):
+    return "feature/parking.html" if slug == "parking" else f"feature/amenities.html#{slug}"
+
+
 def page_features(out, facs, groups):
+    """주차장은 따로, 장애인 편의·유족대기실·식당은 한 페이지(feature/amenities.html)에 모은다."""
     depth = 1
-    r = rel(depth)
+    blocks = []
     for slug, key, title, intro in FEATURES:
         sub = [f for f in facs if f[key] is True]
         sections = []
         for sido in groups:
-            s = [f for f in sub if f["sido"] == sido]
-            if s:
-                sections.append(f'<section class="card"><h2 id="{sido_slug(sido)}">{E(sido)} ({len(s)}곳)</h2>{facility_table(s, depth, show_region=True)}</section>')
-        toc = " · ".join(f'<a href="#{sido_slug(sd)}">{E(SIDO_SHORT.get(sd, sd))}</a>' for sd in groups if any(f["sido"] == sd for f in sub))
-        body = f"""<header class="page-head"><p class="eyebrow">편의시설별 찾기</p><h1>{title} {len(sub):,}곳</h1><p class="lead">{E(intro)}</p><p class="small">{toc}</p></header>
-{''.join(sections) or '<p>해당 시설이 없습니다.</p>'}
-{guide_links(depth, ["accessibility-visit", "visiting-etiquette", "how-to-choose"])}"""
-        write(out, f"feature/{slug}.html", layout(f"feature/{slug}.html", title, f"전국 {title} {len(sub):,}곳을 시도별로 정리했습니다.", body,
+            sl = [f for f in sub if f["sido"] == sido]
+            if sl:
+                sections.append(f'<details class="card fold"><summary><strong>{E(sido)}</strong> <span class="muted">{len(sl)}곳</span></summary>{facility_table(sl, depth, show_region=True)}</details>')
+        blocks.append((slug, title, intro, sub, "".join(sections)))
+    for slug, title, intro, sub, secs in blocks:
+        if slug != "parking":
+            continue
+        body = f"""<header class="page-head"><p class="eyebrow">편의시설별 찾기</p><h1>{title} {len(sub):,}곳</h1><p class="lead">{E(intro)}</p><p class="small">시도를 누르면 목록이 펼쳐집니다.</p></header>
+{secs}
+{guide_links(depth, ["visiting-etiquette", "accessibility-visit", "how-to-choose"])}"""
+        write(out, "feature/parking.html", layout("feature/parking.html", title, f"전국 {title} {len(sub):,}곳을 시도별로 정리했습니다.", body,
                                                   crumbs=[("편의시설별", None), (title, None)], depth=depth))
+    parts, toc = [], []
+    for slug, title, intro, sub, secs in blocks:
+        if slug == "parking":
+            continue
+        toc.append(f'<a class="chip-link" href="#{slug}">{E(title)} {len(sub):,}곳</a>')
+        parts.append(f'<section class="feature-sec" id="{slug}"><h2>{E(title)} {len(sub):,}곳</h2><p>{E(intro)}</p>{secs}</section>')
+    body = f"""<header class="page-head"><p class="eyebrow">편의시설별 찾기</p><h1>편의시설로 봉안당 찾기</h1>
+<p class="lead">어르신이나 몸이 불편한 가족과 함께 가신다면 편의시설을 먼저 확인하세요. 시도를 누르면 목록이 펼쳐집니다.</p><nav class="rank-nav">{"".join(toc)}</nav></header>
+{"".join(parts)}
+{guide_links(depth, ["accessibility-visit", "visiting-etiquette", "how-to-choose"])}"""
+    write(out, "feature/amenities.html", layout("feature/amenities.html", "편의시설로 봉안당 찾기 (장애인 편의·유족대기실·식당)",
+                                                "장애인 편의시설, 유족대기실, 식당이 있는 전국 봉안당을 시도별로 찾아보세요.", body,
+                                                crumbs=[("편의시설별", None)], depth=depth))
 
 
 def page_period(out, facs):
@@ -1414,8 +1513,7 @@ def page_compare_facilities(out, facs):
 <th class="num" data-sort="num">기타</th><th class="num" data-sort="num">관리비</th><th class="num hide-sm" data-sort="num">최대 안치</th>
 </tr></thead><tbody>{rows}</tbody></table></div>
 <p class="muted small">금액은 해당 종류에서 가장 낮은 상품 가격입니다. 관리비는 1년치인지 전체 기간치인지 시설마다 다르니 상세 페이지의 가격표를 확인하세요. 출처: 한국장례문화진흥원 장사시설 가격정보(2023-06-01 기준).</p></section>
-{price_hub_links(depth)}
-<script src="{r}static/site.js" defer></script>"""
+{price_hub_links(depth)}"""
     write(out, "compare/facilities.html", layout("compare/facilities.html", "업체별 봉안당 가격 비교",
                                                  f"봉안시설 {len(priced):,}곳의 개인단·부부단·관리비 가격을 한 표에서 비교하세요.", body,
                                                  crumbs=[("가격 비교", "feature/price.html"), ("업체별", None)], depth=depth))
@@ -1528,8 +1626,7 @@ def page_recommend(out, groups):
 <li>추천순은 편의시설이 많을수록, 최대 안치기간이 길수록, 예산에 여유가 있을수록 위에 옵니다.</li>
 <li>관리비는 별도인 경우가 많습니다. 결과 카드의 관리비와 상세 가격표를 함께 확인하세요.</li>
 <li>가격은 한국장례문화진흥원 공개 자료(2023-06-01 기준)이며 지금은 다를 수 있습니다. 계약 전 시설에 꼭 확인하세요.</li></ul></section>
-{price_hub_links(depth)}
-<script src="{r}static/site.js" defer></script>"""
+{price_hub_links(depth)}"""
     write(out, "pages/recommend.html", layout("pages/recommend.html", "예산으로 봉안당 추천받기",
                                               "예산과 지역, 개인단·부부단, 편의시설 조건을 넣으면 맞는 봉안당을 추천합니다.", body,
                                               crumbs=[("가격 비교", "feature/price.html"), ("예산 추천", None)], depth=depth))
@@ -1660,40 +1757,215 @@ def page_ranking(out, facs, groups):
                                             crumbs=[("봉안당 순위", None)], depth=depth))
 
 
+# ---------------------------------------------------------------------------
+# 장례식장·화장시설 (_builder/funeral/*.csv, 한국장례문화진흥원 2023-06-01)
+# ---------------------------------------------------------------------------
+FUNERAL_DIR = ROOT / "funeral"
+FUNERAL_PRICE_COLS = [("빈소1일최저", "빈소 1일"), ("안치료1일", "안치료 1일"), ("염습", "염습"), ("관최저", "관"), ("수의최저", "수의")]
+
+
+def load_funeral():
+    items = []
+    if not FUNERAL_DIR.exists():
+        return items
+    prices = {}
+    for path in FUNERAL_DIR.glob("*price*.csv"):
+        for r in read_csv_any(path):
+            prices[(r.get("시설명") or "").strip()] = r
+    for path in FUNERAL_DIR.glob("*facilities*.csv"):
+        for r in read_csv_any(path):
+            name = (r.get("시설명") or "").strip()
+            if not name:
+                continue
+            addr = re.sub(r"\s+", " ", r.get("주소", "")).strip()
+            sido = normalize_sido(r.get("시도", ""), addr)
+            pr = prices.get(name, {})
+            items.append({
+                "id": hashlib.sha1(f"{name}|{addr}".encode("utf-8")).hexdigest()[:10],
+                "kind": (r.get("종류") or "장례식장").strip(), "name": name, "sido": sido,
+                "sigungu": (r.get("시군구") or "").strip() or (addr.split()[1] if len(addr.split()) > 1 else "기타"),
+                "address": addr, "tel": clean_phone(r.get("전화번호", "")),
+                "parking": _num(r.get("주차가능대수")), "rooms": _num(r.get("빈소수")), "morgue": _num(r.get("안치가능구수")),
+                "furnace": _num(r.get("화장로")), "pubpri": (r.get("공사설") or "").strip(), "optype": (r.get("운영종류") or "").strip(),
+                "closed": "휴업" in name or "폐업" in name,
+                "amen": [lbl for col, lbl in (("주차장", "주차장"), ("식당", "식당"), ("매점", "매점"), ("유족대기실", "유족대기실"), ("장애인편의시설", "장애인 편의")) if yes_no(r.get(col)) is True],
+                "price": {k: _num(pr.get(k)) for k, _ in FUNERAL_PRICE_COLS},
+                "cre_in": _num(pr.get("화장료관내")), "cre_out": _num(pr.get("화장료관외")),
+            })
+    items.sort(key=lambda x: (list(SIDO).index(x["sido"]) if x["sido"] in SIDO else 99, x["sigungu"], x["name"]))
+    return items
+
+
+FN_AMEN_KEY = {"주차장": "parking_lot", "식당": "restaurant", "매점": "store", "유족대기실": "waiting_room", "장애인 편의": "accessible"}
+
+
+def funeral_url(x):
+    return f"funeral/{sido_slug(x['sido'])}.html#x-{x['id']}"
+
+
+def _fn_badges(x):
+    b = []
+    if x["pubpri"]:
+        b.append(kind_badge(x["pubpri"]))
+    if x["optype"]:
+        b.append(f'<span class="badge etc">{E(x["optype"])}</span>')
+    return " ".join(b)
+
+
+def funeral_card(x, depth):
+    r = rel(depth)
+    q = urllib.parse.quote(x["address"] or x["name"])
+    tel = (f'<a class="btn primary big" href="tel:{E(re.sub(r"[^0-9+]", "", x["tel"]))}">{icon("phone")}{E(x["tel"])}</a>'
+           if x["tel"] else "")
+    facts = []
+    if x["kind"] == "화장시설":
+        if x["furnace"]:
+            facts.append(f"화장로 {x['furnace']}기")
+    else:
+        if x["rooms"]:
+            facts.append(f"빈소 {x['rooms']}실")
+        if x["morgue"]:
+            facts.append(f"안치 {x['morgue']}구")
+    if x["parking"]:
+        facts.append(f"주차 {x['parking']:,}대")
+    prices = []
+    if x["kind"] == "화장시설":
+        if x["cre_in"]:
+            prices.append(("관내 화장료(대인)", x["cre_in"]))
+        if x["cre_out"]:
+            prices.append(("관외 화장료(대인)", x["cre_out"]))
+    else:
+        prices = [(lbl, x["price"][k]) for k, lbl in FUNERAL_PRICE_COLS if x["price"].get(k)]
+    price_html = ("<ul class=\"price-chips\">" + "".join(f"<li><span>{E(l)}</span><strong>{fmt_won(v)}{'~' if '최저' in l or l in ('빈소 1일', '관', '수의') else ''}</strong></li>" for l, v in prices) + "</ul>") if prices else ""
+    amen = "".join(f'<span class="chip">{E(a)}</span>' for a in x["amen"])
+    return (f'<article class="fn-card" id="x-{x["id"]}"><div class="fn-head"><h3>{E(x["name"])}</h3>{_fn_badges(x)}</div>'
+            f'<p class="fn-addr">{E(x["address"])}</p>'
+            + (f'<p class="fn-facts">{" · ".join(facts)}</p>' if facts else "")
+            + price_html + (f'<div class="fn-amen">{amen}</div>' if amen else "")
+            + f'<div class="actions">{tel}<a class="btn big" href="https://map.naver.com/p/search/{q}" target="_blank" rel="noopener">지도 보기</a></div></article>')
+
+
+def tel_link(t):
+    if not t:
+        return "–"
+    return f'<a href="tel:{E(re.sub(r"[^0-9+]", "", t))}">{E(t)}</a>'
+
+
+def _med(vals):
+    v = sorted(x for x in vals if x)
+    return v[len(v) // 2] if v else None
+
+
+def page_funeral(out, items):
+    if not items:
+        return
+    depth = 1
+    r = rel(depth)
+    fh = [x for x in items if x["kind"] == "장례식장"]
+    cr = [x for x in items if x["kind"] == "화장시설"]
+    groups = OrderedDict()
+    for x in items:
+        groups.setdefault(x["sido"], []).append(x)
+    src = '<p class="muted small">출처: 한국장례문화진흥원 전국 장사시설 현황·가격정보 (2023-06-01 기준). 가격과 운영 여부는 바뀔 수 있으니 이용 전 꼭 전화로 확인하세요.</p>'
+    for sido, v in groups.items():
+        sfh = [x for x in v if x["kind"] == "장례식장"]
+        scr = [x for x in v if x["kind"] == "화장시설"]
+        by_sgg = OrderedDict()
+        for x in sfh:
+            by_sgg.setdefault(x["sigungu"], []).append(x)
+        toc = "".join(f'<a class="chip-link" href="#g-{sgg_slug(sido, g)}">{E(g)} {len(xs)}</a>' for g, xs in by_sgg.items())
+        cre_html = (f'<section class="card fn-sec" id="crematorium"><h2>{icon("crematorium", "lg")}{E(sido)} 화장시설 {len(scr)}곳</h2>'
+                    f'<div class="fn-grid">{"".join(funeral_card(x, depth) for x in scr)}</div></section>') if scr else ""
+        sgg_html = "".join(f'<section class="fn-sec" id="g-{sgg_slug(sido, g)}"><h2>{E(g)} 장례식장 {len(xs)}곳</h2><div class="fn-grid">{"".join(funeral_card(x, depth) for x in xs)}</div></section>'
+                           for g, xs in by_sgg.items())
+        room = _med([x["price"].get("빈소1일최저") for x in sfh])
+        lead = f"{sido}에는 장례식장 {len(sfh)}곳" + (f", 화장시설 {len(scr)}곳" if scr else "") + "이 있습니다."
+        if room:
+            lead += f" 빈소 하루 사용료(가장 작은 방 기준)는 중간값이 {fmt_won(room)}입니다."
+        body = f"""<header class="page-head"><h1>{E(sido)} 장례식장·화장장</h1><p class="lead">{E(lead)}</p>
+<p class="small">시군구를 누르면 바로 이동합니다.</p><nav class="rank-nav">{'<a class="chip-link" href="#crematorium">화장시설</a>' if scr else ''}{toc}</nav></header>
+{cre_html}{sgg_html}{src}
+{guide_links(depth, ["procedure-after-cremation", "ehaneul-guide", "public-vs-private"], "장례를 치르실 때 함께 보세요")}"""
+        path = f"funeral/{sido_slug(sido)}.html"
+        write(out, path, layout(path, f"{sido} 장례식장·화장장 목록 (가격·전화번호)",
+                                f"{sido} 장례식장 {len(sfh)}곳과 화장시설 {len(scr)}곳의 빈소 사용료, 안치료, 화장료, 전화번호를 모았습니다.",
+                                body, crumbs=[("장례식장·화장장", "funeral/index.html"), (sido, None)], depth=depth))
+    cards = "".join(f'<a class="region-card" href="{r}funeral/{sido_slug(sd)}.html"><strong>{E(SIDO_SHORT.get(sd, sd))}</strong>'
+                    f'<span>장례식장 {sum(1 for x in v if x["kind"] == "장례식장")} · 화장장 {sum(1 for x in v if x["kind"] == "화장시설")}</span></a>'
+                    for sd, v in groups.items())
+    meds = [(lbl, _med([x["price"].get(k) for x in fh])) for k, lbl in FUNERAL_PRICE_COLS]
+    stat = "".join(f'<div class="stat"><span class="stat-label">{E(l)} 중간값</span><span class="stat-value">{fmt_won(m)}</span></div>' for l, m in meds if m)
+    crow = "".join(f'<tr><td><a href="{r}{funeral_url(x)}">{E(x["name"])}</a> {kind_badge(x["pubpri"]) if x["pubpri"] else ""}</td>'
+                   f'<td class="hide-sm">{E(SIDO_SHORT.get(x["sido"], x["sido"]))} {E(x["sigungu"])}</td><td class="num">{x["furnace"] or "–"}</td>'
+                   f'<td class="num">{fmt_won(x["cre_in"]) if x["cre_in"] else "–"}</td><td class="num">{fmt_won(x["cre_out"]) if x["cre_out"] else "–"}</td>'
+                   f'<td class="hide-sm">{tel_link(x["tel"])}</td></tr>' for x in cr)
+    body = f"""<header class="page-head"><h1>전국 장례식장·화장장 찾기</h1>
+<p class="lead">전국 장례식장 {len(fh):,}곳과 화장시설 {len(cr)}곳의 위치, 전화번호, 빈소 사용료와 화장료를 지역별로 정리했습니다. 사시는 곳을 눌러 주세요.</p></header>
+<section class="card"><h2>지역을 고르세요</h2><div class="region-grid big">{cards}</div></section>
+<section class="card"><h2>장례식장 비용, 이 정도가 보통입니다</h2><div class="stats">{stat}</div>
+<p class="small">각 장례식장의 가장 저렴한 상품을 모아 중간값을 구했습니다. 실제 비용은 빈소 크기, 조문객 수, 장례 기간에 따라 크게 달라집니다.</p></section>
+<section class="card" id="crematorium"><h2>전국 화장시설 {len(cr)}곳</h2>
+<p class="small">화장료는 고인의 주소지가 그 지역이면(관내) 저렴하고, 다른 지역이면(관외) 몇 배 비쌉니다. 화장 예약은 <a href="https://www.15774129.go.kr" target="_blank" rel="noopener">e하늘 장사정보시스템</a>에서 합니다.</p>
+<div class="table-wrap"><table class="list"><thead><tr><th>화장시설</th><th class="hide-sm">지역</th><th class="num">화장로</th><th class="num">관내 요금</th><th class="num">관외 요금</th><th class="hide-sm">전화</th></tr></thead><tbody>{crow}</tbody></table></div></section>
+{src}
+{guide_links(depth, ["procedure-after-cremation", "ehaneul-guide", "how-to-choose"], "장례를 치르실 때 함께 보세요")}"""
+    write(out, "funeral/index.html", layout("funeral/index.html", "전국 장례식장·화장장 찾기 (지역별 가격·전화번호)",
+                                            f"전국 장례식장 {len(fh):,}곳, 화장시설 {len(cr)}곳의 빈소 사용료·안치료·화장료와 전화번호를 지역별로 찾아보세요.", body,
+                                            crumbs=[("장례식장·화장장", None)], depth=depth))
+
+
 def page_index(out, facs, groups):
     st = stats_of(facs)
     cards = "".join(f'<a class="region-card" href="{region_url(s)}"><strong>{E(SIDO_SHORT.get(s, s))}</strong><span>{len(v)}곳</span></a>' for s, v in groups.items())
-    feats = "".join(f'<a class="feature-card" href="feature/{slug}.html"><strong>{E(t)}</strong><span>{sum(1 for f in facs if f[k] is True):,}곳</span></a>' for slug, k, t, _ in FEATURES)
+    feats = "".join(f'<a class="feature-card" href="{feature_url(slug)}">{icon(FEAT_IC.get(slug, "info"), "lg")}<strong>{E(t)}</strong><span>{sum(1 for f in facs if f[k] is True):,}곳</span></a>' for slug, k, t, _ in FEATURES)
+    nf = sum(1 for x in FUNERAL if x["kind"] == "장례식장")
+    nc = sum(1 for x in FUNERAL if x["kind"] == "화장시설")
+    tiles = [
+        ("bongan", "#2f5e4e", "region/index.html", "봉안당 찾기", f"전국 {st['n']:,}곳을 지역별로"),
+        ("funeral", "#5a4a8a", "funeral/index.html", "장례식장 찾기", f"전국 {nf:,}곳 · 빈소 비용" if nf else "지역별 장례식장"),
+        ("crematorium", "#6b4a2f", "funeral/index.html#crematorium", "화장장 찾기", f"전국 {nc}곳 · 화장료" if nc else "지역별 화장시설"),
+        ("won", "#9a4f12", "feature/price.html", "가격 비교", "봉안당 가격을 한눈에"),
+        ("recommend", "#1f5b8f", "pages/recommend.html", "예산으로 추천", "가진 돈에 맞는 곳"),
+        ("trophy", "#80620a", "pages/ranking.html", "봉안당 순위", "기준별 TOP 20"),
+        ("guide", "#1d6b73", "guides/procedure-after-cremation.html", "장례 절차 안내", "임종부터 안치까지"),
+        ("search", "#374151", "pages/search.html", "이름으로 검색", "시설·동네 이름으로"),
+    ]
+    tile_html = "".join(f'<a class="big-tile" href="{u}" style="--sc:{c}"><span class="bt-ic">{icon(ic, "xl")}</span><strong>{E(t)}</strong><span>{E(d)}</span></a>'
+                        for ic, c, u, t, d in tiles)
     body = f"""
 <section class="hero">
-  <h1>가까운 봉안당, 조건에 맞게 찾아보세요</h1>
-  <p class="lead">{E(CONFIG['site_tagline'])}. 전국 봉안시설 {st['n']:,}곳의 공공데이터를 정리했습니다.</p>
+  <h1>무엇을 찾으시나요?</h1>
+  <p class="lead">아래 그림 단추를 눌러 주세요. 봉안당, 장례식장, 화장장 정보를 지역별로 쉽게 찾으실 수 있습니다.</p>
+  <div class="big-tiles">{tile_html}</div>
+</section>
+<section class="card search-card"><h2>{icon("search", "lg")}이름으로 바로 찾기</h2>
   <form class="search-box" action="pages/search.html" method="get" role="search">
     <label class="sr-only" for="q">시설명이나 지역 검색</label>
-    <input id="q" name="q" type="search" placeholder="시설명, 시군구, 주소로 검색 (예: 김포, 추모공원)" autocomplete="off">
-    <button type="submit">검색</button>
+    <input id="q" name="q" type="search" placeholder="예: 김포, 추모공원, 장례식장" autocomplete="off">
+    <button type="submit">찾기</button>
   </form>
+  <h2 class="mt">{icon("recommend", "lg")}예산으로 봉안당 추천받기</h2>
   <form class="search-box budget-box" action="pages/recommend.html" method="get">
     <label class="sr-only" for="hb">예산(만 원)</label>
-    <input id="hb" name="b" type="number" min="1" step="1" inputmode="numeric" placeholder="예산(만 원)으로 추천받기 · 예: 300">
+    <input id="hb" name="b" type="number" min="1" step="1" inputmode="numeric" placeholder="예산(만 원) · 예: 300">
     <select name="t" aria-label="모실 형태"><option value="single">개인단</option><option value="couple">부부단</option><option value="any">상관없음</option></select>
     <button type="submit">추천받기</button>
   </form>
 </section>
 {ad_slot("main_top", 0)}
-<a class="rank-banner" href="pages/ranking.html"><span class="rank-banner-eyebrow">봉안당 랭킹</span><strong>전국 봉안당 순위 TOP 20</strong><span>종합 점수 · 주차장 넓은 곳 · 가장 저렴한 곳 · 오래 모실 수 있는 곳</span><span class="btn primary">순위 보러 가기</span></a>
+<a class="rank-banner" href="pages/ranking.html"><span class="rank-banner-eyebrow">{icon("trophy")} 봉안당 랭킹</span><strong>전국 봉안당 순위 TOP 20</strong><span>종합 점수 · 주차장 넓은 곳 · 가장 저렴한 곳 · 오래 모실 수 있는 곳</span><span class="btn primary">순위 보러 가기</span></a>
 {stat_cards(st)}
 {ad_slot("main_middle", 0)}
-<section class="card"><h2>지역별로 찾기</h2><div class="region-grid">{cards}</div></section>
-<section class="card"><h2>조건으로 찾기</h2><div class="feature-grid">
-  <a class="feature-card" href="type/public.html"><strong>공설 봉안당</strong><span>{st['pub']:,}곳</span></a>
-  <a class="feature-card" href="type/private.html"><strong>사설 봉안당</strong><span>{st['pri']:,}곳</span></a>
+<section class="card"><h2>{icon("map", "lg")}봉안당, 지역별로 찾기</h2><div class="region-grid">{cards}</div></section>
+<section class="card"><h2>{icon("bongan", "lg")}봉안당, 조건으로 찾기</h2><div class="feature-grid">
+  <a class="feature-card" href="type/public.html">{icon("public", "lg")}<strong>공설 봉안당</strong><span>{st['pub']:,}곳</span></a>
+  <a class="feature-card" href="type/private.html">{icon("private", "lg")}<strong>사설 봉안당</strong><span>{st['pri']:,}곳</span></a>
   {feats}
-  <a class="feature-card" href="pages/ranking.html"><strong>봉안당 순위</strong><span>기준별 TOP 20</span></a>
-  <a class="feature-card" href="pages/recommend.html"><strong>예산으로 추천받기</strong><span>원하는 가격에 맞는 곳</span></a>
-  <a class="feature-card" href="compare/regions.html"><strong>지역별 가격 비교</strong><span>시도별 중간 가격</span></a>
-  <a class="feature-card" href="feature/price.html"><strong>가격대별 비교</strong><span>{sum(1 for f in facs if f.get("price_min")):,}곳 가격 등록</span></a>
-  <a class="feature-card" href="feature/long-period.html"><strong>최대 안치기간 비교</strong><span>기간별 보기</span></a>
+  <a class="feature-card" href="pages/ranking.html">{icon("trophy", "lg")}<strong>봉안당 순위</strong><span>기준별 TOP 20</span></a>
+  <a class="feature-card" href="pages/recommend.html">{icon("recommend", "lg")}<strong>예산으로 추천받기</strong><span>원하는 가격에 맞는 곳</span></a>
+  <a class="feature-card" href="compare/regions.html">{icon("compare", "lg")}<strong>지역별 가격 비교</strong><span>시도별 중간 가격</span></a>
+  <a class="feature-card" href="feature/price.html">{icon("won", "lg")}<strong>가격대별 비교</strong><span>{sum(1 for f in facs if f.get("price_min")):,}곳 가격 등록</span></a>
+  <a class="feature-card" href="feature/long-period.html">{icon("clock", "lg")}<strong>최대 안치기간 비교</strong><span>기간별 보기</span></a>
 </div></section>
 {guide_links(0, None, "처음이라면 먼저 읽어 보세요")}
 {ad_slot("main_bottom", 0)}
@@ -1705,9 +1977,10 @@ def page_index(out, facs, groups):
 
 def page_search(out, groups):
     options = "".join(f'<option value="{E(s)}">{E(s)}</option>' for s in groups)
-    body = f"""<header class="page-head"><h1>봉안시설 검색</h1><p class="lead">시설명·주소로 찾고, 지역과 조건으로 좁혀 보세요.</p></header>
+    body = f"""<header class="page-head"><h1>이름으로 검색</h1><p class="lead">봉안당·장례식장·화장장을 이름이나 동네 이름으로 찾아보세요.</p></header>
 <form id="search-form" class="filters" role="search" onsubmit="return false">
-  <label>검색어<input id="sq" type="search" placeholder="시설명, 시군구, 주소"></label>
+  <label>검색어<input id="sq" type="search" placeholder="예: 김포, 추모공원"></label>
+  <label>찾는 곳<select id="scat"><option value="">전체</option><option value="b">봉안당</option><option value="f">장례식장</option><option value="c">화장장</option></select></label>
   <label>시도<select id="ssido"><option value="">전체</option>{options}</select></label>
   <label>구분<select id="skind"><option value="">전체</option><option>공설</option><option>사설</option></select></label>
   <label>최대 가격<select id="spmax"><option value="">제한 없음</option><option value="100">100만 원 이하</option><option value="300">300만 원 이하</option><option value="500">500만 원 이하</option><option value="1000">1,000만 원 이하</option></select></label>
@@ -1721,9 +1994,8 @@ def page_search(out, groups):
 </form>
 <p id="result-count" class="muted" aria-live="polite">불러오는 중…</p>
 <div id="results" class="results"></div>
-<noscript><p>검색 기능은 자바스크립트가 필요합니다. <a href="../region/index.html">지역별 목록</a>을 이용해 주세요.</p></noscript>
-<script src="../static/site.js" defer></script>"""
-    write(out, "pages/search.html", layout("pages/search.html", "봉안시설 검색", "전국 봉안시설을 시설명, 주소, 지역, 공설·사설, 편의시설로 검색합니다.", body, crumbs=[("검색", None)], depth=1))
+<noscript><p>검색 기능은 자바스크립트가 필요합니다. <a href="../region/index.html">지역별 목록</a>을 이용해 주세요.</p></noscript>"""
+    write(out, "pages/search.html", layout("pages/search.html", "봉안당·장례식장·화장장 검색", "전국 봉안당, 장례식장, 화장시설을 이름, 주소, 지역, 공설·사설, 편의시설로 검색합니다.", body, crumbs=[("검색", None)], depth=1))
 
 
 def search_index(out, facs):
@@ -1731,6 +2003,11 @@ def search_index(out, facs):
              "p": f["first_period"], "pr": f.get("price_min"), "ps": f.get("p_single"), "pc": f.get("p_couple"), "po": f.get("p_other"),
              "mg": f.get("p_mgmt"), "psn": f.get("pn_single", ""), "pcn": f.get("pn_couple", ""), "pon": f.get("pn_other", ""),
              "mp": f.get("max_period"), "t": f["tel"], "u": facility_url(f), "f": [k for k, _ in AMENITIES if f[k] is True]} for f in facs]
+    for x in FUNERAL:
+        data.append({"i": x["id"], "n": x["name"], "s": x["sido"], "g": x["sigungu"], "a": x["address"], "k": x["pubpri"] or x["kind"],
+                     "c": "c" if x["kind"] == "화장시설" else "f", "u": funeral_url(x), "t": x["tel"],
+                     "f": [FN_AMEN_KEY[a] for a in x["amen"] if a in FN_AMEN_KEY],
+                     "pr": x["price"].get("빈소1일최저") or x["cre_in"]})
     (out / "data").mkdir(parents=True, exist_ok=True)
     (out / "data" / "search.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
@@ -1855,15 +2132,15 @@ def seo_files(out):
     if client:
         pub = client.replace("ca-", "")
         (out / "ads.txt").write_text(f"google.com, {pub}, DIRECT, f08c47fec0942fa0\n", encoding="utf-8")
-    (out / ".nojekyll").write_text("", encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
 # 8. 실행
 # ---------------------------------------------------------------------------
 
-GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare"]
-GENERATED_FILES = ["index.html", "404.html", "robots.txt", "sitemap.xml", "ads.txt", ".nojekyll"]
+GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral"]
+GENERATED_FILES = ["index.html", "404.html", "robots.txt", "sitemap.xml", "ads.txt", ".nojekyll", ".gitignore"]
+FUNERAL = []
 
 
 def build_site(facs):
@@ -1901,6 +2178,8 @@ def build_site(facs):
     page_features(out, facs, groups)
     page_period(out, facs)
     page_price(out, facs, groups)
+    FUNERAL[:] = load_funeral()
+    page_funeral(out, FUNERAL)
     page_index(out, facs, groups)
     page_search(out, groups)
     search_index(out, facs)
