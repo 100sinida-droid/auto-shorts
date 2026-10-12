@@ -1,3 +1,13 @@
+/* 방문 기록 (자체 통계, 개인 식별 정보 없음) */
+(function () {
+  try {
+    if (location.protocol.indexOf("http") !== 0 || /^(localhost|127\.)/.test(location.hostname)) return;
+    var body = JSON.stringify({ u: location.pathname + location.search, r: document.referrer || "" });
+    var ok = navigator.sendBeacon && navigator.sendBeacon("/api/hit", new Blob([body], { type: "application/json" }));
+    if (!ok && window.fetch) fetch("/api/hit", { method: "POST", body: body, headers: { "Content-Type": "application/json" }, keepalive: true }).catch(function () {});
+  } catch (e) {}
+})();
+
 /* 글자 크기 */
 (function () {
   var root = document.documentElement;

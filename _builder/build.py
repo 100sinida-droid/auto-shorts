@@ -2161,10 +2161,10 @@ def seo_files(out):
     xml.append("</urlset>")
     if URL_READY:
         (out / "sitemap.xml").write_text("\n".join(xml), encoding="utf-8")
-        (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {SITE_URL}/sitemap.xml\n", encoding="utf-8")
+        (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /stats\nDisallow: /api/\nDisallow: /_builder/\n\nSitemap: {SITE_URL}/sitemap.xml\n", encoding="utf-8")
     else:
         print("※ config.json 의 site_url 을 실제 주소로 바꾸면 sitemap.xml 이 만들어집니다.")
-        (out / "robots.txt").write_text("User-agent: *\nAllow: /\n", encoding="utf-8")
+        (out / "robots.txt").write_text("User-agent: *\nAllow: /\nDisallow: /stats\nDisallow: /api/\nDisallow: /_builder/\n", encoding="utf-8")
     client = (CONFIG.get("adsense_client") or "").strip()
     if client:
         pub = client.replace("ca-", "")

@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /stats
+Disallow: /api/
+Disallow: /_builder/
 
 Sitemap: https://auto-shorts.pages.dev/sitemap.xml
