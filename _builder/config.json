@@ -1,0 +1,12 @@
+{
+  "api_key": "fad551728c95a236e14821d54bccaada546838a751e426dc9df4a3e813bb51e9",
+  "site_name": "봉안당 길잡이",
+  "site_tagline": "전국 봉안시설을 지역·편의시설·안치기간으로 한눈에",
+  "site_url": "https://YOUR-ID.github.io",
+  "contact_email": "your-email@example.com",
+  "adsense_client": "",
+  "output_dir": "..",
+  "api_endpoint": "https://apis.data.go.kr/1352000/ODMS_DATA_07_1/callData07_1Api",
+  "rows_per_page": 500,
+  "mode": "compact"
+}

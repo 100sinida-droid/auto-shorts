@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>봉안시설 검색 | 봉안당 길잡이</title>
+<meta name="description" content="전국 봉안시설을 시설명, 주소, 지역, 공설·사설, 편의시설로 검색합니다.">
+<link rel="canonical" href="https://YOUR-ID.github.io/pages/search.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="봉안시설 검색 | 봉안당 길잡이">
+<meta property="og:description" content="전국 봉안시설을 시설명, 주소, 지역, 공설·사설, 편의시설로 검색합니다.">
+<meta property="og:url" content="https://YOUR-ID.github.io/pages/search.html">
+<meta property="og:site_name" content="봉안당 길잡이">
+
+<link rel="icon" href="../static/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../static/style.css">
+
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "홈", "item": "https://YOUR-ID.github.io/"}, {"@type": "ListItem", "position": 2, "name": "검색"}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="../index.html"><img src="../static/favicon.svg" alt="" width="28" height="28"><span>봉안당 길잡이</span></a>
+    <nav class="main-nav" aria-label="주 메뉴">
+      <a href="../pages/search.html">시설 검색</a>
+      <a href="../region/index.html">지역별</a>
+      <a href="../type/public.html">공설</a>
+      <a href="../type/private.html">사설</a>
+      <a href="../guides/index.html">가이드</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+<nav class="crumbs" aria-label="현재 위치"><a href="../index.html">홈</a><span class="sep">›</span><span aria-current="page">검색</span></nav>
+<header class="page-head"><h1>봉안시설 검색</h1><p class="lead">시설명·주소로 찾고, 지역과 조건으로 좁혀 보세요.</p></header>
+<form id="search-form" class="filters" role="search" onsubmit="return false">
+  <label>검색어<input id="sq" type="search" placeholder="시설명, 시군구, 주소"></label>
+  <label>시도<select id="ssido"><option value="">전체</option><option value="서울특별시">서울특별시</option><option value="부산광역시">부산광역시</option><option value="대구광역시">대구광역시</option><option value="인천광역시">인천광역시</option><option value="광주광역시">광주광역시</option><option value="대전광역시">대전광역시</option><option value="울산광역시">울산광역시</option><option value="세종특별자치시">세종특별자치시</option><option value="경기도">경기도</option><option value="강원특별자치도">강원특별자치도</option><option value="충청북도">충청북도</option><option value="충청남도">충청남도</option><option value="전북특별자치도">전북특별자치도</option><option value="전라남도">전라남도</option><option value="경상북도">경상북도</option><option value="경상남도">경상남도</option><option value="제주특별자치도">제주특별자치도</option></select></label>
+  <label>구분<select id="skind"><option value="">전체</option><option>공설</option><option>사설</option></select></label>
+  <fieldset><legend>편의시설</legend>
+    <label class="check"><input type="checkbox" value="parking_lot">주차장</label>
+    <label class="check"><input type="checkbox" value="accessible">장애인 편의</label>
+    <label class="check"><input type="checkbox" value="waiting_room">유족대기실</label>
+    <label class="check"><input type="checkbox" value="restaurant">식당</label>
+  </fieldset>
+</form>
+<p id="result-count" class="muted" aria-live="polite">불러오는 중…</p>
+<div id="results" class="results"></div>
+<noscript><p>검색 기능은 자바스크립트가 필요합니다. <a href="../region/index.html">지역별 목록</a>을 이용해 주세요.</p></noscript>
+<script src="../static/search.js" defer></script>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div>
+      <p class="footer-brand">봉안당 길잡이</p>
+      <p class="muted">시설 정보 출처: 보건복지부 「전국 봉안시설 현황」(공공데이터포털). 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p>
+      <p class="muted">데이터 갱신일 2026-10-12</p>
+    </div>
+    <nav class="footer-nav" aria-label="사이트 정보">
+      <a href="../pages/about.html">사이트 소개</a>
+      <a href="../pages/privacy.html">개인정보처리방침</a>
+      <a href="../pages/terms.html">이용약관·면책</a>
+      <a href="../pages/contact.html">문의·정보 수정 요청</a>
+      <a href="../pages/sitemap.html">사이트맵</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>
