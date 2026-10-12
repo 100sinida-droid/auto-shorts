@@ -529,6 +529,9 @@ def load_prices():
                 won *= 10000          # '90' 처럼 만 원 단위로 적힌 값
             elif won < 1000 and not any(w in text for w in MGMT_WORDS):
                 continue              # 단위를 알 수 없는 값은 비교에서 제외
+            if ("address" in cols or "tel" in cols) and nm not in directory:
+                directory[nm] = {"sido": normalize_sido(_cell(r, cols, "sido"), _cell(r, cols, "address")),
+                                 "address": _cell(r, cols, "address"), "tel": _cell(r, cols, "tel")}
             prices[nm].append({
                 "category": _cell(r, cols, "category"), "item": _cell(r, cols, "item"), "price": won,
                 "unit": _cell(r, cols, "unit"), "note": _cell(r, cols, "note"),
@@ -549,45 +552,20 @@ def is_mgmt(it):
 
 def attach_prices(facs, prices, directory):
     """가격표의 시설명을 API 시설과 연결한다. 전화번호 → 주소 → 이름 순으로 확인."""
-    by_tel, by_addr, by_name, by_key = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
-    for f in facs:
-        if tel_key(f["tel"]):
-            by_tel[tel_key(f["tel"])].append(f)
-        if addr_key(f["address"]):
-            by_addr[(f["sido"], addr_key(f["address"]))].append(f)
-        by_name[re.sub(r"\s", "", f["name"])].append(f)
-        by_key[(f["sido"], name_key(f["name"]))].append(f)
+    idx = index_facilities(facs)
     for f in facs:
         f["prices"] = []
     unmatched = []
     for pname, items in prices.items():
         info = directory.get(pname, {})
         sido = info.get("sido") or next((it["sido"] for it in items if it.get("sido")), "")
-        target = None
-        cands = by_name.get(re.sub(r"\s", "", pname), [])
-        if sido:
-            cands = [c for c in cands if c["sido"] == sido] or ([] if len(cands) > 1 else cands)
-        if len(cands) == 1:
-            target = cands[0]
-        if target is None and tel_key(info.get("tel")):
-            c = by_tel.get(tel_key(info["tel"]), [])
-            # 같은 전화번호를 쓰는 시설이 여럿이면 이름이 가장 비슷한 곳
-            c = [x for x in c if name_key(x["name"]) == name_key(pname)] or (c if len(c) == 1 else [])
-            if len(c) == 1:
-                target = c[0]
-        if target is None and addr_key(info.get("address")) and sido:
-            c = by_addr.get((sido, addr_key(info["address"])), [])
-            c = [x for x in c if name_key(x["name"]) == name_key(pname)] or (c if len(c) == 1 else [])
-            if len(c) == 1:
-                target = c[0]
-        if target is None and sido:
-            c = by_key.get((sido, name_key(pname)), [])
-            if len(c) == 1 and len(name_key(pname)) >= 2:
-                target = c[0]
-        if target is None:
+        sido = "" if sido == "기타" else sido
+        targets = match_facility(idx, pname, sido, info.get("address", ""), info.get("tel", ""), allow_multi=True)
+        if not targets:
             unmatched.append(pname)
             continue
-        target["prices"].extend(items)
+        for t in targets:
+            t["prices"].extend(items)
     matched = 0
     for f in facs:
         seen, uniq = set(), []
@@ -614,6 +592,135 @@ def attach_prices(facs, prices, directory):
             matched += 1
     return matched, unmatched
 
+
+
+# ---------------------------------------------------------------------------
+# 4-2. 안치 규모 (_builder/capacity/*.csv)
+#   열: 시도, 시설명, 주소, 전화번호, 총안치능력, 안치수, 잔여, 기준일, 출처
+# ---------------------------------------------------------------------------
+CAP_DIR = ROOT / "capacity"
+
+
+def _num(v):
+    v = re.sub(r"[^\d.]", "", str(v or ""))
+    try:
+        return int(float(v)) if v else None
+    except ValueError:
+        return None
+
+
+def _digits(s):
+    return re.findall(r"\d+", s or "")
+
+
+def _sim(a, b):
+    import difflib
+    ka, kb = name_key(a), name_key(b)
+    if _digits(ka) and _digits(kb) and _digits(ka) != _digits(kb):
+        return 0.0                      # 제1관 ↔ 제2관 같은 경우는 다른 시설
+    score = difflib.SequenceMatcher(None, ka, kb).ratio()
+    if ka and kb and (ka in kb or kb in ka):
+        score += 0.3
+    if bool(_digits(ka)) != bool(_digits(kb)):
+        score -= 0.15
+    ta = {w for w in ("봉안당", "봉안탑", "봉안묘", "봉안담", "추모관", "가족") if w in (a or "")}
+    tb = {w for w in ("봉안당", "봉안탑", "봉안묘", "봉안담", "추모관", "가족") if w in (b or "")}
+    if ta and tb:
+        score += 0.2 if ta & tb else -0.25
+    return score
+
+
+def match_facility(facs_index, name, sido="", address="", tel="", allow_multi=False):
+    """이름 → 전화번호·주소 → 정규화 이름 순으로 시설을 찾는다.
+    확실한 한 곳이면 [시설], allow_multi 이면 같은 전화·주소를 쓰는 여러 관(제1관·제2관 등)을 모두 돌려준다."""
+    by_tel, by_addr, by_name, by_key = facs_index
+    cands = by_name.get(re.sub(r"\s", "", name), [])
+    if sido:
+        cands = [c for c in cands if c["sido"] == sido] or ([] if len(cands) > 1 else cands)
+    if len(cands) == 1:
+        return cands
+    pool = {}
+    if tel_key(tel):
+        for c in by_tel.get(tel_key(tel), []):
+            pool[c["id"]] = c
+    if addr_key(address) and sido:
+        for c in by_addr.get((sido, addr_key(address)), []):
+            pool[c["id"]] = c
+    if sido and not pool:
+        for c in by_key.get((sido, name_key(name)), []):
+            pool[c["id"]] = c
+    if sido:
+        pool = {k: c for k, c in pool.items() if c["sido"] == sido} or pool
+    if not pool:
+        return []
+    scored = sorted(((_sim(name, c["name"]), c) for c in pool.values()), key=lambda x: -x[0])
+    if len(scored) == 1:
+        return [scored[0][1]] if scored[0][0] >= 0.35 else []
+    top, second = scored[0][0], scored[1][0]
+    if top >= 0.5 and top - second >= 0.15:
+        return [scored[0][1]]
+    if allow_multi:
+        group = [c for sc, c in scored if sc >= 0.35 and sc >= top - 0.15]
+        return group
+    return []
+
+
+def index_facilities(facs):
+    by_tel, by_addr, by_name, by_key = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
+    for f in facs:
+        if tel_key(f["tel"]):
+            by_tel[tel_key(f["tel"])].append(f)
+        if addr_key(f["address"]):
+            by_addr[(f["sido"], addr_key(f["address"]))].append(f)
+        by_name[re.sub(r"\s", "", f["name"])].append(f)
+        by_key[(f["sido"], name_key(f["name"]))].append(f)
+    return by_tel, by_addr, by_name, by_key
+
+
+def attach_capacity(facs):
+    for f in facs:
+        f["cap"] = None
+    if not CAP_DIR.exists():
+        return 0, []
+    idx = index_facilities(facs)
+    matched, unmatched = 0, []
+    for path in sorted(CAP_DIR.glob("*.csv")):
+        for r in read_csv_any(path):
+            name = (r.get("시설명") or "").strip()
+            if not name:
+                continue
+            sido = normalize_sido(r.get("시도", ""), r.get("주소", ""))
+            sido = "" if sido == "기타" else sido
+            found = match_facility(idx, name, sido, r.get("주소", ""), r.get("전화번호", ""))
+            if len(found) != 1:
+                unmatched.append(name)
+                continue
+            f = found[0]
+            total, used, remain = _num(r.get("총안치능력")), _num(r.get("안치수")), _num(r.get("잔여"))
+            if not total:
+                continue
+            cur = f["cap"]
+            if cur and cur["date"] >= (r.get("기준일") or ""):
+                continue
+            f["cap"] = {"total": total, "used": used, "remain": remain, "date": (r.get("기준일") or "").strip(),
+                        "source": (r.get("출처") or path.stem).strip(),
+                        "rate": round(used * 100 / total, 1) if used is not None and total else None}
+            matched += 1
+    return matched, unmatched
+
+
+def load_cremation_stats():
+    path = ROOT / "stats" / "cremation_rate_2018_2024.csv"
+    if not path.exists():
+        return []
+    rows = []
+    for r in read_csv_any(path):
+        name = re.sub(r"[A-Za-z\s]", "", r.get("시도", ""))
+        if not name or "이상" in name or not _num(r.get("사망자수")):
+            continue
+        rows.append({"year": _num(r.get("연도")), "sido": name, "deaths": _num(r.get("사망자수")),
+                     "cremations": _num(r.get("화장건수")), "rate": float(r.get("화장률") or 0)})
+    return rows
 
 PRICE_TYPES = ["single", "couple", "other"]
 PRICE_TYPE_LABEL = {"single": "개인단(1위)", "couple": "부부단(2위)", "other": "기타(가족단·평장·봉안묘 등)", "mgmt": "관리비"}
@@ -653,6 +760,7 @@ PRICE_BANDS = [(0, 1_000_000, "100만 원 미만"), (1_000_000, 3_000_000, "100�
 E = html.escape
 SITE = CONFIG["site_name"]
 SITE_URL = CONFIG["site_url"].rstrip("/")
+URL_READY = "YOUR-ID" not in SITE_URL   # 실제 주소를 넣기 전에는 canonical·sitemap 을 만들지 않음
 TODAY = dt.date.today().isoformat()
 AMENITIES = [("parking_lot", "주차장"), ("restaurant", "식당"), ("store", "매점"),
              ("waiting_room", "유족대기실"), ("accessible", "장애인 편의시설")]
@@ -746,11 +854,11 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{E(full_title)}</title>
 <meta name="description" content="{E(description)}">
-<link rel="canonical" href="{E(canonical)}">
+{f'<link rel="canonical" href="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:type" content="website">
 <meta property="og:title" content="{E(full_title)}">
 <meta property="og:description" content="{E(description)}">
-<meta property="og:url" content="{E(canonical)}">
+{f'<meta property="og:url" content="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:site_name" content="{E(SITE)}">
 {robots}
 <link rel="icon" href="{r}static/favicon.svg" type="image/svg+xml">
@@ -772,6 +880,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
       <a href="{r}type/private.html">사설</a>
       <a href="{r}feature/price.html">가격 비교</a>
       <a href="{r}pages/recommend.html">예산 추천</a>
+      <a href="{r}pages/ranking.html">순위</a>
       <a href="{r}guides/index.html">가이드</a>
     </nav>
   </div>
@@ -953,6 +1062,8 @@ def page_facility(out, f, same_sgg, same_sido):
         desc_parts.append(f"{', '.join(lack)}{josa(lack[-1], '은', '는')} 없는 것으로 등록되어 있습니다.")
     if isinstance(f["parking_count"], (int, float)) and f["parking_count"] > 0 and f["parking_lot"] is not False:
         desc_parts.append(f"주차는 {f['parking_count']:g}대까지 가능합니다.")
+    if f.get("cap"):
+        desc_parts.append(f"총 {f['cap']['total']:,}기를 모실 수 있는 규모입니다.")
     if f.get("price_min"):
         desc_parts.append(f"공개된 가격 정보 기준으로 {fmt_won(f['price_min'])}부터 이용할 수 있습니다.")
     summary = " ".join(desc_parts)
@@ -980,8 +1091,20 @@ def page_facility(out, f, same_sgg, same_sido):
             ("최초 안치기간", fmt_years(f["first_period"])),
             ("연장 가능 기간", fmt_years(f["ext_years"])),
             ("연장 가능 횟수", fmt_count(f["ext_count"], "회"))]
+    cap = f.get("cap")
+    if cap:
+        rows.append(("안치 규모", f'총 {cap["total"]:,}기' + (f' · 안치 {cap["used"]:,}기' if cap["used"] is not None else "")
+                     + (f' · 남은 자리 {cap["remain"]:,}기' if cap["remain"] is not None else "")))
     info = "".join(f"<tr><th scope=row>{a}</th><td>{b}</td></tr>" for a, b in rows)
     amen = "".join(f'<li><span>{lbl}</span>{yn_badge(f[key])}</li>' for key, lbl in AMENITIES)
+
+    cap_html = ""
+    if cap:
+        bar = (f'<div class="cap-bar" role="img" aria-label="안치율 {cap["rate"]}%"><span style="width:{min(100, cap["rate"])}%"></span></div>'
+               f'<p class="small">총 {cap["total"]:,}기 가운데 {cap["used"]:,}기가 안치되어 <strong>{cap["rate"]:g}%</strong>가 찼습니다.'
+               + (f' 남은 자리는 약 {cap["remain"]:,}기입니다.' if cap["remain"] is not None else "") + "</p>") if cap["rate"] is not None else \
+              f'<p class="small">총 {cap["total"]:,}기를 모실 수 있는 규모입니다.</p>'
+        cap_html = f'<h4>안치 규모</h4>{bar}<p class="muted small">출처: {E(cap["source"])} ({E(cap["date"])} 기준)</p>'
 
     # 가격 정보
     if f.get("prices"):
@@ -1048,6 +1171,7 @@ def page_facility(out, f, same_sgg, same_sido):
     <div><h4>편의시설</h4><ul class="amen-list">{amen}</ul></div>
   </div>
   {mini_period}
+  {cap_html}
   <div class="price-block">{price_html}</div>
   <details class="faq-fold"><summary>자주 묻는 질문</summary><div class="faq">{faq_html}</div></details>
 </article>"""
@@ -1078,6 +1202,7 @@ def page_facility(out, f, same_sgg, same_sido):
       <p class="muted small">공공데이터에 등록된 정보입니다. 실제 운영 여부는 방문 전에 확인하세요.</p></section>
   </div>
   {period_html}
+  {f'<section class="card">{cap_html.replace("<h4>안치 규모</h4>", "<h2>안치 규모</h2>", 1)}</section>' if cap_html else ""}
   <section class="card">{price_html.replace("<h4>서비스·가격</h4>", "<h2>서비스·가격</h2>", 1)}</section>
   <section class="card"><h2>방문·계약 전 확인할 점</h2><ul class="tips">{tip_html}</ul>
     <p class="small"><a href="{r}guides/how-to-choose.html">봉안당 고르는 체크리스트</a> · <a href="{r}guides/contract-checklist.html">사설 봉안당 계약 전 주의사항</a></p></section>
@@ -1441,6 +1566,98 @@ def page_price(out, facs, groups):
     page_compare_types(out, facs)
     page_compare_regions(out, facs, groups)
     page_recommend(out, groups)
+    page_ranking(out, facs, groups)
+
+
+
+def score_of(f):
+    """종합 점수 100점: 편의시설 40 + 주차 20 + 안치기간 20 + 가격 접근성 20"""
+    amen = sum(1 for k, _ in AMENITIES if f[k] is True) / len(AMENITIES) * 40
+    park = min(f["parking_count"] or 0, 300) / 300 * 20
+    mp = min(f["max_period"] or f["first_period"] or 0, 60) / 60 * 20
+    pr = f.get("p_single") or f.get("price_min")
+    price = (1 - min(pr, 5_000_000) / 5_000_000) * 20 if pr else 0
+    return round(amen + park + mp + price, 1)
+
+
+RANKINGS = [
+    ("total", "종합 순위", "편의시설·주차·안치기간·가격을 합친 100점 만점 점수",
+     lambda f: score_of(f), lambda v: f"{v:g}점", True),
+    ("parking", "주차장 넓은 봉안당", "명절에도 덜 붐비는, 주차 대수가 많은 곳",
+     lambda f: f["parking_count"] if f["parking_lot"] is not False else None, lambda v: f"{v:,.0f}대", True),
+    ("cheap", "개인단 가장 저렴한 봉안당", "한 분을 모시는 가장 싼 상품 기준",
+     lambda f: f.get("p_single"), fmt_won, False),
+    ("premium", "프리미엄 봉안당", "가장 비싼 상품 가격이 높은 곳 (특실·가족실 포함)",
+     lambda f: f.get("price_max"), fmt_won, True),
+    ("long", "가장 오래 모실 수 있는 봉안당", "최초 안치기간 + 연장 가능 기간 전체",
+     lambda f: f["max_period"], lambda v: f"{v:g}년", True),
+    ("choices", "상품 선택지가 많은 봉안당", "공개한 가격 상품(칸 종류) 수가 많은 곳",
+     lambda f: len(f.get("prices") or []) or None, lambda v: f"{v:,}개 상품", True),
+    ("capacity", "안치 규모가 큰 봉안당", "총 안치(봉안) 가능 기수 기준. 지자체가 공개한 지역만 포함",
+     lambda f: f["cap"]["total"] if f.get("cap") else None, lambda v: f"{v:,}기", True),
+    ("chosen", "많이 선택된 봉안당", "실제로 안치된 기수 기준. 지자체가 공개한 지역만 포함",
+     lambda f: f["cap"]["used"] if f.get("cap") and f["cap"]["used"] else None, lambda v: f"{v:,}기 안치", True),
+    ("remain", "남은 자리가 많은 봉안당", "총 기수에서 안치된 기수를 뺀 남은 자리 기준",
+     lambda f: f["cap"]["remain"] if f.get("cap") and f["cap"]["remain"] else None, lambda v: f"{v:,}기 남음", True),
+    ("amenity", "편의시설 만점 봉안당", "주차장·식당·매점·유족대기실·장애인 편의시설을 모두 갖춘 곳 (주차 대수 순)",
+     lambda f: (f["parking_count"] or 0.1) if all(f[k] is True for k, _ in AMENITIES) else None, lambda v: "5개 모두" if v else "", True),
+]
+
+
+def page_ranking(out, facs, groups):
+    depth = 1
+    r = rel(depth)
+    nav = " ".join(f'<a class="chip-link" href="#{key}">{E(title)}</a>' for key, title, *_ in RANKINGS)
+    secs = []
+    for key, title, desc, getv, fmt, desc_order in RANKINGS:
+        items = [(getv(f), f) for f in facs]
+        items = [(v, f) for v, f in items if v]
+        items.sort(key=lambda x: -x[0] if desc_order else x[0])
+        top = items[:20]
+        if not top:
+            continue
+        rows = "".join(
+            f'<li class="rank-row{" top3" if i < 3 else ""}"><span class="rank-no">{i + 1}</span>'
+            f'<span class="rank-name"><a href="{r}{facility_url(f)}">{E(f["name"])}</a> {kind_badge(f["kind"])}'
+            f'<span class="muted small">{E(SIDO_SHORT.get(f["sido"], f["sido"]))} {E(f["sigungu"])}</span></span>'
+            f'<span class="rank-val">{E(fmt(v))}</span></li>' for i, (v, f) in enumerate(top))
+        secs.append(f'<section class="card rank-sec" id="{key}"><h2>{E(title)} TOP {len(top)}</h2><p class="muted small">{E(desc)}</p><ol class="rank-list">{rows}</ol></section>')
+    by_sido = sorted(groups.items(), key=lambda kv: -len(kv[1]))
+    sido_rows = "".join(
+        f'<li class="rank-row{" top3" if i < 3 else ""}"><span class="rank-no">{i + 1}</span><span class="rank-name"><a href="{r}{region_url(sd)}">{E(sd)}</a>'
+        f'<span class="muted small">공설 {sum(1 for f in v if f["kind"] == "공설")} · 사설 {sum(1 for f in v if f["kind"] == "사설")}</span></span><span class="rank-val">{len(v)}곳</span></li>'
+        for i, (sd, v) in enumerate(by_sido))
+    secs.append(f'<section class="card rank-sec" id="sido"><h2>봉안시설이 많은 지역</h2><ol class="rank-list">{sido_rows}</ol></section>')
+    nav += ' <a class="chip-link" href="#sido">지역별 시설 수</a>'
+    cr = load_cremation_stats()
+    if cr:
+        last = max(x["year"] for x in cr)
+        cur = sorted([x for x in cr if x["year"] == last], key=lambda x: -x["rate"])
+        prev = {x["sido"]: x["rate"] for x in cr if x["year"] == last - 4}
+        tot_d = sum(x["deaths"] for x in cur); tot_c = sum(x["cremations"] for x in cur)
+        crow = "".join(
+            f'<li class="rank-row{" top3" if i < 3 else ""}"><span class="rank-no">{i + 1}</span><span class="rank-name"><strong>{E(x["sido"])}</strong>'
+            f'<span class="muted small">사망 {x["deaths"]:,}명 · 화장 {x["cremations"]:,}건'
+            + (f' · {last - 4}년 {prev[x["sido"]]:g}%' if x["sido"] in prev else "") + f'</span></span><span class="rank-val">{x["rate"]:g}%</span></li>'
+            for i, x in enumerate(cur))
+        secs.append(f'<section class="card rank-sec" id="cremation"><h2>{last}년 시도별 화장률 순위</h2>'
+                    f'<p class="small">{last}년 전국 화장률은 <strong>{tot_c * 100 / tot_d:.1f}%</strong>입니다. 돌아가신 분 열 명 중 아홉 명 이상이 화장으로 모셔지고, 그만큼 봉안당과 자연장 수요도 늘고 있습니다.</p>'
+                    f'<ol class="rank-list">{crow}</ol><p class="muted small">출처: 보건복지부 화장 통계(시도별 사망자 수·화장 건수)</p></section>')
+        nav += ' <a class="chip-link" href="#cremation">시도별 화장률</a>'
+    body = f"""<header class="page-head"><p class="eyebrow">봉안당 랭킹</p><h1>전국 봉안당 순위</h1>
+<p class="lead">공공데이터에 등록된 시설 정보와 공개 가격으로 여러 기준의 봉안당 순위를 매겼습니다. 기준마다 1위가 다르니 우리 가족에게 중요한 기준부터 보세요.</p>
+<nav class="rank-nav" aria-label="순위 기준">{nav}</nav></header>
+{"".join(secs)}
+<section class="card note"><h2>순위 기준과 한계</h2><ul class="tips">
+<li>종합 점수는 편의시설(40점), 주차 대수(20점, 300대 이상 만점), 최대 안치기간(20점, 60년 이상 만점), 개인단 가격 접근성(20점, 낮을수록 높음)을 더한 값입니다.</li>
+<li>가격 순위는 한국장례문화진흥원 공개 가격정보(2023-06-01 기준)를 쓰며, 가격을 공개하지 않은 시설은 빠집니다.</li>
+<li>안치 규모 순위는 지자체가 시설별 기수를 공개한 지역(경기 고양·파주, 인천 남동·연수, 대구 동구, 충남 공주·당진, 경남 김해, 경북, 제주)의 시설만 포함합니다. 다른 지역 자료가 공개되면 추가하겠습니다.</li>
+<li>매출과 방문객 수는 공개된 데이터가 없어 순위에 넣지 않았습니다. 시설에서 자료를 보내 주시면 반영하겠습니다.</li>
+<li>순위는 정보 제공용이며 특정 시설을 추천하거나 평가하는 것이 아닙니다.</li></ul></section>
+{price_hub_links(depth)}"""
+    write(out, "pages/ranking.html", layout("pages/ranking.html", "전국 봉안당 순위 (종합·주차·가격·안치기간)",
+                                            "주차장 넓은 곳, 가장 저렴한 곳, 오래 모실 수 있는 곳 등 기준별 전국 봉안당 순위를 확인하세요.", body,
+                                            crumbs=[("봉안당 순위", None)], depth=depth))
 
 
 def page_index(out, facs, groups):
@@ -1464,6 +1681,7 @@ def page_index(out, facs, groups):
   </form>
 </section>
 {ad_slot("main_top", 0)}
+<a class="rank-banner" href="pages/ranking.html"><span class="rank-banner-eyebrow">봉안당 랭킹</span><strong>전국 봉안당 순위 TOP 20</strong><span>종합 점수 · 주차장 넓은 곳 · 가장 저렴한 곳 · 오래 모실 수 있는 곳</span><span class="btn primary">순위 보러 가기</span></a>
 {stat_cards(st)}
 {ad_slot("main_middle", 0)}
 <section class="card"><h2>지역별로 찾기</h2><div class="region-grid">{cards}</div></section>
@@ -1471,6 +1689,7 @@ def page_index(out, facs, groups):
   <a class="feature-card" href="type/public.html"><strong>공설 봉안당</strong><span>{st['pub']:,}곳</span></a>
   <a class="feature-card" href="type/private.html"><strong>사설 봉안당</strong><span>{st['pri']:,}곳</span></a>
   {feats}
+  <a class="feature-card" href="pages/ranking.html"><strong>봉안당 순위</strong><span>기준별 TOP 20</span></a>
   <a class="feature-card" href="pages/recommend.html"><strong>예산으로 추천받기</strong><span>원하는 가격에 맞는 곳</span></a>
   <a class="feature-card" href="compare/regions.html"><strong>지역별 가격 비교</strong><span>시도별 중간 가격</span></a>
   <a class="feature-card" href="feature/price.html"><strong>가격대별 비교</strong><span>{sum(1 for f in facs if f.get("price_min")):,}곳 가격 등록</span></a>
@@ -1534,12 +1753,35 @@ def read_content(path):
     return meta, text
 
 
+def content_items(kind):
+    """content/content.html 에서 kind('guides' 또는 'pages') 글을 (이름, 머리말, 본문) 으로 돌려준다.
+    content/guides/*.html, content/pages/*.html 개별 파일도 함께 읽는다."""
+    items = {}
+    combined = ROOT / "content" / "content.html"
+    if combined.exists():
+        text = combined.read_text(encoding="utf-8")
+        for m in re.finditer(r"<!--=====\s*(\w+)/([\w-]+)\s*=====-->(.*?)(?=<!--=====|\Z)", text, re.S):
+            if m.group(1) == kind:
+                tmp = m.group(3)
+                meta, body = {}, tmp
+                mm = re.match(r"\s*<!--(.*?)-->", tmp, re.S)
+                if mm:
+                    for line in mm.group(1).strip().splitlines():
+                        if ":" in line:
+                            k, v = line.split(":", 1)
+                            meta[k.strip()] = v.strip()
+                    body = tmp[mm.end():]
+                items[m.group(2)] = (meta, body)
+    for path in sorted((ROOT / "content" / kind).glob("*.html")) if (ROOT / "content" / kind).exists() else []:
+        items[path.stem] = read_content(path)
+    return items
+
+
 def load_guides():
     GUIDES.clear()
-    for p in sorted((ROOT / "content" / "guides").glob("*.html")):
-        meta, body = read_content(p)
-        GUIDES.append({"slug": p.stem, "title": meta.get("title", p.stem), "description": meta.get("description", ""),
-                       "order": int(meta.get("order", "99")), "related": [s.strip() for s in meta.get("related", "").split(",") if s.strip()],
+    for slug, (meta, body) in content_items("guides").items():
+        GUIDES.append({"slug": slug, "title": meta.get("title", slug), "description": meta.get("description", ""),
+                       "order": int(meta.get("order", "99")), "related": [x.strip() for x in meta.get("related", "").split(",") if x.strip()],
                        "body": body})
     GUIDES.sort(key=lambda g: g["order"])
 
@@ -1574,11 +1816,10 @@ def page_guides(out):
 
 
 def page_static(out):
-    for p in sorted((ROOT / "content" / "pages").glob("*.html")):
-        meta, body = read_content(p)
-        title = meta.get("title", p.stem)
+    for stem, (meta, body) in content_items("pages").items():
+        title = meta.get("title", stem)
         html_body = f'<article><header class="page-head"><h1>{E(title)}</h1></header><div class="prose">{render_content_body(body, 1)}</div></article>'
-        write(out, f"pages/{p.stem}.html", layout(f"pages/{p.stem}.html", title, meta.get("description", title), html_body, crumbs=[(title, None)], depth=1))
+        write(out, f"pages/{stem}.html", layout(f"pages/{stem}.html", title, meta.get("description", title), html_body, crumbs=[(title, None)], depth=1))
 
 
 def page_404(out):
@@ -1604,8 +1845,12 @@ def seo_files(out):
         loc = f"{SITE_URL}/{u}".replace("/index.html", "/")
         xml.append(f"<url><loc>{E(loc)}</loc><lastmod>{TODAY}</lastmod></url>")
     xml.append("</urlset>")
-    (out / "sitemap.xml").write_text("\n".join(xml), encoding="utf-8")
-    (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {SITE_URL}/sitemap.xml\n", encoding="utf-8")
+    if URL_READY:
+        (out / "sitemap.xml").write_text("\n".join(xml), encoding="utf-8")
+        (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {SITE_URL}/sitemap.xml\n", encoding="utf-8")
+    else:
+        print("※ config.json 의 site_url 을 실제 주소로 바꾸면 sitemap.xml 이 만들어집니다.")
+        (out / "robots.txt").write_text("User-agent: *\nAllow: /\n", encoding="utf-8")
     client = (CONFIG.get("adsense_client") or "").strip()
     if client:
         pub = client.replace("ca-", "")
@@ -1689,10 +1934,15 @@ def main():
     ap.add_argument("--inspect", action="store_true", help="API 응답 태그와 자동 매핑 결과만 출력")
     ap.add_argument("--offline", action="store_true", help="API를 부르지 않고 data/facilities.json 으로 생성")
     ap.add_argument("--from-xml", help="저장된 XML 파일로 생성(테스트용)")
+    ap.add_argument("--from-csv", nargs="?", const=str(ROOT / "data" / "bongan_facilities_20260531.csv"),
+                    help="공공데이터포털 '보건복지부_봉안시설 현황' CSV 파일로 생성 (API가 막혔을 때)")
     args = ap.parse_args()
 
     if args.from_xml:
         records, _ = parse_items(Path(args.from_xml).read_text(encoding="utf-8"))
+    elif args.from_csv:
+        records = [dict(r) for r in read_csv_any(Path(args.from_csv))]
+        print(f"CSV 파일에서 {len(records):,}건을 읽었습니다: {Path(args.from_csv).name}")
     elif args.offline:
         if not DATA_FILE.exists():
             sys.exit("data/facilities.json 이 없습니다. 먼저 인증키로 한 번 실행하세요.")
@@ -1707,7 +1957,17 @@ def main():
             records, total = parse_items(text)
             print(f"\n전체 건수: {total}")
         else:
-            records = fetch_all(key)
+            try:
+                records = fetch_all(key)
+            except Exception as e:  # noqa: BLE001
+                print(f"API 호출에 실패했습니다: {e}")
+                if DATA_FILE.exists():
+                    print("→ 지난번에 저장한 데이터로 사이트를 만듭니다.")
+                    records = json.loads(DATA_FILE.read_text(encoding="utf-8"))["raw"]
+                else:
+                    fallback = ROOT / "data" / "bongan_facilities_20260531.csv"
+                    print(f"→ 들어 있는 공공데이터 파일({fallback.name})로 사이트를 만듭니다.")
+                    records = [dict(r) for r in read_csv_any(fallback)]
 
     if not records:
         sys.exit("받은 레코드가 없습니다. 인증키 활성화 여부나 API 상태를 확인하세요.")
@@ -1724,6 +1984,9 @@ def main():
         return
 
     facs, fmap = normalize(records)
+    cap_matched, cap_unmatched = attach_capacity(facs)
+    if cap_matched or cap_unmatched:
+        print(f"안치 규모가 연결된 시설: {cap_matched:,}곳" + (f" (연결 못 한 {len(cap_unmatched)}곳: " + ", ".join(cap_unmatched[:20]) + (" ..." if len(cap_unmatched) > 20 else "") + ")" if cap_unmatched else ""))
     prices, directory, price_files = load_prices()
     matched, unmatched = attach_prices(facs, prices, directory)
     if price_files:

@@ -18,9 +18,10 @@
 
 ## 올리는 방법 (웹에서 한 번에 끌어다 놓기)
 
-전체 파일이 약 90개라 GitHub 웹 업로드 한도(100개) 안에 들어갑니다.
+전체 파일이 약 80개라 GitHub 웹 업로드 한도(100개) 안에 들어갑니다.
+받은 압축 파일에는 **사이트가 이미 만들어져 있습니다**(보건복지부 봉안시설 현황 2026-05-31 기준). 그대로 올려도 되고, 최신 데이터로 다시 만들려면 `_builder/build.bat` 를 실행하세요.
 
-1. `_builder/build.bat` 를 더블클릭해 실행합니다. 맨 위 폴더에 `index.html` 과 사이트 폴더들이 생깁니다.
+1. (선택) `_builder/build.bat` 를 더블클릭해 실행합니다. API 호출이 실패하면 저장된 데이터나 들어 있는 공공데이터 파일로 자동으로 만듭니다.
 2. github.com → **New repository** → 이름 `내아이디.github.io`, Public → Create
 3. 저장소 화면의 **uploading an existing file** 을 누르고, 이 폴더 안의 것을 **전부 선택해서** 끌어다 놓은 뒤 **Commit changes**
    (`.github` 는 숨김 폴더라 탐색기 **보기 → 숨긴 항목** 을 켜야 보입니다)
@@ -54,9 +55,19 @@
 - `compare/types.html` 종류별 비교 (개인단·부부단·기타·관리비)
 - `compare/regions.html` 지역별 비교 (시도별 중간 가격 그래프)
 - `pages/recommend.html` 예산 추천 (예산·형태·지역·편의시설 조건)
+- `pages/ranking.html` 봉안당 순위 (종합·주차·가격·안치기간 등 기준별 TOP 20, 첫 화면 배너로 연결)
+
+## 안치 규모·통계
+
+- `_builder/capacity/capacity_merged.csv` : 지자체가 공개한 시설별 안치 규모(총 기수·안치 수·남은 자리)를 한 파일로 모은 것. 새 지역 자료가 생기면 같은 열(시도, 시설명, 주소, 전화번호, 총안치능력, 안치수, 잔여, 기준일, 출처)로 줄을 추가하세요.
+- `_builder/stats/cremation_rate_2018_2024.csv` : 시도별 사망자 수·화장 건수·화장률. 순위 페이지의 화장률 순위에 씁니다.
+
+## 글 고치기
+
+가이드 13편과 소개·개인정보처리방침·약관·문의 페이지는 모두 `_builder/content/content.html` 한 파일에 들어 있습니다.
 
 ## 설정 바꾸기
 
 광고 자리와 가격은 `_builder/ads.json` 에서 고칩니다. 지금은 문의 페이지 가격표에만 쓰이고 사이트에는 배너가 나오지 않습니다. (`show_empty` 를 `true` 로 바꾸면 각 자리에 "광고 문의" 칸이 보입니다)
 
-`_builder/config.json` 에서 `site_url`(사이트 주소), `contact_email`(문의 이메일), `adsense_client`(애드센스 승인 후 코드)를 고친 뒤 GitHub에서 그 파일만 다시 올리면 자동으로 사이트가 다시 만들어집니다.
+`_builder/config.json` 에서 `site_url`(사이트 주소, 넣어야 sitemap.xml 이 만들어짐), `contact_email`(문의 이메일), `adsense_client`(애드센스 승인 후 코드)를 고친 뒤 GitHub에서 그 파일만 다시 올리면 자동으로 사이트가 다시 만들어집니다.

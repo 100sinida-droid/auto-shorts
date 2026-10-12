@@ -236,3 +236,27 @@ table.sortable th.sorted-desc::after { content: " ▼"; font-size: 10px; }
 .ad-main img { max-height: 120px; max-width: 100%; border-radius: 8px; }
 .ad-text { display: flex; flex-direction: column; }
 .ad-text span { color: var(--ink-2); font-size: 14px; }
+
+.rank-banner { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto; column-gap: 20px; align-items: center; text-decoration: none; color: var(--accent-ink); background: var(--accent); border-radius: var(--radius); padding: 22px 26px; margin: 0 0 18px; }
+.rank-banner strong { font-size: 24px; letter-spacing: -0.02em; }
+.rank-banner span { opacity: .9; font-size: 15px; }
+.rank-banner .rank-banner-eyebrow { font-size: 13px; font-weight: 600; opacity: .8; }
+.rank-banner .btn { grid-column: 2; grid-row: 1 / span 3; background: var(--accent-ink); color: var(--accent); border-color: var(--accent-ink); opacity: 1; }
+.rank-banner:hover { filter: brightness(1.05); }
+.rank-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip-link { padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); text-decoration: none; font-size: 14px; }
+.chip-link:hover { background: var(--accent); color: var(--accent-ink); }
+.rank-sec { scroll-margin-top: 80px; }
+.rank-list { list-style: none; padding: 0; margin: 0; }
+.rank-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.rank-no { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; background: var(--line); color: var(--ink); font-size: 14px; }
+.rank-row.top3 .rank-no { background: var(--accent); color: var(--accent-ink); }
+.rank-name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.rank-name a { font-weight: 600; }
+.rank-val { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 760px) {
+  .rank-banner { grid-template-columns: 1fr; }
+  .rank-banner .btn { grid-column: 1; grid-row: auto; margin-top: 12px; justify-self: start; }
+}
+.cap-bar { height: 14px; background: var(--accent-soft); border-radius: 7px; overflow: hidden; margin: 6px 0 8px; }
+.cap-bar span { display: block; height: 100%; background: var(--accent); }

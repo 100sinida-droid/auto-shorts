@@ -1,4 +1,2 @@
 User-agent: *
 Allow: /
-
-Sitemap: https://YOUR-ID.github.io/sitemap.xml
