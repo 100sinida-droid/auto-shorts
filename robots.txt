@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://auto-shorts.pages.dev/sitemap.xml
