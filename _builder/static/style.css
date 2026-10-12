@@ -144,7 +144,7 @@ h1 .badge { font-size: 15px; position: relative; top: -3px; }
 .prose .callout { background: var(--accent-soft); border-radius: 10px; padding: 14px 16px; margin: 16px 0; }
 .prose ol li, .prose ul li { margin-bottom: 6px; }
 
-.filters { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.filters { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
 .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--ink-2); }
 .filters fieldset { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 .filters legend { font-size: 14px; color: var(--ink-2); float: left; margin-right: 8px; }
@@ -183,3 +183,7 @@ h1 .badge { font-size: 15px; position: relative; top: -3px; }
 .facility-block:target { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .faq-fold { margin-top: 14px; }
 .faq-fold > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+
+.price-block { margin-top: 6px; }
+table.list.price td, table.list.price th { font-size: 15px; }
+@media (max-width: 1000px) { .filters { grid-template-columns: 1fr 1fr 1fr; } .filters label:first-child { grid-column: 1 / -1; } }

@@ -4,7 +4,7 @@
   "site_tagline": "전국 봉안시설을 지역·편의시설·안치기간으로 한눈에",
   "site_url": "https://YOUR-ID.github.io",
   "contact_email": "your-email@example.com",
-  "adsense_client": "",
+  "adsense_client": "ca-pub-7875289894722650",
   "output_dir": "..",
   "api_endpoint": "https://apis.data.go.kr/1352000/ODMS_DATA_07_1/callData07_1Api",
   "rows_per_page": 500,
