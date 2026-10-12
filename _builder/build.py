@@ -26,6 +26,8 @@ import re
 import shutil
 import sys
 import time
+
+import art
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -894,7 +896,16 @@ def section_of(path):
         path, "info" if path.startswith("pages/") else "")
 
 
-def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, noindex=False):
+SECTION_ART = {"bongan": "bongan", "funeral": "funeral", "price": "price", "recommend": "recommend", "ranking": "ranking",
+               "guide": "guide", "search": "search", "info": "info"}
+EMBLEM = ('<svg class="emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect width="48" height="48" rx="12" fill="#1f4d3f"/>'
+          '<circle cx="33" cy="15" r="5" fill="#d8b46a"/>'
+          '<path d="M7 24c6-1 11-4 17-10 6 6 11 9 17 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
+          '<path d="M12 24v14h24V24M9 38h30" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
+          '<path d="M21 38v-7h6v7" fill="none" stroke="#d8b46a" stroke-width="2.6" stroke-linejoin="round"/></svg>')
+
+
+def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, noindex=False, hero=None):
     r = rel(depth)
     full_title = title if title == SITE else f"{title} | {SITE}"
     canonical = f"{SITE_URL}/{path}".replace("/index.html", "/")
@@ -917,12 +928,21 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
     ld_html = "".join(f'<script type="application/ld+json">{json.dumps(x, ensure_ascii=False)}</script>' for x in ld)
     robots = '<meta name="robots" content="noindex">' if noindex else ""
     sec = section_of(path)
-    on = ' aria-current="page" class="on"'
-    nav_html = "".join(f'<a href="{r}{u}"{on if k == sec else ""}>{icon(SECTIONS[k][0])}<span>{E(lbl)}</span></a>' for k, u, lbl in NAV)
-    strip = ""
-    if sec:
+    on = ' aria-current="page"'
+    nav_html = "".join(f'<a class="nav-{k}{" on" if k == sec else ""}" href="{r}{u}"{on if k == sec else ""}>{icon(SECTIONS[k][0])}<span>{E(lbl)}</span></a>'
+                       for k, u, lbl in NAV)
+    if hero is None and sec:
         ic, nm, ds, col = SECTIONS[sec]
-        strip = f'<div class="sec-strip" style="--sc:{col}"><span class="sec-ic">{icon(ic, "xl")}</span><span class="sec-txt"><strong>{E(nm)}</strong><span>{E(ds)}</span></span></div>'
+        hero = (f'<section class="subvisual" style="--sc:{col}">{art.art(SECTION_ART[sec], r, "sv-art")}'
+                f'<div class="wrap sv-in"><p class="sv-eyebrow">{icon(ic)}{E(SITE)}</p><p class="sv-title">{E(nm)}</p>'
+                f'<p class="sv-desc">{E(ds)}</p>{crumb_html}</div></section>')
+        crumb_html = ""
+    foot_services = "".join(f'<li><a href="{r}{u}">{E(t)}</a></li>' for u, t in (
+        ("region/index.html", "봉안당 찾기"), ("funeral/index.html", "장례식장·화장장"), ("feature/price.html", "봉안당 가격 비교"),
+        ("pages/recommend.html", "예산으로 추천받기"), ("pages/ranking.html", "봉안당 순위"), ("pages/search.html", "이름으로 검색")))
+    foot_info = "".join(f'<li><a href="{r}{u}">{E(t)}</a></li>' for u, t in (
+        ("guides/index.html", "장례·봉안 가이드"), ("pages/about.html", "사이트 소개"), ("pages/contact.html", "문의·정보 수정 요청"),
+        ("pages/privacy.html", "개인정보처리방침"), ("pages/terms.html", "이용약관·면책"), ("pages/sitemap.html", "사이트맵")))
     return f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -936,11 +956,15 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 <meta property="og:description" content="{E(description)}">
 {f'<meta property="og:url" content="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:site_name" content="{E(SITE)}">
+<meta name="theme-color" content="#1f4d3f">
 {robots}
 <link rel="icon" href="{FAVICON}" type="image/svg+xml">
 <script>try{{var s=localStorage.getItem("fs");if(s)document.documentElement.setAttribute("data-fs",s)}}catch(e){{}}</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap">
 <link rel="stylesheet" href="{r}static/style.css">
 {adsense_head()}
 {ld_html}
@@ -948,38 +972,38 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 {SPRITE}
+<div class="topbar"><div class="wrap topbar-in"><span class="tb-msg">공공데이터로 만든 전국 봉안당·장례식장·화장장 안내 서비스</span>
+<div class="fs-ctl" role="group" aria-label="글자 크기"><span class="fs-label">글자 크기</span><button type="button" data-fs="" aria-label="글자 보통">가</button><button type="button" data-fs="lg" aria-label="글자 크게">가</button><button type="button" data-fs="xl" aria-label="글자 아주 크게">가</button></div></div></div>
 <header class="site-header">
-  <div class="wrap header-top">
-    <a class="brand" href="{r}index.html"><img src="{FAVICON}" alt="" width="36" height="36"><span>{E(SITE)}</span></a>
-    <div class="fs-ctl" role="group" aria-label="글자 크기"><span class="fs-label">글자 크기</span><button type="button" data-fs="" aria-label="글자 보통">가</button><button type="button" data-fs="lg" aria-label="글자 크게">가</button><button type="button" data-fs="xl" aria-label="글자 아주 크게">가</button></div>
+  <div class="wrap header-in">
+    <a class="brand" href="{r}index.html">{EMBLEM}<span class="brand-txt"><span class="bn">{E(SITE)}</span><span class="bs">봉안당 · 장례식장 · 화장장 안내</span></span></a>
+    <nav class="main-nav" aria-label="주 메뉴">{nav_html}</nav>
   </div>
-  <nav class="main-nav wrap" aria-label="주 메뉴">{nav_html}</nav>
 </header>
+{hero or ''}
 <main id="main" class="wrap">
-{strip}
 {crumb_html}
 {body}
 </main>
+<section class="pre-footer"><div class="wrap pf-in">
+  <div><p class="pf-title">장례를 처음 준비하시나요?</p><p>임종부터 화장, 봉안까지 순서대로 정리한 안내를 먼저 읽어 보세요. 시설 정보가 틀렸다면 알려 주세요.</p></div>
+  <div class="pf-actions"><a class="btn gold big" href="{r}guides/procedure-after-cremation.html">장례 절차 안내 보기</a><a class="btn ghost big" href="{r}pages/contact.html">문의·정보 수정 요청</a></div>
+</div></section>
 <footer class="site-footer">
-  <div class="wrap footer-inner">
-    <div>
-      <p class="footer-brand">{E(SITE)}</p>
-      <p class="muted">시설 정보 출처: 보건복지부 「전국 봉안시설 현황」(공공데이터포털), 한국장례문화진흥원 장사시설 현황·가격정보. 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p>
-      <p class="muted">데이터 갱신일 {TODAY}</p>
-    </div>
-    <nav class="footer-nav" aria-label="사이트 정보">
-      <a href="{r}pages/about.html">사이트 소개</a>
-      <a href="{r}pages/privacy.html">개인정보처리방침</a>
-      <a href="{r}pages/terms.html">이용약관·면책</a>
-      <a href="{r}pages/contact.html">문의·정보 수정 요청</a>
-      <a href="{r}pages/sitemap.html">사이트맵</a>
-    </nav>
+  <div class="wrap footer-grid">
+    <div class="f-brand"><a class="brand light" href="{r}index.html">{EMBLEM}<span class="brand-txt"><span class="bn">{E(SITE)}</span><span class="bs">봉안당 · 장례식장 · 화장장 안내</span></span></a>
+      <p>보건복지부 「전국 봉안시설 현황」(공공데이터포털)과 한국장례문화진흥원 장사시설 현황·가격정보를 바탕으로 만든 안내 사이트입니다. 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p></div>
+    <div><p class="f-h">서비스</p><ul>{foot_services}</ul></div>
+    <div><p class="f-h">안내</p><ul>{foot_info}</ul></div>
+    <div><p class="f-h">문의</p><ul><li><a href="mailto:{E(CONFIG.get('contact_email', ''))}">{E(CONFIG.get('contact_email', ''))}</a></li><li>정보 수정·광고·제휴 문의</li></ul></div>
   </div>
+  <div class="wrap f-bottom"><span>© {TODAY[:4]} {E(SITE)}</span><span>데이터 갱신일 {TODAY}</span><span>{art.MAP_CREDIT}</span></div>
 </footer>
 <script src="{r}static/site.js" defer></script>
 </body>
 </html>
 """
+
 
 
 def write(out_dir, path, content):
@@ -1098,13 +1122,21 @@ def summary_sentence(place, st):
     return f"<p class=\"lead\">{E(s)}</p>"
 
 
+GUIDE_ART = {"procedure-after-cremation": "funeral", "ehaneul-guide": "crematorium", "cost-structure": "price", "contract-checklist": "recommend",
+             "public-vs-private": "bongan", "how-to-choose": "search", "enshrinement-period": "guide", "natural-burial": "home",
+             "bongandang-vs-napgoldang": "home", "pre-planning": "recommend", "reburial": "home", "visiting-etiquette": "guide",
+             "accessibility-visit": "info"}
+
+
 def guide_links(depth, slugs=None, title="함께 읽으면 좋은 가이드"):
     r = rel(depth)
     items = [g for g in GUIDES if slugs is None or g["slug"] in slugs][:6]
     if not items:
         return ""
-    lis = "".join(f'<li><a href="{r}guides/{g["slug"]}.html">{E(g["title"])}</a><span class="muted">{E(g["description"])}</span></li>' for g in items)
-    return f'<section class="card"><h2>{E(title)}</h2><ul class="guide-list">{lis}</ul></section>'
+    cards = "".join(f'<a class="g-card" href="{r}guides/{g["slug"]}.html"><span class="g-thumb">{art.art(GUIDE_ART.get(g["slug"], "guide"), r, "art")}</span>'
+                    f'<span class="g-body"><span class="g-cat">장례·봉안 가이드</span><strong>{E(g["title"])}</strong><span class="g-desc">{E(g["description"])}</span></span></a>'
+                    for g in items)
+    return f'<section class="block"><div class="block-head"><h2>{E(title)}</h2><a class="more-link" href="{r}guides/index.html">가이드 전체 보기 ›</a></div><div class="g-grid">{cards}</div></section>'
 
 
 # ---------------------------------------------------------------------------
@@ -1322,11 +1354,11 @@ def page_sido(out, sido, facs):
         for s, v in sorted(by_sgg.items(), key=lambda kv: -len(kv[1])))
     slug = sido_slug(sido)
     body = f"""
-<header class="page-head">
+<header class="page-head with-thumb">{art.region_thumb(sido)}<div>
   <h1>{E(sido)} 봉안당·납골당 {len(facs)}곳</h1>
   {summary_sentence(sido, st)}
   <div class="actions">{'' if COMPACT else f'<a class="btn" href="{r}type/public-{slug}.html">{E(SIDO_SHORT.get(sido, sido))} 공설만 보기</a>' if st["pub"] else ''}{'' if COMPACT else f'<a class="btn" href="{r}type/private-{slug}.html">{E(SIDO_SHORT.get(sido, sido))} 사설만 보기</a>' if st["pri"] else ''}</div>
-</header>
+</div></header>
 {stat_cards(st)}
 {ad_slot("region_top", depth, sido)}
 <section class="card"><h2>시군구별로 보기</h2><div class="region-grid">{sgg_cards}</div></section>
@@ -1359,9 +1391,11 @@ def page_sido(out, sido, facs):
 def page_region_index(out, groups):
     depth = 1
     r = rel(depth)
-    cards = "".join(f'<a class="region-card" href="{r}{region_url(s)}"><strong>{E(s)}</strong><span>{len(v)}곳</span></a>' for s, v in groups.items())
-    body = f"""<header class="page-head"><h1>지역별 봉안시설</h1><p class="lead">시도를 고르면 시군구별 봉안당·납골당 목록을 볼 수 있습니다.</p></header>
-<div class="region-grid big">{cards}</div>"""
+    cards = "".join(f'<a class="region-card" href="{r}{region_url(s)}">{art.region_thumb(s)}<span class="rc-txt"><strong>{E(s)}</strong><span>봉안시설 {len(v)}곳 · 공설 {sum(1 for f in v if f["kind"] == "공설")} · 사설 {sum(1 for f in v if f["kind"] == "사설")}</span></span></a>' for s, v in groups.items())
+    kmap = art.map_svg({s: f"{r}{region_url(s)}" for s in groups}, {s: len(v) for s, v in groups.items()}, "봉안당 지역 선택 지도")
+    body = f"""<header class="page-head"><h1>지역별 봉안시설</h1><p class="lead">지도나 아래 목록에서 시도를 고르면 시군구별 봉안당·납골당 목록을 볼 수 있습니다.</p></header>
+<div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">색이 진할수록 시설이 많은 지역입니다.</p></div><div class="region-grid compact">{cards}</div></div>
+"""
     write(out, "region/index.html", layout("region/index.html", "지역별 봉안당·납골당 찾기", "전국 17개 시도의 봉안시설을 지역별로 찾아보세요.", body, crumbs=[("지역별", None)], depth=depth))
 
 
@@ -1882,17 +1916,18 @@ def page_funeral(out, items):
         lead = f"{sido}에는 장례식장 {len(sfh)}곳" + (f", 화장시설 {len(scr)}곳" if scr else "") + "이 있습니다."
         if room:
             lead += f" 빈소 하루 사용료(가장 작은 방 기준)는 중간값이 {fmt_won(room)}입니다."
-        body = f"""<header class="page-head"><h1>{E(sido)} 장례식장·화장장</h1><p class="lead">{E(lead)}</p>
-<p class="small">시군구를 누르면 바로 이동합니다.</p><nav class="rank-nav">{'<a class="chip-link" href="#crematorium">화장시설</a>' if scr else ''}{toc}</nav></header>
+        body = f"""<header class="page-head with-thumb">{art.region_thumb(sido)}<div><h1>{E(sido)} 장례식장·화장장</h1><p class="lead">{E(lead)}</p>
+<p class="small">시군구를 누르면 바로 이동합니다.</p><nav class="rank-nav">{'<a class="chip-link" href="#crematorium">화장시설</a>' if scr else ''}{toc}</nav></div></header>
 {cre_html}{sgg_html}{src}
 {guide_links(depth, ["procedure-after-cremation", "ehaneul-guide", "public-vs-private"], "장례를 치르실 때 함께 보세요")}"""
         path = f"funeral/{sido_slug(sido)}.html"
         write(out, path, layout(path, f"{sido} 장례식장·화장장 목록 (가격·전화번호)",
                                 f"{sido} 장례식장 {len(sfh)}곳과 화장시설 {len(scr)}곳의 빈소 사용료, 안치료, 화장료, 전화번호를 모았습니다.",
                                 body, crumbs=[("장례식장·화장장", "funeral/index.html"), (sido, None)], depth=depth))
-    cards = "".join(f'<a class="region-card" href="{r}funeral/{sido_slug(sd)}.html"><strong>{E(SIDO_SHORT.get(sd, sd))}</strong>'
-                    f'<span>장례식장 {sum(1 for x in v if x["kind"] == "장례식장")} · 화장장 {sum(1 for x in v if x["kind"] == "화장시설")}</span></a>'
+    cards = "".join(f'<a class="region-card" href="{r}funeral/{sido_slug(sd)}.html">{art.region_thumb(sd)}<span class="rc-txt"><strong>{E(SIDO_SHORT.get(sd, sd))}</strong>'
+                    f'<span>장례식장 {sum(1 for x in v if x["kind"] == "장례식장")} · 화장장 {sum(1 for x in v if x["kind"] == "화장시설")}</span></span></a>'
                     for sd, v in groups.items())
+    kmap = art.map_svg({sd: f"{r}funeral/{sido_slug(sd)}.html" for sd in groups}, {sd: len(v) for sd, v in groups.items()}, "장례식장 지역 선택 지도")
     meds = [(lbl, _med([x["price"].get(k) for x in fh])) for k, lbl in FUNERAL_PRICE_COLS]
     stat = "".join(f'<div class="stat"><span class="stat-label">{E(l)} 중간값</span><span class="stat-value">{fmt_won(m)}</span></div>' for l, m in meds if m)
     crow = "".join(f'<tr><td><a href="{r}{funeral_url(x)}">{E(x["name"])}</a> {kind_badge(x["pubpri"]) if x["pubpri"] else ""}</td>'
@@ -1901,7 +1936,7 @@ def page_funeral(out, items):
                    f'<td class="hide-sm">{tel_link(x["tel"])}</td></tr>' for x in cr)
     body = f"""<header class="page-head"><h1>전국 장례식장·화장장 찾기</h1>
 <p class="lead">전국 장례식장 {len(fh):,}곳과 화장시설 {len(cr)}곳의 위치, 전화번호, 빈소 사용료와 화장료를 지역별로 정리했습니다. 사시는 곳을 눌러 주세요.</p></header>
-<section class="card"><h2>지역을 고르세요</h2><div class="region-grid big">{cards}</div></section>
+<section class="block"><div class="block-head"><h2>지역을 고르세요</h2></div><div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">지도에서 지역을 누르면 그 지역 장례식장·화장장 목록으로 갑니다.</p></div><div class="region-grid compact">{cards}</div></div></section>
 <section class="card"><h2>장례식장 비용, 이 정도가 보통입니다</h2><div class="stats">{stat}</div>
 <p class="small">각 장례식장의 가장 저렴한 상품을 모아 중간값을 구했습니다. 실제 비용은 빈소 크기, 조문객 수, 장례 기간에 따라 크게 달라집니다.</p></section>
 <section class="card" id="crematorium"><h2>전국 화장시설 {len(cr)}곳</h2>
@@ -1916,61 +1951,61 @@ def page_funeral(out, items):
 
 def page_index(out, facs, groups):
     st = stats_of(facs)
-    cards = "".join(f'<a class="region-card" href="{region_url(s)}"><strong>{E(SIDO_SHORT.get(s, s))}</strong><span>{len(v)}곳</span></a>' for s, v in groups.items())
-    feats = "".join(f'<a class="feature-card" href="{feature_url(slug)}">{icon(FEAT_IC.get(slug, "info"), "lg")}<strong>{E(t)}</strong><span>{sum(1 for f in facs if f[k] is True):,}곳</span></a>' for slug, k, t, _ in FEATURES)
     nf = sum(1 for x in FUNERAL if x["kind"] == "장례식장")
     nc = sum(1 for x in FUNERAL if x["kind"] == "화장시설")
-    tiles = [
-        ("bongan", "#2f5e4e", "region/index.html", "봉안당 찾기", f"전국 {st['n']:,}곳을 지역별로"),
-        ("funeral", "#5a4a8a", "funeral/index.html", "장례식장 찾기", f"전국 {nf:,}곳 · 빈소 비용" if nf else "지역별 장례식장"),
-        ("crematorium", "#6b4a2f", "funeral/index.html#crematorium", "화장장 찾기", f"전국 {nc}곳 · 화장료" if nc else "지역별 화장시설"),
-        ("won", "#9a4f12", "feature/price.html", "가격 비교", "봉안당 가격을 한눈에"),
-        ("recommend", "#1f5b8f", "pages/recommend.html", "예산으로 추천", "가진 돈에 맞는 곳"),
-        ("trophy", "#80620a", "pages/ranking.html", "봉안당 순위", "기준별 TOP 20"),
-        ("guide", "#1d6b73", "guides/procedure-after-cremation.html", "장례 절차 안내", "임종부터 안치까지"),
-        ("search", "#374151", "pages/search.html", "이름으로 검색", "시설·동네 이름으로"),
+    n_price = sum(1 for f in facs if f.get("price_min"))
+    services = [
+        ("bongan", "region/index.html", "봉안당 찾기", f"전국 봉안시설 {st['n']:,}곳을 시도·시군구별로 찾아보세요."),
+        ("funeral", "funeral/index.html", "장례식장 찾기", f"전국 장례식장 {nf:,}곳의 빈소 사용료와 전화번호." if nf else "지역별 장례식장 안내."),
+        ("crematorium", "funeral/index.html#crematorium", "화장장 찾기", f"전국 화장시설 {nc}곳의 관내·관외 화장료." if nc else "지역별 화장시설 안내."),
+        ("price", "feature/price.html", "봉안당 가격 비교", f"가격 정보가 있는 {n_price:,}곳을 업체·종류·지역별로 비교."),
+        ("recommend", "pages/recommend.html", "예산으로 추천받기", "가진 예산과 원하는 지역을 넣으면 맞는 곳을 골라 드립니다."),
+        ("ranking", "pages/ranking.html", "봉안당 순위", "편의시설·주차·가격·안치기간으로 매긴 기준별 TOP 20."),
     ]
-    tile_html = "".join(f'<a class="big-tile" href="{u}" style="--sc:{c}"><span class="bt-ic">{icon(ic, "xl")}</span><strong>{E(t)}</strong><span>{E(d)}</span></a>'
-                        for ic, c, u, t, d in tiles)
-    body = f"""
-<section class="hero">
-  <h1>무엇을 찾으시나요?</h1>
-  <p class="lead">아래 그림 단추를 눌러 주세요. 봉안당, 장례식장, 화장장 정보를 지역별로 쉽게 찾으실 수 있습니다.</p>
-  <div class="big-tiles">{tile_html}</div>
-</section>
-<section class="card search-card"><h2>{icon("search", "lg")}이름으로 바로 찾기</h2>
-  <form class="search-box" action="pages/search.html" method="get" role="search">
+    svc = "".join(f'<a class="svc-card" href="{u}"><span class="svc-thumb">{art.art(k, "", "art")}</span><span class="svc-body"><strong>{E(t)}</strong>'
+                  f'<span>{E(d)}</span><span class="svc-go">바로가기 ›</span></span></a>' for k, u, t, d in services)
+    counts = {s: len(v) for s, v in groups.items()}
+    kmap = art.map_svg({s: region_url(s) for s in groups}, counts, "봉안당 지역 선택 지도")
+    rcards = "".join(f'<a class="region-card" href="{region_url(s)}">{art.region_thumb(s)}<span class="rc-txt"><strong>{E(SIDO_SHORT.get(s, s))}</strong><span>봉안시설 {len(v)}곳</span></span></a>'
+                     for s, v in groups.items())
+    feats = "".join(f'<a class="feature-card" href="{feature_url(slug)}">{icon(FEAT_IC.get(slug, "info"), "lg")}<strong>{E(t)}</strong><span>{sum(1 for f in facs if f[k] is True):,}곳</span></a>' for slug, k, t, _ in FEATURES)
+    hero = f"""<section class="hero">{art.art("home", "", "hero-art", "언덕 위 추모관과 소나무가 있는 새벽 풍경", "xMaxYMid")}
+<div class="wrap hero-in">
+  <p class="hero-eyebrow">전국 봉안당 · 장례식장 · 화장장 안내</p>
+  <h1>소중한 분을 모실 곳,<br>차분하게 함께 찾아 드립니다</h1>
+  <p class="hero-lead">공공데이터로 정리한 전국 봉안시설 {st['n']:,}곳, 장례식장 {nf:,}곳, 화장시설 {nc}곳의 위치와 비용, 연락처를 한곳에서 확인하세요.</p>
+  <form class="hero-search" action="pages/search.html" method="get" role="search">
     <label class="sr-only" for="q">시설명이나 지역 검색</label>
-    <input id="q" name="q" type="search" placeholder="예: 김포, 추모공원, 장례식장" autocomplete="off">
+    {icon("search")}<input id="q" name="q" type="search" placeholder="시설 이름이나 동네 이름 (예: 김포, 추모공원)" autocomplete="off">
     <button type="submit">찾기</button>
   </form>
-  <h2 class="mt">{icon("recommend", "lg")}예산으로 봉안당 추천받기</h2>
-  <form class="search-box budget-box" action="pages/recommend.html" method="get">
-    <label class="sr-only" for="hb">예산(만 원)</label>
-    <input id="hb" name="b" type="number" min="1" step="1" inputmode="numeric" placeholder="예산(만 원) · 예: 300">
-    <select name="t" aria-label="모실 형태"><option value="single">개인단</option><option value="couple">부부단</option><option value="any">상관없음</option></select>
-    <button type="submit">추천받기</button>
-  </form>
-</section>
+  <p class="hero-quick"><span>많이 찾는 곳</span><a href="region/gyeonggi.html">경기</a><a href="region/seoul.html">서울</a><a href="region/incheon.html">인천</a><a href="funeral/index.html">장례식장</a><a href="pages/recommend.html">예산 추천</a></p>
+</div></section>"""
+    body = f"""
+<section class="block"><div class="block-head"><div><p class="eyebrow">SERVICE</p><h2>무엇을 도와드릴까요?</h2></div></div>
+<div class="svc-grid">{svc}</div></section>
 {ad_slot("main_top", 0)}
-<a class="rank-banner" href="pages/ranking.html"><span class="rank-banner-eyebrow">{icon("trophy")} 봉안당 랭킹</span><strong>전국 봉안당 순위 TOP 20</strong><span>종합 점수 · 주차장 넓은 곳 · 가장 저렴한 곳 · 오래 모실 수 있는 곳</span><span class="btn primary">순위 보러 가기</span></a>
-{stat_cards(st)}
+<section class="stat-band bleed"><div class="wrap sb-in">
+  <div><strong>{st['n']:,}<small>곳</small></strong><span>전국 봉안시설</span></div>
+  <div><strong>{nf:,}<small>곳</small></strong><span>장례식장</span></div>
+  <div><strong>{nc}<small>곳</small></strong><span>화장시설</span></div>
+  <div><strong>{n_price:,}<small>곳</small></strong><span>봉안당 가격 정보</span></div>
+</div></section>
+<section class="block"><div class="block-head"><div><p class="eyebrow">REGION</p><h2>지역에서 봉안당 찾기</h2></div><a class="more-link" href="region/index.html">지역별 전체 보기 ›</a></div>
+<div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">지도에서 사시는 곳을 눌러 주세요. 색이 진할수록 시설이 많습니다.</p></div><div class="region-grid compact">{rcards}</div></div></section>
+<a class="rank-banner" href="pages/ranking.html"><span class="rb-art">{art.art("ranking", "", "art")}</span><span class="rb-txt"><span class="rank-banner-eyebrow">{icon("trophy")} 봉안당 랭킹</span><strong>전국 봉안당 순위 TOP 20</strong><span>종합 점수 · 주차장 넓은 곳 · 가장 저렴한 곳 · 오래 모실 수 있는 곳</span><span class="btn gold">순위 보러 가기</span></span></a>
 {ad_slot("main_middle", 0)}
-<section class="card"><h2>{icon("map", "lg")}봉안당, 지역별로 찾기</h2><div class="region-grid">{cards}</div></section>
-<section class="card"><h2>{icon("bongan", "lg")}봉안당, 조건으로 찾기</h2><div class="feature-grid">
+<section class="block"><div class="block-head"><div><p class="eyebrow">FIND</p><h2>조건으로 봉안당 찾기</h2></div></div><div class="feature-grid">
   <a class="feature-card" href="type/public.html">{icon("public", "lg")}<strong>공설 봉안당</strong><span>{st['pub']:,}곳</span></a>
   <a class="feature-card" href="type/private.html">{icon("private", "lg")}<strong>사설 봉안당</strong><span>{st['pri']:,}곳</span></a>
   {feats}
-  <a class="feature-card" href="pages/ranking.html">{icon("trophy", "lg")}<strong>봉안당 순위</strong><span>기준별 TOP 20</span></a>
-  <a class="feature-card" href="pages/recommend.html">{icon("recommend", "lg")}<strong>예산으로 추천받기</strong><span>원하는 가격에 맞는 곳</span></a>
   <a class="feature-card" href="compare/regions.html">{icon("compare", "lg")}<strong>지역별 가격 비교</strong><span>시도별 중간 가격</span></a>
-  <a class="feature-card" href="feature/price.html">{icon("won", "lg")}<strong>가격대별 비교</strong><span>{sum(1 for f in facs if f.get("price_min")):,}곳 가격 등록</span></a>
   <a class="feature-card" href="feature/long-period.html">{icon("clock", "lg")}<strong>최대 안치기간 비교</strong><span>기간별 보기</span></a>
 </div></section>
-{guide_links(0, None, "처음이라면 먼저 읽어 보세요")}
+{guide_links(0, ["procedure-after-cremation", "how-to-choose", "cost-structure", "public-vs-private", "ehaneul-guide", "contract-checklist"], "처음이라면 먼저 읽어 보세요")}
 {ad_slot("main_bottom", 0)}
-<section class="card note"><h2>이 사이트의 정보에 대해</h2><p>시설 정보는 보건복지부가 공공데이터포털에 공개한 「전국 봉안시설 현황」을 바탕으로 합니다. 이용 요금, 남은 안치 기수, 신청 자격은 수시로 바뀌므로 최종 결정 전에는 꼭 시설에 직접 확인하세요.</p></section>"""
-    write(out, "index.html", layout("index.html", SITE, f"전국 봉안당·납골당 {st['n']:,}곳을 지역, 공설·사설, 안치기간, 주차장·편의시설로 검색하세요.", body,
+<section class="card note"><h2>이 사이트의 정보에 대해</h2><p>봉안시설 정보는 보건복지부가 공공데이터포털에 공개한 「전국 봉안시설 현황」을, 장례식장·화장시설 정보는 한국장례문화진흥원 자료를 바탕으로 합니다. 이용 요금, 남은 안치 기수, 신청 자격은 수시로 바뀌므로 최종 결정 전에는 꼭 시설에 직접 확인하세요.</p></section>"""
+    write(out, "index.html", layout("index.html", SITE, f"전국 봉안당·납골당 {st['n']:,}곳과 장례식장·화장장을 지역, 공설·사설, 가격, 편의시설로 찾아보세요.", body, hero=hero,
                                     jsonld={"@context": "https://schema.org", "@type": "WebSite", "name": SITE, "url": SITE_URL + "/",
                                             "potentialAction": {"@type": "SearchAction", "target": SITE_URL + "/pages/search.html?q={q}", "query-input": "required name=q"}}))
 
@@ -2074,7 +2109,8 @@ def page_guides(out):
     r = rel(depth)
     for g in GUIDES:
         related = guide_links(depth, g["related"] or None, "관련 가이드")
-        body = f"""<article class="guide"><header class="page-head"><p class="eyebrow">봉안 가이드</p><h1>{E(g['title'])}</h1><p class="lead">{E(g['description'])}</p></header>
+        body = f"""<article class="guide"><header class="page-head"><p class="eyebrow">장례·봉안 가이드</p><h1>{E(g['title'])}</h1><p class="lead">{E(g['description'])}</p></header>
+<figure class="g-figure">{art.art(GUIDE_ART.get(g["slug"], "guide"), r, "art")}</figure>
 <div class="prose">{render_content_body(g['body'], depth)}</div>
 <p class="muted small">이 글은 일반적인 안내이며 법률 자문이 아닙니다. 법령과 시설 규정은 바뀔 수 있으니 최신 내용은 국가법령정보센터와 해당 시설에서 확인하세요. 최종 수정 {TODAY}</p>
 </article>
@@ -2085,9 +2121,10 @@ def page_guides(out):
               "dateModified": TODAY, "author": {"@type": "Organization", "name": SITE}, "publisher": {"@type": "Organization", "name": SITE}}
         write(out, f"guides/{g['slug']}.html", layout(f"guides/{g['slug']}.html", g["title"], g["description"], body,
                                                       crumbs=[("가이드", "guides/index.html"), (g["title"], None)], jsonld=ld, depth=depth))
-    lis = "".join(f'<li><a href="{g["slug"]}.html">{E(g["title"])}</a><span class="muted">{E(g["description"])}</span></li>' for g in GUIDES)
-    body = f"""<header class="page-head"><h1>봉안 가이드</h1><p class="lead">봉안당을 처음 알아보는 분들을 위해 제도와 절차, 비용 구조, 계약 시 주의점을 정리했습니다.</p></header>
-<section class="card"><ul class="guide-list">{lis}</ul></section>"""
+    cards = "".join(f'<a class="g-card" href="{g["slug"]}.html"><span class="g-thumb">{art.art(GUIDE_ART.get(g["slug"], "guide"), r, "art")}</span>'
+                    f'<span class="g-body"><span class="g-cat">장례·봉안 가이드</span><strong>{E(g["title"])}</strong><span class="g-desc">{E(g["description"])}</span></span></a>' for g in GUIDES)
+    body = f"""<header class="page-head"><h1>장례·봉안 가이드</h1><p class="lead">장례와 봉안을 처음 준비하는 분들을 위해 절차, 비용 구조, 계약 시 주의점을 정리했습니다.</p></header>
+<div class="g-grid">{cards}</div>"""
     write(out, "guides/index.html", layout("guides/index.html", "봉안 가이드", "봉안당 선택, 안치기간, 비용, 계약, 개장·이장 절차 등 봉안에 관한 안내글 모음.", body,
                                            crumbs=[("가이드", None)], depth=depth))
 
