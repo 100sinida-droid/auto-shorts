@@ -57,4 +57,6 @@
 
 ## 설정 바꾸기
 
+광고 자리와 가격은 `_builder/ads.json` 에서 고칩니다. 지금은 문의 페이지 가격표에만 쓰이고 사이트에는 배너가 나오지 않습니다. (`show_empty` 를 `true` 로 바꾸면 각 자리에 "광고 문의" 칸이 보입니다)
+
 `_builder/config.json` 에서 `site_url`(사이트 주소), `contact_email`(문의 이메일), `adsense_client`(애드센스 승인 후 코드)를 고친 뒤 GitHub에서 그 파일만 다시 올리면 자동으로 사이트가 다시 만들어집니다.

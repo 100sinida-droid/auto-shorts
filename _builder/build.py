@@ -664,6 +664,47 @@ COMPACT = (CONFIG.get("mode") or "compact").lower() == "compact"
 PAGES_WRITTEN = []
 
 
+
+# ---------------------------------------------------------------------------
+# 광고 자리 (_builder/ads.json)
+# ---------------------------------------------------------------------------
+ADS_FILE = ROOT / "ads.json"
+ADS = json.loads(ADS_FILE.read_text(encoding="utf-8")) if ADS_FILE.exists() else {"slots": []}
+ADS_BY_ID = {sl["id"]: sl for sl in ADS.get("slots", [])}
+
+
+def ad_slot(slot_id, depth, region=None):
+    """광고 자리 HTML. region 이 있으면 시도별 광고(ad 안에 시도 이름 키)를 먼저 찾는다."""
+    sl = ADS_BY_ID.get(slot_id)
+    if not sl:
+        return ""
+    r = rel(depth)
+    ad = sl.get("ad") or {}
+    if region and isinstance(sl.get("by_region"), dict):
+        ad = sl["by_region"].get(region) or ad
+    if ad.get("title"):
+        img = f'<img src="{E(ad["image"])}" alt="{E(ad["title"])}" loading="lazy">' if ad.get("image") else ""
+        tel = f'<a class="btn" href="tel:{E(re.sub(r"[^0-9+]", "", ad["tel"]))}">전화 {E(ad["tel"])}</a>' if ad.get("tel") else ""
+        link_open = f'<a class="ad-main" href="{E(ad["link"])}" target="_blank" rel="sponsored noopener">' if ad.get("link") else '<div class="ad-main">'
+        link_close = "</a>" if ad.get("link") else "</div>"
+        return (f'<aside class="ad-slot filled" data-slot="{E(slot_id)}"><span class="ad-label">광고</span>{link_open}{img}'
+                f'<span class="ad-text"><strong>{E(ad["title"])}</strong><span>{E(ad.get("text", ""))}</span></span>{link_close}'
+                f'{f"<div class=ad-actions>{tel}</div>" if tel else ""}</aside>')
+    if not ADS.get("show_empty", True):
+        return ""
+    where = f"{region} " if region else ""
+    return (f'<aside class="ad-slot empty" data-slot="{E(slot_id)}"><span class="ad-label">광고 자리</span>'
+            f'<span class="ad-text"><strong>{E(where + sl["name"])}</strong><span>봉안당·추모공원·상조 업체 광고를 받습니다 · 월 {sl["price"]:,}만 원</span></span>'
+            f'<a class="btn" href="{r}pages/contact.html#ads">광고 문의</a></aside>')
+
+
+def ad_price_table():
+    rows = "".join(f'<tr><td><strong>{E(sl["name"])}</strong></td><td>{E(sl["location"])}</td><td class="hide-sm">{E(sl["size"])}</td>'
+                   f'<td class="num"><strong>{sl["price"]:,}만 원</strong></td></tr>' for sl in sorted(ADS.get("slots", []), key=lambda x: -x["price"]))
+    return (f'<div class="table-wrap"><table class="list"><thead><tr><th>광고 자리</th><th>위치</th><th class="hide-sm">형태</th><th class="num">월 광고비</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table></div><p class="small muted">{E(ADS.get("note", ""))}</p>')
+
+
 def rel(depth):
     return "../" * depth
 
@@ -1087,6 +1128,7 @@ def page_sido(out, sido, facs):
   <div class="actions">{'' if COMPACT else f'<a class="btn" href="{r}type/public-{slug}.html">{E(SIDO_SHORT.get(sido, sido))} 공설만 보기</a>' if st["pub"] else ''}{'' if COMPACT else f'<a class="btn" href="{r}type/private-{slug}.html">{E(SIDO_SHORT.get(sido, sido))} 사설만 보기</a>' if st["pri"] else ''}</div>
 </header>
 {stat_cards(st)}
+{ad_slot("region_top", depth, sido)}
 <section class="card"><h2>시군구별로 보기</h2><div class="region-grid">{sgg_cards}</div></section>
 <section class="card"><h2>{E(sido)} 전체 목록</h2>{facility_table(facs, depth)}</section>
 {guide_links(depth)}"""
@@ -1352,6 +1394,7 @@ def page_recommend(out, groups):
     <label class="inline">정렬<select id="ro"><option value="best">추천순</option><option value="near">예산에 가까운 순</option><option value="cheap">저렴한 순</option></select></label></div>
   <p id="rerr" class="err" role="alert"></p>
 </form>
+{ad_slot("recommend_top", depth)}
 <div id="rec-summary" aria-live="polite"></div>
 <div id="rec-results" class="results"></div>
 <div id="rec-over"></div>
@@ -1387,6 +1430,7 @@ def page_price(out, facs, groups):
     body = f"""<header class="page-head"><h1>봉안당 가격 비교</h1>
 <p class="lead">가격 정보가 등록된 봉안시설 {len(priced):,}곳을 최저가 기준으로 나눴습니다.</p><p class="small muted">{E(note)}</p></header>
 {price_hub_links(depth)}
+{ad_slot("price_top", depth)}
 <p class="small">가격대 바로가기: {toc}</p>
 {f'<section class="card"><h2>시도별 가격 요약</h2><div class="table-wrap"><table class="list"><thead><tr><th>시도</th><th class="num">가격 등록</th><th class="num">최저가</th><th class="num">중간값</th></tr></thead><tbody>{by_sido}</tbody></table></div></section>' if by_sido else ''}
 {''.join(secs) or '<section class="card"><p>아직 등록된 가격 정보가 없습니다.</p></section>'}
@@ -1419,7 +1463,9 @@ def page_index(out, facs, groups):
     <button type="submit">추천받기</button>
   </form>
 </section>
+{ad_slot("main_top", 0)}
 {stat_cards(st)}
+{ad_slot("main_middle", 0)}
 <section class="card"><h2>지역별로 찾기</h2><div class="region-grid">{cards}</div></section>
 <section class="card"><h2>조건으로 찾기</h2><div class="feature-grid">
   <a class="feature-card" href="type/public.html"><strong>공설 봉안당</strong><span>{st['pub']:,}곳</span></a>
@@ -1431,6 +1477,7 @@ def page_index(out, facs, groups):
   <a class="feature-card" href="feature/long-period.html"><strong>최대 안치기간 비교</strong><span>기간별 보기</span></a>
 </div></section>
 {guide_links(0, None, "처음이라면 먼저 읽어 보세요")}
+{ad_slot("main_bottom", 0)}
 <section class="card note"><h2>이 사이트의 정보에 대해</h2><p>시설 정보는 보건복지부가 공공데이터포털에 공개한 「전국 봉안시설 현황」을 바탕으로 합니다. 이용 요금, 남은 안치 기수, 신청 자격은 수시로 바뀌므로 최종 결정 전에는 꼭 시설에 직접 확인하세요.</p></section>"""
     write(out, "index.html", layout("index.html", SITE, f"전국 봉안당·납골당 {st['n']:,}곳을 지역, 공설·사설, 안치기간, 주차장·편의시설로 검색하세요.", body,
                                     jsonld={"@context": "https://schema.org", "@type": "WebSite", "name": SITE, "url": SITE_URL + "/",
@@ -1500,7 +1547,7 @@ def load_guides():
 def render_content_body(body, depth):
     r = rel(depth)
     body = body.replace("{{root}}", r).replace("{{site_name}}", E(SITE)).replace("{{contact_email}}", E(CONFIG.get("contact_email", "")))
-    return body.replace("{{today}}", TODAY)
+    return body.replace("{{today}}", TODAY).replace("{{ad_price_table}}", ad_price_table())
 
 
 def page_guides(out):
@@ -1513,6 +1560,7 @@ def page_guides(out):
 <p class="muted small">이 글은 일반적인 안내이며 법률 자문이 아닙니다. 법령과 시설 규정은 바뀔 수 있으니 최신 내용은 국가법령정보센터와 해당 시설에서 확인하세요. 최종 수정 {TODAY}</p>
 </article>
 <section class="card cta"><h2>조건에 맞는 봉안당 찾기</h2><p>지역, 공설·사설, 편의시설로 전국 봉안시설을 검색할 수 있습니다.</p><a class="btn primary" href="{r}pages/search.html">시설 검색하기</a></section>
+{ad_slot("guide_bottom", depth)}
 {related}"""
         ld = {"@context": "https://schema.org", "@type": "Article", "headline": g["title"], "description": g["description"],
               "dateModified": TODAY, "author": {"@type": "Organization", "name": SITE}, "publisher": {"@type": "Organization", "name": SITE}}

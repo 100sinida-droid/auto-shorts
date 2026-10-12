@@ -228,3 +228,11 @@ table.sortable th.sorted-desc::after { content: " ▼"; font-size: 10px; }
 .rec-grid input, .rec-grid select, .filters input, .filters select { width: 100%; min-width: 0; }
 .budget-box select { font: inherit; padding: 12px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 @media (max-width: 520px) { .budget-box { flex-wrap: wrap; } .budget-box input { flex: 1 1 100%; } }
+
+.ad-slot { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); padding: 18px 20px 16px; margin: 0 0 18px; }
+.ad-slot.filled { border-style: solid; }
+.ad-label { position: absolute; top: 6px; right: 10px; font-size: 11px; color: var(--ink-2); }
+.ad-main { display: flex; align-items: center; gap: 14px; color: var(--ink); text-decoration: none; flex: 1; min-width: 0; }
+.ad-main img { max-height: 120px; max-width: 100%; border-radius: 8px; }
+.ad-text { display: flex; flex-direction: column; }
+.ad-text span { color: var(--ink-2); font-size: 14px; }
