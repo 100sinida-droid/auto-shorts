@@ -187,3 +187,44 @@ h1 .badge { font-size: 15px; position: relative; top: -3px; }
 .price-block { margin-top: 6px; }
 table.list.price td, table.list.price th { font-size: 15px; }
 @media (max-width: 1000px) { .filters { grid-template-columns: 1fr 1fr 1fr; } .filters label:first-child { grid-column: 1 / -1; } }
+
+.feature-grid.hub { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin: 0 0 18px; }
+.feature-grid.hub .feature-card { padding: 16px; }
+.compact-filters { grid-template-columns: 1fr 1fr 2fr; }
+table.sortable th[data-sort] { white-space: nowrap; }
+table.sortable th.sorted-asc::after { content: " ▲"; font-size: 10px; }
+table.sortable th.sorted-desc::after { content: " ▼"; font-size: 10px; }
+.bars { display: grid; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: 48px 1fr 92px; gap: 10px; align-items: center; font-size: 14px; }
+.bar-track { background: var(--accent-soft); border-radius: 6px; height: 18px; overflow: hidden; }
+.bar { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+.bar-val { text-align: right; font-variant-numeric: tabular-nums; }
+.rec-form { margin-bottom: 18px; }
+.rec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.rec-grid label, .rec-actions label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--ink-2); }
+.rec-grid input { font: inherit; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.rec-amen { border: 0; padding: 0; margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.rec-amen legend { font-size: 14px; color: var(--ink-2); float: left; margin-right: 8px; }
+.rec-amen .check { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.rec-actions { display: flex; gap: 14px; align-items: flex-end; margin-top: 16px; flex-wrap: wrap; }
+.rec-actions label.inline { flex-direction: row; align-items: center; gap: 8px; }
+.err { color: #b42318; font-size: 13px; margin: 8px 0 0; min-height: 1em; }
+.rec-card { display: block; }
+.rec-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rec-name { color: var(--ink); text-decoration: none; }
+.rec-name strong { font-size: 18px; }
+.rec-price { text-align: right; display: flex; flex-direction: column; }
+.rec-amount { font-size: 22px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.rec-item { margin: 6px 0 0; }
+.rec-chips { margin-top: 8px; }
+.rec-h { font-size: 18px; margin: 28px 0 12px; }
+@media (max-width: 760px) {
+  .rec-grid, .compact-filters { grid-template-columns: 1fr 1fr; }
+  .rec-price { text-align: left; }
+}
+.budget-box { margin-top: 10px; }
+.budget-box input { font: inherit; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.rec-grid > label, .filters > label { min-width: 0; }
+.rec-grid input, .rec-grid select, .filters input, .filters select { width: 100%; min-width: 0; }
+.budget-box select { font: inherit; padding: 12px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+@media (max-width: 520px) { .budget-box { flex-wrap: wrap; } .budget-box input { flex: 1 1 100%; } }

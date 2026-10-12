@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>예산으로 봉안당 추천받기 | 봉안당 길잡이</title>
+<meta name="description" content="예산과 지역, 개인단·부부단, 편의시설 조건을 넣으면 맞는 봉안당을 추천합니다.">
+<link rel="canonical" href="https://YOUR-ID.github.io/pages/recommend.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="예산으로 봉안당 추천받기 | 봉안당 길잡이">
+<meta property="og:description" content="예산과 지역, 개인단·부부단, 편의시설 조건을 넣으면 맞는 봉안당을 추천합니다.">
+<meta property="og:url" content="https://YOUR-ID.github.io/pages/recommend.html">
+<meta property="og:site_name" content="봉안당 길잡이">
+
+<link rel="icon" href="../static/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../static/style.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7875289894722650" crossorigin="anonymous"></script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "홈", "item": "https://YOUR-ID.github.io/"}, {"@type": "ListItem", "position": 2, "name": "가격 비교", "item": "https://YOUR-ID.github.io/feature/price.html"}, {"@type": "ListItem", "position": 3, "name": "예산 추천"}]}</script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="../index.html"><img src="../static/favicon.svg" alt="" width="28" height="28"><span>봉안당 길잡이</span></a>
+    <nav class="main-nav" aria-label="주 메뉴">
+      <a href="../pages/search.html">시설 검색</a>
+      <a href="../region/index.html">지역별</a>
+      <a href="../type/public.html">공설</a>
+      <a href="../type/private.html">사설</a>
+      <a href="../feature/price.html">가격 비교</a>
+      <a href="../pages/recommend.html">예산 추천</a>
+      <a href="../guides/index.html">가이드</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+<nav class="crumbs" aria-label="현재 위치"><a href="../index.html">홈</a><span class="sep">›</span><a href="../feature/price.html">가격 비교</a><span class="sep">›</span><span aria-current="page">예산 추천</span></nav>
+<header class="page-head"><p class="eyebrow">가격 비교</p><h1>예산으로 봉안당 추천받기</h1>
+<p class="lead">생각하는 예산과 조건을 넣으면, 예산 안에 드는 봉안당을 편의시설과 안치기간까지 따져 추천해 드립니다.</p></header>
+<form id="rec-form" class="card rec-form" onsubmit="return false">
+  <div class="rec-grid">
+    <label>예산 (만 원)<input id="rb" type="number" min="1" step="1" inputmode="numeric" placeholder="예: 300"></label>
+    <label>모실 형태<select id="rt"><option value="single">한 분 (개인단)</option><option value="couple">부부 (부부단)</option><option value="any">상관없음</option></select></label>
+    <label>지역<select id="rs"><option value="">전국</option><option value="서울특별시">서울특별시</option><option value="부산광역시">부산광역시</option><option value="대구광역시">대구광역시</option><option value="인천광역시">인천광역시</option><option value="광주광역시">광주광역시</option><option value="대전광역시">대전광역시</option><option value="울산광역시">울산광역시</option><option value="세종특별자치시">세종특별자치시</option><option value="경기도">경기도</option><option value="강원특별자치도">강원특별자치도</option><option value="충청북도">충청북도</option><option value="충청남도">충청남도</option><option value="전북특별자치도">전북특별자치도</option><option value="전라남도">전라남도</option><option value="경상북도">경상북도</option><option value="경상남도">경상남도</option><option value="제주특별자치도">제주특별자치도</option></select></label>
+    <label>운영<select id="rk"><option value="">상관없음</option><option>공설</option><option>사설</option></select></label>
+  </div>
+  <fieldset class="rec-amen"><legend>꼭 있어야 하는 편의시설</legend>
+    <label class="check"><input type="checkbox" value="parking_lot">주차장</label>
+    <label class="check"><input type="checkbox" value="accessible">장애인 편의</label>
+    <label class="check"><input type="checkbox" value="waiting_room">유족대기실</label>
+    <label class="check"><input type="checkbox" value="restaurant">식당</label>
+  </fieldset>
+  <div class="rec-actions"><button type="button" id="rgo">추천받기</button>
+    <label class="inline">정렬<select id="ro"><option value="best">추천순</option><option value="near">예산에 가까운 순</option><option value="cheap">저렴한 순</option></select></label></div>
+  <p id="rerr" class="err" role="alert"></p>
+</form>
+<div id="rec-summary" aria-live="polite"></div>
+<div id="rec-results" class="results"></div>
+<div id="rec-over"></div>
+<section class="card note"><h2>추천 기준</h2><ul class="tips">
+<li>모실 형태에 맞는 상품 가운데 가장 낮은 가격이 예산 이하인 시설만 보여 줍니다.</li>
+<li>추천순은 편의시설이 많을수록, 최대 안치기간이 길수록, 예산에 여유가 있을수록 위에 옵니다.</li>
+<li>관리비는 별도인 경우가 많습니다. 결과 카드의 관리비와 상세 가격표를 함께 확인하세요.</li>
+<li>가격은 한국장례문화진흥원 공개 자료(2023-06-01 기준)이며 지금은 다를 수 있습니다. 계약 전 시설에 꼭 확인하세요.</li></ul></section>
+<div class="feature-grid hub"><a class="feature-card" href="../compare/facilities.html"><strong>업체별 가격 비교</strong><span>시설마다 개인단·부부단·관리비를 한 표에서 비교</span></a><a class="feature-card" href="../compare/types.html"><strong>종류별 가격 비교</strong><span>개인단·부부단·가족단의 전국 가격 분포</span></a><a class="feature-card" href="../compare/regions.html"><strong>지역별 가격 비교</strong><span>시도별 중간 가격과 가장 저렴한 곳</span></a><a class="feature-card" href="../pages/recommend.html"><strong>예산으로 추천받기</strong><span>원하는 가격을 넣으면 맞는 봉안당을 골라 줌</span></a></div>
+<script src="../static/site.js" defer></script>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div>
+      <p class="footer-brand">봉안당 길잡이</p>
+      <p class="muted">시설 정보 출처: 보건복지부 「전국 봉안시설 현황」(공공데이터포털). 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p>
+      <p class="muted">데이터 갱신일 2026-10-12</p>
+    </div>
+    <nav class="footer-nav" aria-label="사이트 정보">
+      <a href="../pages/about.html">사이트 소개</a>
+      <a href="../pages/privacy.html">개인정보처리방침</a>
+      <a href="../pages/terms.html">이용약관·면책</a>
+      <a href="../pages/contact.html">문의·정보 수정 요청</a>
+      <a href="../pages/sitemap.html">사이트맵</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

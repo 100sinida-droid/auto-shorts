@@ -410,14 +410,17 @@ import io
 PRICE_DIR = ROOT / "prices"
 
 PRICE_COLS = OrderedDict([
-    ("name", ["시설명", "장사시설명", "업체명", "기관명", "명칭", "fclt", "facility", "name"]),
+    ("ftype", ["시설종류", "시설유형"]),
+    ("name", ["시설명", "업체명", "기관명", "명칭", "fclt", "facility", "name"]),
     ("sido", ["시도", "광역", "ctpv", "sido"]),
-    ("category", ["품목분류", "분류", "구분", "항목구분", "유형", "종류", "category"]),
+    ("category", ["품목분류", "분류", "구분", "항목구분", "category"]),
     ("item", ["품목명", "품목", "항목", "상품명", "서비스", "내역", "item"]),
-    ("price", ["금액", "가격", "요금", "사용료", "단가", "비용", "price", "amount"]),
-    ("unit", ["단위", "기간", "기준", "unit"]),
-    ("note", ["비고", "설명", "내용", "note", "remark"]),
+    ("price", ["금액", "가격", "요금", "단가", "price", "amount"]),
+    ("unit", ["규격", "단위", "기간", "기준", "unit"]),
+    ("note", ["비고", "설명", "note", "remark"]),
     ("date", ["기준일", "확인일", "등록일", "수정일", "date"]),
+    ("address", ["주소", "addr"]),
+    ("tel", ["전화", "tel"]),
 ])
 
 
@@ -465,78 +468,170 @@ def parse_won(v):
 
 def name_key(name):
     s = re.sub(r"\(.*?\)|\[.*?\]", "", name or "")
-    s = re.sub(r"\s|재단법인|\(재\)|㈜|주식회사|봉안당|봉안시설|봉안담|납골당|추모관|추모공원", "", s)
+    s = re.sub(r"\s|재단법인|㈜|주식회사|봉안당|봉안시설|봉안담|봉안묘|납골당|추모관|추모공원", "", s)
     return s.lower()
 
 
+def tel_key(t):
+    d = re.sub(r"\D", "", t or "")
+    return d if len(d) >= 8 else ""
+
+
+def addr_key(a):
+    """'경기도 김포시 하성면 ○○로 12-3 (...)' -> '○○로12-3' (도로명+건물번호) 또는 지번"""
+    a = re.sub(r"\(.*?\)", "", a or "")
+    m = re.search(r"([가-힣0-9]+(?:로|길))\s*(\d+(?:-\d+)?)", a)
+    if m:
+        return m.group(1) + m.group(2)
+    m = re.search(r"([가-힣0-9]+(?:리|동))\s*(산?\s*\d+(?:-\d+)?)", a)
+    return (m.group(1) + re.sub(r"\s", "", m.group(2))) if m else ""
+
+
+def _cell(r, cols, field):
+    return (r.get(cols[field]) or "").strip() if field in cols else ""
+
+
 def load_prices():
-    """{(sido 또는 '', name_key): [ {category,item,price,unit,note,date,source} ]}"""
-    result, files_info = defaultdict(list), []
+    """가격 행 목록과 시설 목록(주소·전화, 연결용)을 읽는다.
+    반환: (prices: {원본 시설명: [항목...]}, directory: {원본 시설명: {sido, address, tel}}, files_info)"""
+    prices, directory, files_info = defaultdict(list), {}, []
     if not PRICE_DIR.exists():
-        return result, files_info
+        return prices, directory, files_info
     for path in sorted(PRICE_DIR.glob("*.csv")):
         rows = read_csv_any(path)
         if not rows:
             continue
         cols = map_price_columns(list(rows[0].keys()))
-        files_info.append((path.name, len(rows), cols))
-        if "name" not in cols or "price" not in cols:
-            print(f"  가격 파일 {path.name}: 시설명/금액 열을 찾지 못해 건너뜀 → 열 이름 {list(rows[0].keys())}")
+        m = re.search(r"(20\d{2})(\d{2})(\d{2})", path.stem)
+        file_date = f"{m.group(1)}-{m.group(2)}-{m.group(3)}" if m else ""
+        if "name" not in cols:
+            print(f"  {path.name}: 시설명 열을 찾지 못해 건너뜀 → 열 이름 {list(rows[0].keys())}")
             continue
+        if "price" not in cols:  # 시설 목록 파일 (주소·전화로 연결하는 데 사용)
+            if "address" in cols or "tel" in cols:
+                for r in rows:
+                    nm = _cell(r, cols, "name")
+                    if nm:
+                        directory[nm] = {"sido": normalize_sido(_cell(r, cols, "sido"), _cell(r, cols, "address")),
+                                         "address": _cell(r, cols, "address"), "tel": _cell(r, cols, "tel")}
+                files_info.append((path.name, len(rows), "시설 목록(연결용)"))
+            continue
+        n = 0
         for r in rows:
-            won = parse_won(r.get(cols["price"]))
-            name = (r.get(cols["name"]) or "").strip()
-            if not name or not won:
+            if "ftype" in cols and "봉안" not in _cell(r, cols, "ftype"):
                 continue
-            sido = normalize_sido(r.get(cols.get("sido", ""), "") or "") if "sido" in cols else ""
-            result[(sido if sido != "기타" else "", name_key(name))].append({
-                "category": (r.get(cols.get("category", ""), "") or "").strip() if "category" in cols else "",
-                "item": (r.get(cols.get("item", ""), "") or "").strip() if "item" in cols else "",
-                "price": won,
-                "unit": (r.get(cols.get("unit", ""), "") or "").strip() if "unit" in cols else "",
-                "note": (r.get(cols.get("note", ""), "") or "").strip() if "note" in cols else "",
-                "date": (r.get(cols.get("date", ""), "") or "").strip() if "date" in cols else "",
-                "source": path.stem,
+            won = parse_won(r.get(cols["price"]))
+            nm = _cell(r, cols, "name")
+            if not nm or not won:
+                continue
+            text = " ".join(_cell(r, cols, k) for k in ("category", "item", "unit", "note"))
+            if won < 10000 and "만원" in text.replace(" ", ""):
+                won *= 10000          # '90' 처럼 만 원 단위로 적힌 값
+            elif won < 1000 and not any(w in text for w in MGMT_WORDS):
+                continue              # 단위를 알 수 없는 값은 비교에서 제외
+            prices[nm].append({
+                "category": _cell(r, cols, "category"), "item": _cell(r, cols, "item"), "price": won,
+                "unit": _cell(r, cols, "unit"), "note": _cell(r, cols, "note"),
+                "date": _cell(r, cols, "date") or file_date, "source": path.stem,
+                "sido": normalize_sido(_cell(r, cols, "sido")) if "sido" in cols else "",
             })
-    return result, files_info
+            n += 1
+        files_info.append((path.name, n, "가격"))
+    return prices, directory, files_info
 
 
-MGMT_WORDS = ("관리비", "관리료", "유지")
+MGMT_WORDS = ("관리비", "관리료", "유지비")
 
 
-def attach_prices(facs, prices):
-    by_key = defaultdict(list)
-    for (sido, key), items in prices.items():
-        by_key[key].append((sido, items))
+def is_mgmt(it):
+    return any(w in (it["category"] + it["item"] + it["unit"]) for w in MGMT_WORDS)
+
+
+def attach_prices(facs, prices, directory):
+    """가격표의 시설명을 API 시설과 연결한다. 전화번호 → 주소 → 이름 순으로 확인."""
+    by_tel, by_addr, by_name, by_key = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
+    for f in facs:
+        if tel_key(f["tel"]):
+            by_tel[tel_key(f["tel"])].append(f)
+        if addr_key(f["address"]):
+            by_addr[(f["sido"], addr_key(f["address"]))].append(f)
+        by_name[re.sub(r"\s", "", f["name"])].append(f)
+        by_key[(f["sido"], name_key(f["name"]))].append(f)
+    for f in facs:
+        f["prices"] = []
+    unmatched = []
+    for pname, items in prices.items():
+        info = directory.get(pname, {})
+        sido = info.get("sido") or next((it["sido"] for it in items if it.get("sido")), "")
+        target = None
+        cands = by_name.get(re.sub(r"\s", "", pname), [])
+        if sido:
+            cands = [c for c in cands if c["sido"] == sido] or ([] if len(cands) > 1 else cands)
+        if len(cands) == 1:
+            target = cands[0]
+        if target is None and tel_key(info.get("tel")):
+            c = by_tel.get(tel_key(info["tel"]), [])
+            # 같은 전화번호를 쓰는 시설이 여럿이면 이름이 가장 비슷한 곳
+            c = [x for x in c if name_key(x["name"]) == name_key(pname)] or (c if len(c) == 1 else [])
+            if len(c) == 1:
+                target = c[0]
+        if target is None and addr_key(info.get("address")) and sido:
+            c = by_addr.get((sido, addr_key(info["address"])), [])
+            c = [x for x in c if name_key(x["name"]) == name_key(pname)] or (c if len(c) == 1 else [])
+            if len(c) == 1:
+                target = c[0]
+        if target is None and sido:
+            c = by_key.get((sido, name_key(pname)), [])
+            if len(c) == 1 and len(name_key(pname)) >= 2:
+                target = c[0]
+        if target is None:
+            unmatched.append(pname)
+            continue
+        target["prices"].extend(items)
     matched = 0
     for f in facs:
-        key = name_key(f["name"])
-        items = []
-        for sido, its in by_key.get(key, []):
-            if not sido or sido == f["sido"]:
-                items.extend(its)
-        if not items and len(key) >= 4:  # 이름 일부 일치: 같은 시도에서 후보가 딱 하나일 때만 (오연결 방지)
-            cands = [(k, its) for (sido, k), its in prices.items()
-                     if sido == f["sido"] and len(k) >= 4 and (k in key or key in k)
-                     and not re.search(r"\d", key.replace(k, "") if k in key else k.replace(key, ""))]
-            if len({k for k, _ in cands}) == 1:
-                for _, its in cands:
-                    items.extend(its)
-        # 중복 제거
         seen, uniq = set(), []
-        for it in items:
-            sig = (it["category"], it["item"], it["price"], it["unit"])
+        for it in f["prices"]:
+            sig = (it["category"], it["item"], it["unit"], it["price"])
             if sig not in seen:
                 seen.add(sig)
                 uniq.append(it)
-        uniq.sort(key=lambda it: (any(w in (it["category"] + it["item"]) for w in MGMT_WORDS), it["price"]))
+        uniq.sort(key=lambda it: (is_mgmt(it), it["price"]))
         f["prices"] = uniq
-        use = [it["price"] for it in uniq if not any(w in (it["category"] + it["item"]) for w in MGMT_WORDS)]
-        f["price_min"] = min(use) if use else (min(it["price"] for it in uniq) if uniq else None)
+        use = [it["price"] for it in uniq if not is_mgmt(it)]
+        f["price_min"] = min(use) if use else None
         f["price_max"] = max(use) if use else None
+        for t in PRICE_TYPES:
+            its = [it for it in uniq if not is_mgmt(it) and price_type(it) == t]
+            best = min(its, key=lambda it: it["price"]) if its else None
+            f["p_" + t] = best["price"] if best else None
+            f["pn_" + t] = item_label(best) if best else ""
+        mg = [it for it in uniq if is_mgmt(it)]
+        best = min(mg, key=lambda it: it["price"]) if mg else None
+        f["p_mgmt"] = best["price"] if best else None
+        f["pn_mgmt"] = item_label(best) if best else ""
         if uniq:
             matched += 1
-    return matched
+    return matched, unmatched
+
+
+PRICE_TYPES = ["single", "couple", "other"]
+PRICE_TYPE_LABEL = {"single": "개인단(1위)", "couple": "부부단(2위)", "other": "기타(가족단·평장·봉안묘 등)", "mgmt": "관리비"}
+
+
+def price_type(it):
+    t = it["category"] + " " + it["item"] + " " + it["unit"]
+    if any(w in t for w in ("부부", "2위", "2인", "쌍")):
+        return "couple"
+    if any(w in t for w in ("개인", "1위", "1인", "싱글", "단독")):
+        return "single"
+    return "other"
+
+
+def item_label(it):
+    parts = [x for x in (it["item"], it["unit"]) if x and x != it["category"]]
+    lab = " · ".join(parts) or it["category"]
+    return lab[:60]
 
 
 def fmt_won(n):
@@ -635,6 +730,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
       <a href="{r}type/public.html">공설</a>
       <a href="{r}type/private.html">사설</a>
       <a href="{r}feature/price.html">가격 비교</a>
+      <a href="{r}pages/recommend.html">예산 추천</a>
       <a href="{r}guides/index.html">가이드</a>
     </nav>
   </div>
@@ -1106,6 +1202,172 @@ def page_period(out, facs):
                                                   crumbs=[("편의시설별", None), ("최대 안치기간", None)], depth=depth))
 
 
+
+def _q(vals, q):
+    v = sorted(vals)
+    if not v:
+        return None
+    return v[min(len(v) - 1, int(round((len(v) - 1) * q)))]
+
+
+def price_hub_links(depth):
+    r = rel(depth)
+    cards = [("compare/facilities.html", "업체별 가격 비교", "시설마다 개인단·부부단·관리비를 한 표에서 비교"),
+             ("compare/types.html", "종류별 가격 비교", "개인단·부부단·가족단의 전국 가격 분포"),
+             ("compare/regions.html", "지역별 가격 비교", "시도별 중간 가격과 가장 저렴한 곳"),
+             ("pages/recommend.html", "예산으로 추천받기", "원하는 가격을 넣으면 맞는 봉안당을 골라 줌")]
+    return '<div class="feature-grid hub">' + "".join(
+        f'<a class="feature-card" href="{r}{u}"><strong>{E(t)}</strong><span>{E(d)}</span></a>' for u, t, d in cards) + "</div>"
+
+
+def page_compare_facilities(out, facs):
+    depth = 1
+    r = rel(depth)
+    priced = sorted([f for f in facs if f.get("price_min")], key=lambda f: (f.get("p_single") or f["price_min"]))
+    def td(v, label=""):
+        return f'<td class="num" data-v="{v if v else ""}" title="{E(label)}">{fmt_won(v) if v else "–"}</td>'
+    rows = "".join(
+        f'<tr data-sido="{E(f["sido"])}" data-kind="{E(f["kind"])}"><td><a href="{r}{facility_url(f)}">{E(f["name"])}</a></td>'
+        f'<td class="hide-sm">{E(SIDO_SHORT.get(f["sido"], f["sido"]))} {E(f["sigungu"])}</td><td>{kind_badge(f["kind"])}</td>'
+        + td(f.get("p_single"), f.get("pn_single")) + td(f.get("p_couple"), f.get("pn_couple")) + td(f.get("p_other"), f.get("pn_other"))
+        + td(f.get("p_mgmt"), f.get("pn_mgmt"))
+        + f'<td class="num hide-sm" data-v="{f["max_period"] or ""}">{fmt_years(f["max_period"]) if f["max_period"] else "–"}</td></tr>'
+        for f in priced)
+    sidos = "".join(f'<option>{E(sd)}</option>' for sd in SIDO if any(f["sido"] == sd for f in priced))
+    body = f"""<header class="page-head"><p class="eyebrow">가격 비교</p><h1>업체별 봉안당 가격 비교</h1>
+<p class="lead">가격 정보가 있는 봉안시설 {len(priced):,}곳의 종류별 최저 가격을 한 표에 모았습니다. 열 제목을 누르면 정렬되고, 금액에 마우스를 올리면 해당 상품명이 보입니다.</p></header>
+<div class="filters compact-filters">
+  <label>시도<select id="cf-sido"><option value="">전체</option>{sidos}</select></label>
+  <label>구분<select id="cf-kind"><option value="">전체</option><option>공설</option><option>사설</option></select></label>
+  <label>시설명<input id="cf-q" type="search" placeholder="시설명 검색"></label>
+</div>
+<p class="muted small" id="cf-count"></p>
+<section class="card"><div class="table-wrap"><table class="list sortable" id="cf-table"><thead><tr>
+<th data-sort="text">시설명</th><th class="hide-sm">지역</th><th>구분</th><th class="num" data-sort="num">개인단</th><th class="num" data-sort="num">부부단</th>
+<th class="num" data-sort="num">기타</th><th class="num" data-sort="num">관리비</th><th class="num hide-sm" data-sort="num">최대 안치</th>
+</tr></thead><tbody>{rows}</tbody></table></div>
+<p class="muted small">금액은 해당 종류에서 가장 낮은 상품 가격입니다. 관리비는 1년치인지 전체 기간치인지 시설마다 다르니 상세 페이지의 가격표를 확인하세요. 출처: 한국장례문화진흥원 장사시설 가격정보(2023-06-01 기준).</p></section>
+{price_hub_links(depth)}
+<script src="{r}static/site.js" defer></script>"""
+    write(out, "compare/facilities.html", layout("compare/facilities.html", "업체별 봉안당 가격 비교",
+                                                 f"봉안시설 {len(priced):,}곳의 개인단·부부단·관리비 가격을 한 표에서 비교하세요.", body,
+                                                 crumbs=[("가격 비교", "feature/price.html"), ("업체별", None)], depth=depth))
+
+
+def page_compare_types(out, facs):
+    depth = 1
+    r = rel(depth)
+    intro = {"single": "한 분을 모시는 칸입니다. 봉안당 가격 비교의 기본 기준이 됩니다.",
+             "couple": "부부를 함께 모시는 칸입니다. 개인단 두 칸보다 저렴한 경우가 많지만, 나중에 함께 모실 계획이 있을 때 고릅니다.",
+             "other": "가족단, 평장, 봉안묘, 봉안탑, 무연고 안치 등 개인·부부단이 아닌 상품입니다. 형태가 다양해 가격 폭이 넓습니다.",
+             "mgmt": "시설 유지에 드는 비용입니다. 1년 단위로 내는 곳과 여러 해 치를 한 번에 내는 곳이 섞여 있어 단순 비교에 주의하세요."}
+    secs, summary_rows = [], []
+    for t in PRICE_TYPES + ["mgmt"]:
+        key = "p_" + t
+        have = [f for f in facs if f.get(key)]
+        if not have:
+            continue
+        vals = [f[key] for f in have]
+        pub = [f[key] for f in have if f["kind"] == "공설"]
+        pri = [f[key] for f in have if f["kind"] == "사설"]
+        summary_rows.append(f'<tr><td>{PRICE_TYPE_LABEL[t]}</td><td class="num">{len(have):,}곳</td><td class="num">{fmt_won(min(vals))}</td>'
+                            f'<td class="num">{fmt_won(_q(vals, .5))}</td><td class="num">{fmt_won(max(vals))}</td>'
+                            f'<td class="num hide-sm">{fmt_won(_q(pub, .5)) if pub else "–"}</td><td class="num hide-sm">{fmt_won(_q(pri, .5)) if pri else "–"}</td></tr>')
+        cheap = sorted(have, key=lambda f: f[key])[:15]
+        lis = "".join(f'<tr><td><a href="{r}{facility_url(f)}">{E(f["name"])}</a></td><td class="hide-sm">{E(SIDO_SHORT.get(f["sido"], f["sido"]))} {E(f["sigungu"])}</td>'
+                      f'<td>{kind_badge(f["kind"])}</td><td class="hide-sm small">{E(f.get("pn_" + t, ""))}</td><td class="num">{fmt_won(f[key])}</td></tr>' for f in cheap)
+        q1, q3 = _q(vals, .25), _q(vals, .75)
+        secs.append(f'<section class="card" id="{t}"><h2>{PRICE_TYPE_LABEL[t]}</h2><p>{E(intro[t])}</p>'
+                    f'<p class="small">가격이 등록된 {len(have):,}곳 가운데 절반은 <strong>{fmt_won(q1)}~{fmt_won(q3)}</strong> 사이입니다. 중간값은 {fmt_won(_q(vals, .5))}입니다.</p>'
+                    f'<h3>가장 저렴한 15곳</h3><div class="table-wrap"><table class="list"><thead><tr><th>시설명</th><th class="hide-sm">지역</th><th>구분</th><th class="hide-sm">상품</th><th class="num">가격</th></tr></thead><tbody>{lis}</tbody></table></div></section>')
+    body = f"""<header class="page-head"><p class="eyebrow">가격 비교</p><h1>종류별 봉안당 가격 비교</h1>
+<p class="lead">개인단, 부부단, 가족단 같은 상품 종류에 따라 가격이 어떻게 다른지 전국 가격 정보로 정리했습니다.</p></header>
+<section class="card"><h2>한눈에 보기</h2><div class="table-wrap"><table class="list"><thead><tr><th>종류</th><th class="num">시설 수</th><th class="num">최저</th><th class="num">중간값</th><th class="num">최고</th><th class="num hide-sm">공설 중간값</th><th class="num hide-sm">사설 중간값</th></tr></thead>
+<tbody>{"".join(summary_rows)}</tbody></table></div>
+<p class="muted small">각 시설에서 해당 종류의 가장 낮은 상품 가격을 모아 계산했습니다. 출처: 한국장례문화진흥원 장사시설 가격정보(2023-06-01 기준).</p></section>
+{"".join(secs)}
+{price_hub_links(depth)}"""
+    write(out, "compare/types.html", layout("compare/types.html", "종류별 봉안당 가격 비교 (개인단·부부단·가족단)",
+                                            "개인단·부부단·가족단·관리비의 전국 봉안당 가격 분포와 가장 저렴한 시설을 비교합니다.", body,
+                                            crumbs=[("가격 비교", "feature/price.html"), ("종류별", None)], depth=depth))
+
+
+def page_compare_regions(out, facs, groups):
+    depth = 1
+    r = rel(depth)
+    rows, bars, secs = [], [], []
+    meds = {}
+    for sd, v in groups.items():
+        s1 = [f["p_single"] for f in v if f.get("p_single")]
+        s2 = [f["p_couple"] for f in v if f.get("p_couple")]
+        if not s1 and not s2:
+            continue
+        pub = [f["p_single"] for f in v if f.get("p_single") and f["kind"] == "공설"]
+        pri = [f["p_single"] for f in v if f.get("p_single") and f["kind"] == "사설"]
+        n = sum(1 for f in v if f.get("price_min"))
+        meds[sd] = _q(s1, .5) if s1 else None
+        rows.append(f'<tr><td><a href="#{sido_slug(sd)}">{E(sd)}</a></td><td class="num">{n}곳</td><td class="num">{fmt_won(min(s1)) if s1 else "–"}</td>'
+                    f'<td class="num">{fmt_won(_q(s1, .5)) if s1 else "–"}</td><td class="num">{fmt_won(_q(s2, .5)) if s2 else "–"}</td>'
+                    f'<td class="num hide-sm">{fmt_won(_q(pub, .5)) if pub else "–"}</td><td class="num hide-sm">{fmt_won(_q(pri, .5)) if pri else "–"}</td></tr>')
+        cheap = sorted([f for f in v if f.get("price_min")], key=lambda f: f.get("p_single") or f["price_min"])[:5]
+        lis = "".join(f'<li><a href="{r}{facility_url(f)}">{E(f["name"])}</a> {kind_badge(f["kind"])} <span class="muted">{E(f["sigungu"])}</span> · '
+                      f'<strong>{fmt_won(f.get("p_single") or f["price_min"])}</strong>{"" if f.get("p_single") else " (기타 상품)"}</li>' for f in cheap)
+        secs.append(f'<section class="card"><h2 id="{sido_slug(sd)}">{E(sd)}</h2><p class="small">개인단 중간 가격 {fmt_won(meds[sd]) if meds[sd] else "정보 없음"} · 가격 등록 {n}곳</p>'
+                    f'<h3>저렴한 곳 5곳</h3><ul class="link-list">{lis}</ul><p class="small"><a href="{r}{region_url(sd)}">{E(sd)} 전체 시설 보기</a></p></section>')
+    top = max([m for m in meds.values() if m] or [1])
+    bars = "".join(f'<div class="bar-row"><span class="bar-label">{E(SIDO_SHORT.get(sd, sd))}</span><span class="bar-track"><span class="bar" style="width:{max(2, round(m * 100 / top))}%"></span></span><span class="bar-val">{fmt_won(m)}</span></div>'
+                   for sd, m in sorted(meds.items(), key=lambda kv: kv[1] or 0) if m)
+    body = f"""<header class="page-head"><p class="eyebrow">가격 비교</p><h1>지역별 봉안당 가격 비교</h1>
+<p class="lead">시도마다 봉안당 가격이 얼마나 다른지 개인단·부부단 중간 가격으로 비교했습니다. 공설이 많은 지역일수록 중간 가격이 낮게 나오는 경향이 있습니다.</p></header>
+<section class="card"><h2>시도별 개인단 중간 가격</h2><div class="bars">{bars}</div></section>
+<section class="card"><h2>시도별 가격 요약</h2><div class="table-wrap"><table class="list"><thead><tr><th>시도</th><th class="num">가격 등록</th><th class="num">개인단 최저</th><th class="num">개인단 중간값</th><th class="num">부부단 중간값</th><th class="num hide-sm">공설 개인단</th><th class="num hide-sm">사설 개인단</th></tr></thead>
+<tbody>{"".join(rows)}</tbody></table></div><p class="muted small">출처: 한국장례문화진흥원 장사시설 가격정보(2023-06-01 기준). 공설 시설은 관내·관외 주민 요금이 다를 수 있습니다.</p></section>
+{"".join(secs)}
+{price_hub_links(depth)}"""
+    write(out, "compare/regions.html", layout("compare/regions.html", "지역별 봉안당 가격 비교",
+                                              "시도별 봉안당 개인단·부부단 중간 가격과 지역에서 가장 저렴한 시설을 비교합니다.", body,
+                                              crumbs=[("가격 비교", "feature/price.html"), ("지역별", None)], depth=depth))
+
+
+def page_recommend(out, groups):
+    depth = 1
+    r = rel(depth)
+    options = "".join(f'<option value="{E(sd)}">{E(sd)}</option>' for sd in groups)
+    body = f"""<header class="page-head"><p class="eyebrow">가격 비교</p><h1>예산으로 봉안당 추천받기</h1>
+<p class="lead">생각하는 예산과 조건을 넣으면, 예산 안에 드는 봉안당을 편의시설과 안치기간까지 따져 추천해 드립니다.</p></header>
+<form id="rec-form" class="card rec-form" onsubmit="return false">
+  <div class="rec-grid">
+    <label>예산 (만 원)<input id="rb" type="number" min="1" step="1" inputmode="numeric" placeholder="예: 300"></label>
+    <label>모실 형태<select id="rt"><option value="single">한 분 (개인단)</option><option value="couple">부부 (부부단)</option><option value="any">상관없음</option></select></label>
+    <label>지역<select id="rs"><option value="">전국</option>{options}</select></label>
+    <label>운영<select id="rk"><option value="">상관없음</option><option>공설</option><option>사설</option></select></label>
+  </div>
+  <fieldset class="rec-amen"><legend>꼭 있어야 하는 편의시설</legend>
+    <label class="check"><input type="checkbox" value="parking_lot">주차장</label>
+    <label class="check"><input type="checkbox" value="accessible">장애인 편의</label>
+    <label class="check"><input type="checkbox" value="waiting_room">유족대기실</label>
+    <label class="check"><input type="checkbox" value="restaurant">식당</label>
+  </fieldset>
+  <div class="rec-actions"><button type="button" id="rgo">추천받기</button>
+    <label class="inline">정렬<select id="ro"><option value="best">추천순</option><option value="near">예산에 가까운 순</option><option value="cheap">저렴한 순</option></select></label></div>
+  <p id="rerr" class="err" role="alert"></p>
+</form>
+<div id="rec-summary" aria-live="polite"></div>
+<div id="rec-results" class="results"></div>
+<div id="rec-over"></div>
+<section class="card note"><h2>추천 기준</h2><ul class="tips">
+<li>모실 형태에 맞는 상품 가운데 가장 낮은 가격이 예산 이하인 시설만 보여 줍니다.</li>
+<li>추천순은 편의시설이 많을수록, 최대 안치기간이 길수록, 예산에 여유가 있을수록 위에 옵니다.</li>
+<li>관리비는 별도인 경우가 많습니다. 결과 카드의 관리비와 상세 가격표를 함께 확인하세요.</li>
+<li>가격은 한국장례문화진흥원 공개 자료(2023-06-01 기준)이며 지금은 다를 수 있습니다. 계약 전 시설에 꼭 확인하세요.</li></ul></section>
+{price_hub_links(depth)}
+<script src="{r}static/site.js" defer></script>"""
+    write(out, "pages/recommend.html", layout("pages/recommend.html", "예산으로 봉안당 추천받기",
+                                              "예산과 지역, 개인단·부부단, 편의시설 조건을 넣으면 맞는 봉안당을 추천합니다.", body,
+                                              crumbs=[("가격 비교", "feature/price.html"), ("예산 추천", None)], depth=depth))
+
+
+
 def page_price(out, facs, groups):
     depth = 1
     r = rel(depth)
@@ -1122,13 +1384,19 @@ def page_price(out, facs, groups):
         for sd, v in groups.items() for p in [[x for x in v if x.get("price_min")]] if p)
     note = ("가격은 각 시설이 공개한 이용 요금 가운데 관리비를 뺀 가장 낮은 금액(최저가)입니다. 같은 시설이라도 안치단 높이·위치, 1위용·부부용, "
             "안치기간에 따라 가격이 크게 달라집니다. 반드시 시설에 현재 가격을 확인하세요.")
-    body = f"""<header class="page-head"><h1>가격대별 봉안당 비교</h1>
-<p class="lead">가격 정보가 등록된 봉안시설 {len(priced):,}곳을 최저가 기준으로 나눴습니다.</p><p class="small muted">{E(note)}</p><p class="small">{toc}</p></header>
+    body = f"""<header class="page-head"><h1>봉안당 가격 비교</h1>
+<p class="lead">가격 정보가 등록된 봉안시설 {len(priced):,}곳을 최저가 기준으로 나눴습니다.</p><p class="small muted">{E(note)}</p></header>
+{price_hub_links(depth)}
+<p class="small">가격대 바로가기: {toc}</p>
 {f'<section class="card"><h2>시도별 가격 요약</h2><div class="table-wrap"><table class="list"><thead><tr><th>시도</th><th class="num">가격 등록</th><th class="num">최저가</th><th class="num">중간값</th></tr></thead><tbody>{by_sido}</tbody></table></div></section>' if by_sido else ''}
 {''.join(secs) or '<section class="card"><p>아직 등록된 가격 정보가 없습니다.</p></section>'}
 {guide_links(depth, ["cost-structure", "contract-checklist", "public-vs-private"])}"""
-    write(out, "feature/price.html", layout("feature/price.html", "가격대별 봉안당 비교", f"봉안시설 {len(priced):,}곳의 공개 가격을 가격대별·시도별로 비교합니다.", body,
+    write(out, "feature/price.html", layout("feature/price.html", "봉안당 가격 비교", f"봉안시설 {len(priced):,}곳의 공개 가격을 가격대별·시도별로 비교합니다.", body,
                                             crumbs=[("가격 비교", None)], depth=depth))
+    page_compare_facilities(out, facs)
+    page_compare_types(out, facs)
+    page_compare_regions(out, facs, groups)
+    page_recommend(out, groups)
 
 
 def page_index(out, facs, groups):
@@ -1144,6 +1412,12 @@ def page_index(out, facs, groups):
     <input id="q" name="q" type="search" placeholder="시설명, 시군구, 주소로 검색 (예: 김포, 추모공원)" autocomplete="off">
     <button type="submit">검색</button>
   </form>
+  <form class="search-box budget-box" action="pages/recommend.html" method="get">
+    <label class="sr-only" for="hb">예산(만 원)</label>
+    <input id="hb" name="b" type="number" min="1" step="1" inputmode="numeric" placeholder="예산(만 원)으로 추천받기 · 예: 300">
+    <select name="t" aria-label="모실 형태"><option value="single">개인단</option><option value="couple">부부단</option><option value="any">상관없음</option></select>
+    <button type="submit">추천받기</button>
+  </form>
 </section>
 {stat_cards(st)}
 <section class="card"><h2>지역별로 찾기</h2><div class="region-grid">{cards}</div></section>
@@ -1151,6 +1425,8 @@ def page_index(out, facs, groups):
   <a class="feature-card" href="type/public.html"><strong>공설 봉안당</strong><span>{st['pub']:,}곳</span></a>
   <a class="feature-card" href="type/private.html"><strong>사설 봉안당</strong><span>{st['pri']:,}곳</span></a>
   {feats}
+  <a class="feature-card" href="pages/recommend.html"><strong>예산으로 추천받기</strong><span>원하는 가격에 맞는 곳</span></a>
+  <a class="feature-card" href="compare/regions.html"><strong>지역별 가격 비교</strong><span>시도별 중간 가격</span></a>
   <a class="feature-card" href="feature/price.html"><strong>가격대별 비교</strong><span>{sum(1 for f in facs if f.get("price_min")):,}곳 가격 등록</span></a>
   <a class="feature-card" href="feature/long-period.html"><strong>최대 안치기간 비교</strong><span>기간별 보기</span></a>
 </div></section>
@@ -1180,13 +1456,15 @@ def page_search(out, groups):
 <p id="result-count" class="muted" aria-live="polite">불러오는 중…</p>
 <div id="results" class="results"></div>
 <noscript><p>검색 기능은 자바스크립트가 필요합니다. <a href="../region/index.html">지역별 목록</a>을 이용해 주세요.</p></noscript>
-<script src="../static/search.js" defer></script>"""
+<script src="../static/site.js" defer></script>"""
     write(out, "pages/search.html", layout("pages/search.html", "봉안시설 검색", "전국 봉안시설을 시설명, 주소, 지역, 공설·사설, 편의시설로 검색합니다.", body, crumbs=[("검색", None)], depth=1))
 
 
 def search_index(out, facs):
     data = [{"i": f["id"], "n": f["name"], "s": f["sido"], "g": f["sigungu"], "a": f["address"], "k": f["kind"],
-             "p": f["first_period"], "pr": f.get("price_min"), "u": facility_url(f), "f": [k for k, _ in AMENITIES if f[k] is True]} for f in facs]
+             "p": f["first_period"], "pr": f.get("price_min"), "ps": f.get("p_single"), "pc": f.get("p_couple"), "po": f.get("p_other"),
+             "mg": f.get("p_mgmt"), "psn": f.get("pn_single", ""), "pcn": f.get("pn_couple", ""), "pon": f.get("pn_other", ""),
+             "mp": f.get("max_period"), "t": f["tel"], "u": facility_url(f), "f": [k for k, _ in AMENITIES if f[k] is True]} for f in facs]
     (out / "data").mkdir(parents=True, exist_ok=True)
     (out / "data" / "search.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
@@ -1291,7 +1569,7 @@ def seo_files(out):
 # 8. 실행
 # ---------------------------------------------------------------------------
 
-GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data"]
+GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare"]
 GENERATED_FILES = ["index.html", "404.html", "robots.txt", "sitemap.xml", "ads.txt", ".nojekyll"]
 
 
@@ -1398,12 +1676,14 @@ def main():
         return
 
     facs, fmap = normalize(records)
-    prices, price_files = load_prices()
-    matched = attach_prices(facs, prices)
+    prices, directory, price_files = load_prices()
+    matched, unmatched = attach_prices(facs, prices, directory)
     if price_files:
-        for name, n, cols in price_files:
-            print(f"가격 파일 {name}: {n:,}행, 연결된 열 {cols}")
-        print(f"가격 정보가 연결된 시설: {matched:,}곳 / {len(facs):,}곳")
+        for name, n, kind in price_files:
+            print(f"{kind} 파일 {name}: {n:,}행")
+        print(f"가격 정보가 연결된 시설: {matched:,}곳 / {len(facs):,}곳 (가격표 시설 {len(prices):,}곳 중 {len(prices) - len(unmatched):,}곳 연결)")
+        if unmatched:
+            print(f"  연결 못 한 가격표 시설 {len(unmatched)}곳: " + ", ".join(sorted(unmatched)[:30]) + (" ..." if len(unmatched) > 30 else ""))
     else:
         print("가격 파일이 없습니다. _builder/prices 폴더에 CSV를 넣으면 가격이 표시됩니다.")
     missing = [FIELD_LABELS[f] for f in FIELD_LABELS if f not in fmap]

@@ -18,7 +18,7 @@
 
 ## 올리는 방법 (웹에서 한 번에 끌어다 놓기)
 
-전체 파일이 약 85개라 GitHub 웹 업로드 한도(100개) 안에 들어갑니다.
+전체 파일이 약 90개라 GitHub 웹 업로드 한도(100개) 안에 들어갑니다.
 
 1. `_builder/build.bat` 를 더블클릭해 실행합니다. 맨 위 폴더에 `index.html` 과 사이트 폴더들이 생깁니다.
 2. github.com → **New repository** → 이름 `내아이디.github.io`, Public → Create
@@ -34,8 +34,26 @@
 ## 페이지 구성 방식
 
 `_builder/config.json` 의 `mode` 로 고릅니다.
-- `compact` (기본): 시설 상세 정보를 시도 페이지 안에 모아 둡니다. 파일 약 55개.
+- `compact` (기본): 시설 상세 정보를 시도 페이지 안에 모아 둡니다. 파일 약 60개.
 - `full`: 시설마다 페이지를 따로 만듭니다. 파일 약 1,000개라 웹 업로드 대신 GitHub Desktop이나 자동 생성(Actions)이 필요합니다.
+
+## 가격 정보
+
+`_builder/prices/` 폴더의 CSV를 읽어 시설별 가격표, 가격 비교 페이지, 예산 추천에 씁니다.
+
+- `kfcpi_bongan_prices_20230601.csv` : 한국장례문화진흥원 장사시설 가격정보(2023-06-01) 중 봉안시설 부분
+- `kfcpi_bongan_facilities_20230601.csv` : 같은 자료의 봉안시설 목록. 가격표 시설을 전화번호·주소로 찾아 연결하는 데 씁니다
+- `prices_manual.csv` : 직접 조사했거나 제휴처에서 받은 가격을 적는 곳. 한 줄에 한 항목
+  예) `하늘의문,인천광역시,개인단,1위 15년,3500000,15년,눈높이 칸,2026-10-12`
+
+새 가격 파일(CSV)을 이 폴더에 넣고 `build.bat` 를 실행하면 자동으로 반영됩니다.
+
+### 가격 관련 페이지
+- `feature/price.html` 가격 비교 첫 화면 (가격대별)
+- `compare/facilities.html` 업체별 비교 (정렬·필터 되는 표)
+- `compare/types.html` 종류별 비교 (개인단·부부단·기타·관리비)
+- `compare/regions.html` 지역별 비교 (시도별 중간 가격 그래프)
+- `pages/recommend.html` 예산 추천 (예산·형태·지역·편의시설 조건)
 
 ## 설정 바꾸기
 
