@@ -896,9 +896,164 @@ def section_of(path):
         path, "info" if path.startswith("pages/") else "")
 
 
+# ---------------------------------------------------------------------------
+# 검색 노출(SEO): 페이지별 제목·설명·키워드·자주 묻는 질문
+# ---------------------------------------------------------------------------
+SEO_OVERRIDE = {}
+SEO_NAME = {"서울특별시": "서울", "부산광역시": "부산", "대구광역시": "대구", "인천광역시": "인천", "광주광역시": "광주",
+            "대전광역시": "대전", "울산광역시": "울산", "세종특별자치시": "세종", "경기도": "경기도", "강원특별자치도": "강원도",
+            "충청북도": "충북", "충청남도": "충남", "전북특별자치도": "전북", "전라남도": "전남", "경상북도": "경북",
+            "경상남도": "경남", "제주특별자치도": "제주"}
+BASE_KW = ["봉안당", "납골당", "봉안당 가격", "납골당 가격", "봉안당 비용", "납골당 추천", "봉안당 가격비교", "공설 봉안당", "사설 납골당"]
+
+
+def _short_sgg(g):
+    g = g.split()[0] if g else g
+    return re.sub(r"(시|군|구)$", "", g) if len(g) > 2 else g
+
+
+def _median(vals):
+    v = sorted(x for x in vals if x)
+    return v[len(v) // 2] if v else None
+
+
+def prepare_seo(facs, groups):
+    SEO_OVERRIDE.clear()
+    singles = [f.get("p_single") for f in facs]
+    couples = [f.get("p_couple") for f in facs]
+    periods = Counter(f["first_period"] for f in facs if f["first_period"])
+    common_period = periods.most_common(1)[0][0] if periods else None
+    n_pub = sum(1 for f in facs if f["kind"] == "공설")
+    n_pri = sum(1 for f in facs if f["kind"] == "사설")
+    fh = [x for x in FUNERAL if x["kind"] == "장례식장"]
+    cr = [x for x in FUNERAL if x["kind"] == "화장시설"]
+    room = _median([x["price"].get("빈소1일최저") for x in fh])
+    cre_in, cre_out = _median([x["cre_in"] for x in cr]), _median([x["cre_out"] for x in cr])
+
+    home_faq = [
+        ("봉안당과 납골당은 같은 곳인가요?", "네, 같은 시설입니다. 화장한 유골을 모시는 건물을 예전에는 납골당이라고 불렀고, 지금 법령(장사법)에서는 봉안당이라고 부릅니다. 봉안당·봉안탑·봉안묘·봉안담을 합쳐 봉안시설이라고 합니다."),
+        ("봉안당 가격은 보통 얼마인가요?", (f"공개된 가격표 기준으로 개인단 중간 가격은 {fmt_won(_median(singles))}" + (f", 부부단은 {fmt_won(_median(couples))}" if _median(couples) else "") + "입니다. ") if _median(singles) else "시설마다 크게 다릅니다. "
+         + "공설은 수십만 원대부터, 사설은 안치단 높이와 위치에 따라 수백만~수천만 원까지 차이가 납니다. 관리비가 따로 붙는지도 꼭 확인하세요."),
+        ("공설 봉안당과 사설 봉안당은 무엇이 다른가요?", f"공설은 시·군·구가 운영해 저렴하지만 그 지역 주민 등 이용 자격이 있는 경우가 많습니다. 사설은 재단법인·종교단체가 운영해 자격 제한이 적은 대신 가격 차이가 큽니다. 전국에 공설 {n_pub}곳, 사설 {n_pri}곳이 있습니다."),
+        ("봉안당에는 몇 년 동안 모실 수 있나요?", (f"가장 많은 시설이 최초 안치기간을 {common_period:g}년으로 정하고 있고, " if common_period else "") + "기간이 끝나면 정해진 횟수만큼 연장할 수 있습니다. 시설마다 연장 기간과 횟수가 다르니 계약 전에 확인하세요."),
+    ]
+    if cre_in:
+        home_faq.append(("화장 비용은 얼마인가요?", f"공설 화장시설의 대인 화장료 중간값은 고인 주소지가 그 지역이면(관내) {fmt_won(cre_in)}" + (f", 다른 지역이면(관외) {fmt_won(cre_out)}" if cre_out else "") + "입니다. 예약은 e하늘 장사정보시스템에서 합니다."))
+    if room:
+        home_faq.append(("장례식장 비용은 얼마나 드나요?", f"장례식장마다 가장 작은 빈소의 하루 사용료 중간값은 {fmt_won(room)}입니다. 여기에 안치료, 염습, 관·수의, 음식값이 더해지므로 지역별 장례식장 페이지에서 항목별 가격을 비교해 보세요."))
+
+    SEO_OVERRIDE["index.html"] = {
+        "title": "봉안당·납골당 가격 비교와 추천, 장례식장·화장장 찾기",
+        "desc": f"전국 봉안당(납골당) {len(facs):,}곳의 가격·위치·안치기간·주차를 지역별로 비교하고, 예산에 맞는 봉안당을 추천받으세요. 장례식장 {len(fh):,}곳·화장장 {len(cr)}곳 비용과 전화번호도 한곳에서.",
+        "kw": BASE_KW + ["봉안당 추천", "납골당 비용", "봉안당 순위", "장례식장 비용", "화장장", "화장 비용", "장례 절차", "수목장"],
+        "faq": home_faq,
+    }
+    for sido, v in groups.items():
+        if sido not in SEO_NAME:
+            continue
+        nm = SEO_NAME[sido]
+        sggs = [g for g, _ in Counter(f["sigungu"] for f in v).most_common(8) if g and g != "기타" and not g.startswith(SIDO_SHORT.get(sido, sido))][:6]
+        sg_names = [_short_sgg(g) for g in sggs]
+        s1 = _median([f.get("p_single") for f in v])
+        cheap = min((f for f in v if f.get("p_single")), key=lambda f: f["p_single"], default=None)
+        pub = [f for f in v if f["kind"] == "공설"]
+        park = sum(1 for f in v if f["parking_lot"] is True)
+        faq = [(f"{nm} 봉안당(납골당)은 몇 곳인가요?", f"{nm}에는 봉안시설이 {len(v)}곳 있습니다. 공설 {len(pub)}곳, 사설 {len(v) - len(pub)}곳이며 "
+                + (", ".join(sggs[:4]) + " 순으로 많습니다." if sggs else "시군구별 목록은 이 페이지에서 볼 수 있습니다."))]
+        if s1:
+            faq.append((f"{nm} 봉안당 가격은 얼마인가요?", f"가격이 공개된 시설 기준으로 {nm} 봉안당 개인단 중간 가격은 {fmt_won(s1)}입니다."
+                        + (f" 가장 저렴한 곳은 {cheap['name']}({fmt_won(cheap['p_single'])}부터)입니다." if cheap else "") + " 안치단 위치와 관리비에 따라 달라지니 시설에 확인하세요."))
+        if pub:
+            faq.append((f"{nm} 공설 봉안당은 어디인가요?", f"{nm} 공설 봉안시설은 " + ", ".join(f["name"] for f in pub[:5]) + (" 등" if len(pub) > 5 else "") + f" {len(pub)}곳입니다. 공설은 그 지역 주민 등 이용 자격이 있는 경우가 많습니다."))
+        faq.append((f"{nm}에서 주차할 수 있는 봉안당은?", f"{nm} 봉안시설 {len(v)}곳 중 {park}곳이 주차장을 갖추고 있습니다. 각 시설 정보의 주차장 항목을 확인하세요."))
+        kw = [f"{nm} 봉안당", f"{nm} 납골당", f"{nm} 봉안당 가격", f"{nm} 납골당 가격", f"{nm} 납골당 추천", f"{nm} 공설 봉안당"] + \
+             [f"{s} 봉안당" for s in sg_names[:4]] + [f"{s} 납골당" for s in sg_names[:4]]
+        SEO_OVERRIDE[region_url(sido)] = {
+            "title": f"{nm} 봉안당·납골당 {len(v)}곳 가격 비교·추천",
+            "desc": (f"{'·'.join(sg_names[:4])} 등 " if sg_names else "") + f"{nm} 봉안당(납골당) {len(v)}곳(공설 {len(pub)}·사설 {len(v) - len(pub)})의 가격, 위치, 안치기간, 주차장을 한눈에 비교하세요."
+                    + (f" 개인단 중간 가격 {fmt_won(s1)}." if s1 else ""),
+            "kw": kw, "faq": faq,
+        }
+    # 장례식장·화장장
+    fg = OrderedDict()
+    for x in FUNERAL:
+        fg.setdefault(x["sido"], []).append(x)
+    for sido, v in fg.items():
+        if sido not in SEO_NAME:
+            continue
+        nm = SEO_NAME[sido]
+        sf = [x for x in v if x["kind"] == "장례식장"]
+        sc = [x for x in v if x["kind"] == "화장시설"]
+        sg_names = [_short_sgg(g) for g, _ in Counter(x["sigungu"] for x in sf).most_common(6) if g and not g.startswith(SIDO_SHORT.get(sido, sido))][:4]
+        rm = _median([x["price"].get("빈소1일최저") for x in sf])
+        faq = [(f"{nm} 장례식장은 몇 곳인가요?", f"{nm}에는 장례식장 {len(sf)}곳" + (f"과 화장시설 {len(sc)}곳" if sc else "") + "이 있습니다.")]
+        if rm:
+            faq.append((f"{nm} 장례식장 비용은 얼마인가요?", f"{nm} 장례식장의 가장 작은 빈소 하루 사용료 중간값은 {fmt_won(rm)}입니다. 안치료·염습·관·수의 가격은 각 장례식장 카드에서 볼 수 있습니다."))
+        if sc:
+            faq.append((f"{nm} 화장장은 어디인가요?", f"{nm} 화장시설은 " + ", ".join(x["name"] for x in sc) + "입니다. 화장 예약은 e하늘 장사정보시스템(15774129.go.kr)에서 합니다."))
+        SEO_OVERRIDE[f"funeral/{sido_slug(sido)}.html"] = {
+            "title": f"{nm} 장례식장 {len(sf)}곳" + (f"·화장장 {len(sc)}곳" if sc else "") + " 비용·전화번호",
+            "desc": f"{nm} 장례식장 {len(sf)}곳" + (f"과 화장장 {len(sc)}곳" if sc else "") + "의 빈소 사용료, 안치료, 화장료, 전화번호를 시군구별로 비교하세요." + (f" 빈소 1일 중간값 {fmt_won(rm)}." if rm else ""),
+            "kw": [f"{nm} 장례식장", f"{nm} 장례식장 비용", f"{nm} 화장장", f"{nm} 장례식장 추천"] + [f"{s} 장례식장" for s in sg_names],
+            "faq": faq,
+        }
+    statics = {
+        "region/index.html": ("지역별 봉안당·납골당 찾기 (전국 17개 시도)", "서울·경기·인천·부산 등 전국 17개 시도의 봉안당(납골당)을 지도와 목록으로 찾고 가격·위치를 비교하세요.",
+                              ["지역별 봉안당", "서울 납골당", "경기도 납골당", "인천 봉안당", "부산 납골당", "근처 납골당"]),
+        "type/public.html": ("공설 봉안당·공설 납골당 목록과 가격", f"전국 공설 봉안당(공설 납골당) {n_pub}곳을 시도별로 정리했습니다. 이용 자격과 사용료를 확인하세요.",
+                             ["공설 봉안당", "공설 납골당", "공설 납골당 가격", "시립 납골당", "구립 봉안당"]),
+        "type/private.html": ("사설 봉안당·사설 납골당 목록", f"전국 사설 봉안당(사설 납골당) {n_pri}곳을 시도별로 정리했습니다. 가격과 계약 조건을 비교하세요.",
+                              ["사설 봉안당", "사설 납골당", "사설 납골당 가격", "납골당 추천", "봉안당 분양"]),
+        "feature/price.html": ("봉안당 가격 비교 · 납골당 가격표 한눈에", "전국 봉안당(납골당) 가격을 가격대별·시도별로 비교하세요. 개인단·부부단 가격과 관리비까지 공개 가격표 기준으로 정리했습니다.",
+                               ["봉안당 가격", "납골당 가격", "봉안당 가격비교", "납골당 비용", "납골당 가격표", "봉안당 시세"]),
+        "compare/facilities.html": ("업체별 봉안당 가격 비교표 (개인단·부부단·관리비)", "봉안당(납골당)별 개인단·부부단·관리비 가격을 한 표에서 정렬하고 비교하세요.",
+                                    ["봉안당 가격비교", "납골당 가격 비교", "봉안당 업체", "납골당 관리비"]),
+        "compare/types.html": ("개인단·부부단·가족단 봉안당 가격 비교", "개인단, 부부단, 가족단 봉안당(납골당) 가격 분포와 가장 저렴한 곳을 비교하세요.",
+                               ["부부단 가격", "개인단 가격", "가족 납골당", "부부 납골당 가격", "봉안당 부부단"]),
+        "compare/regions.html": ("지역별 봉안당 가격 비교 (시도별 중간 가격)", "서울·경기·인천 등 시도별 봉안당(납골당) 중간 가격과 가장 저렴한 곳을 비교하세요.",
+                                 ["지역별 납골당 가격", "서울 납골당 가격", "경기도 납골당 가격", "저렴한 납골당"]),
+        "pages/recommend.html": ("예산으로 봉안당·납골당 추천받기", "예산과 지역, 개인단·부부단, 주차장 같은 조건을 넣으면 맞는 봉안당(납골당)을 바로 추천합니다.",
+                                 ["봉안당 추천", "납골당 추천", "저렴한 납골당", "가성비 납골당", "예산 납골당"]),
+        "pages/ranking.html": ("전국 봉안당·납골당 순위 TOP 20", "편의시설·주차·가격·안치기간으로 매긴 전국 봉안당(납골당) 순위. 주차장 넓은 곳, 저렴한 곳, 오래 모실 수 있는 곳을 확인하세요.",
+                               ["봉안당 순위", "납골당 순위", "좋은 납골당", "납골당 추천 순위", "유명한 납골당"]),
+        "funeral/index.html": ("전국 장례식장·화장장 찾기 (비용·전화번호)", f"전국 장례식장 {len(fh):,}곳과 화장장 {len(cr)}곳의 빈소 사용료·안치료·화장료와 전화번호를 지역별로 비교하세요.",
+                               ["장례식장", "장례식장 비용", "장례식장 가격", "화장장", "화장장 비용", "화장 비용", "장례식장 찾기"]),
+        "feature/parking.html": ("주차장 있는 봉안당·납골당", "주차장을 갖춘 전국 봉안당(납골당)을 시도별로 모았습니다. 명절 참배 전에 주차 여건을 확인하세요.",
+                                 ["주차 가능한 납골당", "봉안당 주차", "납골당 주차장"]),
+        "feature/long-period.html": ("안치기간 긴 봉안당·납골당 (최대 안치기간 비교)", "최초 안치기간과 연장 조건으로 계산한 봉안당(납골당)별 최대 안치기간을 비교하세요.",
+                                     ["봉안당 안치기간", "납골당 기간", "납골당 연장", "영구 납골당"]),
+        "guides/index.html": ("장례·봉안 가이드 (절차·비용·계약 주의사항)", "장례 절차, 화장 예약, 봉안당 고르는 법, 비용 구조, 계약 주의사항까지 처음 준비하는 분을 위한 안내 모음.",
+                              ["장례 절차", "사망 후 절차", "봉안당 고르는 법", "납골당 계약", "화장 예약"]),
+        "pages/search.html": ("봉안당·납골당·장례식장 이름으로 검색", "전국 봉안당(납골당), 장례식장, 화장장을 이름이나 동네 이름으로 바로 찾으세요.",
+                              ["납골당 검색", "봉안당 찾기", "장례식장 검색"]),
+    }
+    for path, (t, d, k) in statics.items():
+        SEO_OVERRIDE[path] = {"title": t, "desc": d, "kw": k}
+
+
+def faq_section(faq):
+    items = "".join(f"<details><summary>{E(q)}</summary><p>{E(a)}</p></details>" for q, a in faq)
+    return f'<section class="card faq-sec"><h2>자주 묻는 질문</h2><div class="faq">{items}</div></section>'
+
+
+def faq_ld(faq):
+    return {"@context": "https://schema.org", "@type": "FAQPage",
+            "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faq]}
+
+
+def verify_meta():
+    out = []
+    if CONFIG.get("naver_site_verification"):
+        out.append(f'<meta name="naver-site-verification" content="{E(CONFIG["naver_site_verification"])}">')
+    if CONFIG.get("google_site_verification"):
+        out.append(f'<meta name="google-site-verification" content="{E(CONFIG["google_site_verification"])}">')
+    return "\n".join(out)
+
+
+ASSET_VER = hashlib.sha1(b"".join((ROOT / "static" / n).read_bytes() for n in ("style.css", "site.js"))).hexdigest()[:8]
 SECTION_ART = {"bongan": "bongan", "funeral": "funeral", "price": "price", "recommend": "recommend", "ranking": "ranking",
                "guide": "guide", "search": "search", "info": "info"}
-EMBLEM = ('<svg class="emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect width="48" height="48" rx="12" fill="#1f4d3f"/>'
+EMBLEM = ('<svg class="emblem" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect width="48" height="48" rx="12" fill="#1f4d3f"/>'
           '<circle cx="33" cy="15" r="5" fill="#d8b46a"/>'
           '<path d="M7 24c6-1 11-4 17-10 6 6 11 9 17 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
           '<path d="M12 24v14h24V24M9 38h30" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
@@ -907,6 +1062,13 @@ EMBLEM = ('<svg class="emblem" viewBox="0 0 48 48" aria-hidden="true" focusable=
 
 def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, noindex=False, hero=None):
     r = rel(depth)
+    seo = SEO_OVERRIDE.get(path, {})
+    title = seo.get("title", title)
+    description = seo.get("desc", description)
+    keywords = ", ".join(dict.fromkeys(seo.get("kw") or BASE_KW))
+    if seo.get("faq"):
+        body = body + faq_section(seo["faq"])
+        jsonld = (jsonld if isinstance(jsonld, list) else ([jsonld] if jsonld else [])) + [faq_ld(seo["faq"])]
     full_title = title if title == SITE else f"{title} | {SITE}"
     canonical = f"{SITE_URL}/{path}".replace("/index.html", "/")
     crumb_html = ""
@@ -950,22 +1112,30 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{E(full_title)}</title>
 <meta name="description" content="{E(description)}">
+<meta name="keywords" content="{E(keywords)}">
+{verify_meta()}
 {f'<link rel="canonical" href="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:type" content="website">
 <meta property="og:title" content="{E(full_title)}">
 <meta property="og:description" content="{E(description)}">
 {f'<meta property="og:url" content="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:site_name" content="{E(SITE)}">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:image" content="{SITE_URL}/static/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="application/rss+xml" title="{E(SITE)}" href="{SITE_URL}/rss.xml">
 <meta name="theme-color" content="#1f4d3f">
 {robots}
 <link rel="icon" href="{FAVICON}" type="image/svg+xml">
-<script>try{{var s=localStorage.getItem("fs");if(s)document.documentElement.setAttribute("data-fs",s)}}catch(e){{}}</script>
+<script>try{{var s=localStorage.getItem("fs");if(s)document.documentElement.setAttribute("data-fs",s)}}catch(e){{}}try{{if(navigator.serviceWorker)navigator.serviceWorker.getRegistrations().then(function(a){{a.forEach(function(r){{r.unregister()}});if(a.length&&window.caches)caches.keys().then(function(k){{k.forEach(function(n){{caches.delete(n)}})}})}})}}catch(e){{}}</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap">
-<link rel="stylesheet" href="{r}static/style.css">
+<link rel="stylesheet" href="{r}static/style.css?v={ASSET_VER}">
 {adsense_head()}
 {ld_html}
 </head>
@@ -999,14 +1169,44 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
   </div>
   <div class="wrap f-bottom"><span>© {TODAY[:4]} {E(SITE)}</span><span>데이터 갱신일 {TODAY}</span><span>{art.MAP_CREDIT}</span></div>
 </footer>
-<script src="{r}static/site.js" defer></script>
+<script src="{r}static/site.js?v={ASSET_VER}" defer></script>
 </body>
 </html>
 """
 
 
 
+_MAILTO = re.compile(r'<a [^>]*href="mailto:[^"]*"[^>]*>.*?</a>', re.S)
+_EMAIL = re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+')
+
+
+def email_off(html_text):
+    """Cloudflare 이메일 주소 난독화가 끼워 넣는 스크립트(email-decode)는 지도 SVG 링크에서 오류를 낸다.
+    이메일 부분을 email_off 주석으로 감싸 그 스크립트가 들어오지 않게 한다."""
+    parts = []
+    last = 0
+    for m in _MAILTO.finditer(html_text):
+        parts.append(html_text[last:m.start()])
+        parts.append("<!--email_off-->" + m.group(0) + "<!--/email_off-->")
+        last = m.end()
+    parts.append(html_text[last:])
+    out = "".join(parts)
+    # 링크가 아닌 본문 속 이메일도 감싼다 (이미 감싼 구간과 head 안은 건너뜀)
+    head_end = out.find("<body")
+    segs = re.split(r"(<!--email_off-->.*?<!--/email_off-->)", out, flags=re.S)
+    res = []
+    pos = 0
+    for seg in segs:
+        if not seg.startswith("<!--email_off-->"):
+            seg = re.sub(r"(>[^<]*?)(" + _EMAIL.pattern + r")", lambda m: m.group(1) + "<!--email_off-->" + m.group(2) + "<!--/email_off-->", seg) if pos > head_end else seg
+        res.append(seg)
+        pos += len(seg)
+    return "".join(res)
+
+
 def write(out_dir, path, content):
+    if path.endswith(".html"):
+        content = email_off(content)
     p = out_dir / path
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")
@@ -1374,7 +1574,7 @@ def page_sido(out, sido, facs):
                 blocks.append(b)
                 jsonld.append(ld)
             place = sido if sgg in (sido, "기타") else f"{sido} {sgg}"
-            parts.append(f'<section class="sgg-section" id="g-{sgg_slug(sido, sgg)}"><h2>{E(sgg)} 봉안시설 {len(v)}곳</h2>'
+            parts.append(f'<section class="sgg-section" id="g-{sgg_slug(sido, sgg)}"><h2>{E(sgg)} 봉안당·납골당 {len(v)}곳</h2>'
                          f'{summary_sentence(place, stats_of(v))}{"".join(blocks)}</section>')
         tips = ("<section class=\"card\"><h2>방문·계약 전 확인할 점</h2><ul class=\"tips\">"
                 "<li>공설 봉안시설은 해당 지역 주민이나 연고자만 이용할 수 있는 경우가 많습니다. 주소 요건을 먼저 확인하세요.</li>"
@@ -1949,6 +2149,21 @@ def page_funeral(out, items):
                                             crumbs=[("장례식장·화장장", None)], depth=depth))
 
 
+def keyword_links():
+    """많이 찾는 검색어로 관련 페이지를 잇는 링크 묶음 (검색엔진이 페이지 주제를 알아보기 쉽게)."""
+    links = [("봉안당 가격 비교", "feature/price.html"), ("납골당 가격", "compare/facilities.html"), ("부부단 납골당 가격", "compare/types.html"),
+             ("지역별 납골당 가격", "compare/regions.html"), ("납골당 추천", "pages/recommend.html"), ("봉안당 순위", "pages/ranking.html"),
+             ("공설 납골당", "type/public.html"), ("사설 봉안당", "type/private.html"), ("서울 납골당", region_url("서울특별시")),
+             ("경기도 납골당", region_url("경기도")), ("인천 봉안당", region_url("인천광역시")), ("부산 납골당", region_url("부산광역시")),
+             ("대구 납골당", region_url("대구광역시")), ("충남 봉안당", region_url("충청남도")), ("경남 납골당", region_url("경상남도")),
+             ("주차 되는 납골당", "feature/parking.html"), ("장례식장 비용", "funeral/index.html"), ("서울 장례식장", "funeral/seoul.html"),
+             ("경기도 장례식장", "funeral/gyeonggi.html"), ("화장장 비용", "funeral/index.html#crematorium"), ("화장 예약 방법", "guides/ehaneul-guide.html"),
+             ("장례 절차", "guides/procedure-after-cremation.html"), ("봉안당 고르는 법", "guides/how-to-choose.html"), ("수목장·자연장", "guides/natural-burial.html"),
+             ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html")]
+    return ('<section class="block"><div class="block-head"><div><p class="eyebrow">KEYWORD</p><h2>많이 찾는 정보</h2></div></div><nav class="kw-links" aria-label="많이 찾는 정보">'
+            + "".join(f'<a href="{u}">{E(t)}</a>' for t, u in links) + "</nav></section>")
+
+
 def page_index(out, facs, groups):
     st = stats_of(facs)
     nf = sum(1 for x in FUNERAL if x["kind"] == "장례식장")
@@ -2002,6 +2217,7 @@ def page_index(out, facs, groups):
   <a class="feature-card" href="compare/regions.html">{icon("compare", "lg")}<strong>지역별 가격 비교</strong><span>시도별 중간 가격</span></a>
   <a class="feature-card" href="feature/long-period.html">{icon("clock", "lg")}<strong>최대 안치기간 비교</strong><span>기간별 보기</span></a>
 </div></section>
+{keyword_links()}
 {guide_links(0, ["procedure-after-cremation", "how-to-choose", "cost-structure", "public-vs-private", "ehaneul-guide", "contract-checklist"], "처음이라면 먼저 읽어 보세요")}
 {ad_slot("main_bottom", 0)}
 <section class="card note"><h2>이 사이트의 정보에 대해</h2><p>봉안시설 정보는 보건복지부가 공공데이터포털에 공개한 「전국 봉안시설 현황」을, 장례식장·화장시설 정보는 한국장례문화진흥원 자료를 바탕으로 합니다. 이용 요금, 남은 안치 기수, 신청 자격은 수시로 바뀌므로 최종 결정 전에는 꼭 시설에 직접 확인하세요.</p></section>"""
@@ -2161,10 +2377,26 @@ def seo_files(out):
     xml.append("</urlset>")
     if URL_READY:
         (out / "sitemap.xml").write_text("\n".join(xml), encoding="utf-8")
-        (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /stats\nDisallow: /api/\nDisallow: /_builder/\n\nSitemap: {SITE_URL}/sitemap.xml\n", encoding="utf-8")
+        daum = (CONFIG.get("daum_webmaster") or "").strip()
+        (out / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /stats\nDisallow: /api/\nDisallow: /_builder/\n\nSitemap: {SITE_URL}/sitemap.xml\n"
+                                        + (f"\n#DaumWebMasterTool:{daum}\n" if daum else ""), encoding="utf-8")
     else:
         print("※ config.json 의 site_url 을 실제 주소로 바꾸면 sitemap.xml 이 만들어집니다.")
         (out / "robots.txt").write_text("User-agent: *\nAllow: /\nDisallow: /stats\nDisallow: /api/\nDisallow: /_builder/\n", encoding="utf-8")
+    if URL_READY:
+        # 네이버 서치어드바이저에 제출하는 RSS (가이드 글 + 주요 페이지)
+        now = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).strftime("%a, %d %b %Y %H:%M:%S +0900")
+        items = [(g["title"], f"guides/{g['slug']}.html", g["description"]) for g in GUIDES]
+        for path in ("feature/price.html", "pages/recommend.html", "pages/ranking.html", "funeral/index.html", "region/index.html"):
+            o = SEO_OVERRIDE.get(path, {})
+            items.append((o.get("title", path), path, o.get("desc", "")))
+        rss = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0"><channel>',
+               f"<title>{E(SITE)}</title><link>{E(SITE_URL)}/</link><description>{E(SEO_OVERRIDE.get('index.html', {}).get('desc', SITE))}</description>",
+               f"<language>ko</language><lastBuildDate>{now}</lastBuildDate>"]
+        for t, path, d in items:
+            rss.append(f"<item><title>{E(t)}</title><link>{E(SITE_URL)}/{path}</link><guid>{E(SITE_URL)}/{path}</guid><description>{E(d)}</description><pubDate>{now}</pubDate></item>")
+        rss.append("</channel></rss>")
+        (out / "rss.xml").write_text("\n".join(rss), encoding="utf-8")
     client = (CONFIG.get("adsense_client") or "").strip()
     if client:
         pub = client.replace("ca-", "")
@@ -2176,7 +2408,7 @@ def seo_files(out):
 # ---------------------------------------------------------------------------
 
 GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral"]
-GENERATED_FILES = ["index.html", "404.html", "robots.txt", "sitemap.xml", "ads.txt", ".nojekyll", ".gitignore"]
+GENERATED_FILES = ["index.html", "404.html", "robots.txt", "sitemap.xml", "rss.xml", "ads.txt", ".nojekyll", ".gitignore"]
 FUNERAL = []
 
 
@@ -2201,6 +2433,8 @@ def build_site(facs):
     by_sgg = defaultdict(list)
     for f in facs:
         by_sgg[(f["sido"], f["sigungu"])].append(f)
+    FUNERAL[:] = load_funeral()
+    prepare_seo(facs, groups)
 
     if not COMPACT:
         for f in facs:
@@ -2215,7 +2449,6 @@ def build_site(facs):
     page_features(out, facs, groups)
     page_period(out, facs)
     page_price(out, facs, groups)
-    FUNERAL[:] = load_funeral()
     page_funeral(out, FUNERAL)
     page_index(out, facs, groups)
     page_search(out, groups)

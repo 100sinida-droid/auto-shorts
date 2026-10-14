@@ -513,3 +513,9 @@ details.fold > summary { cursor: pointer; font-weight: 700; min-height: 44px; di
   .card { padding: 20px 16px; }
   .fs-label { display: none; }
 }
+
+.kw-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.kw-links a { padding: 9px 16px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 600; font-size: .95rem; }
+.kw-links a:hover { border-color: var(--accent); background: var(--accent-soft); }
+.faq-sec .faq details { padding: 14px 0; }
+.faq-sec .faq summary { font-size: 1.05rem; }

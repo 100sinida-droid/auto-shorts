@@ -268,6 +268,13 @@ export default {
     if (p.startsWith("/_builder") || p.startsWith("/.github") || p === "/_worker.js") {
       return new Response("Not found", { status: 404 });
     }
+    // 이 주소를 예전에 쓰던 사이트가 남긴 서비스 워커(오프라인 캐시)를 지워 옛 화면이 뜨지 않게 함
+    if (["/sw.js", "/service-worker.js", "/serviceworker.js", "/firebase-messaging-sw.js", "/OneSignalSDKWorker.js", "/ngsw-worker.js"].includes(p)) {
+      return new Response(`self.addEventListener("install",()=>self.skipWaiting());
+self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await caches.keys())await caches.delete(k);await self.registration.unregister();
+for(const c of await self.clients.matchAll({type:"window"}))c.navigate(c.url);})()));`,
+        { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
+    }
     if (p === "/api/hit" && request.method === "POST") {
       try { return await recordHit(request, env); } catch (e) { return new Response(null, { status: 204 }); }
     }
