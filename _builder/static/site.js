@@ -2,9 +2,22 @@
 (function () {
   try {
     if (location.protocol.indexOf("http") !== 0 || /^(localhost|127\.)/.test(location.hostname)) return;
-    var body = JSON.stringify({ u: location.pathname + location.search, r: document.referrer || "" });
-    var ok = navigator.sendBeacon && navigator.sendBeacon("/api/hit", new Blob([body], { type: "application/json" }));
-    if (!ok && window.fetch) fetch("/api/hit", { method: "POST", body: body, headers: { "Content-Type": "application/json" }, keepalive: true }).catch(function () {});
+    function subName() {
+      var id = decodeURIComponent((location.hash || "").slice(1));
+      if (!id) return "";
+      var el = document.getElementById(id), h = el && el.querySelector("h3, h2");
+      return h ? h.textContent.replace(/\s+/g, " ").replace(/\s*(공설|사설)\s*$/, "").trim() : "";
+    }
+    function send(extra) {
+      var d = { u: location.pathname + location.search, r: document.referrer || "", t: document.title, s: subName() };
+      for (var k in extra) d[k] = extra[k];
+      var body = JSON.stringify(d);
+      var ok = navigator.sendBeacon && navigator.sendBeacon("/api/hit", new Blob([body], { type: "application/json" }));
+      if (!ok && window.fetch) fetch("/api/hit", { method: "POST", body: body, headers: { "Content-Type": "application/json" }, keepalive: true }).catch(function () {});
+    }
+    var start = function () { send({}); };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+    window.addEventListener("hashchange", function () { if (subName()) send({ h: 1 }); });
   } catch (e) {}
 })();
 
