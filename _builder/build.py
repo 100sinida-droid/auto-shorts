@@ -776,10 +776,10 @@ PAGES_WRITTEN = []
 
 
 # ---------------------------------------------------------------------------
-# 광고 자리 (_builder/ads.json)
+# 광고 자리 (_builder/config.json 의 "ads")
 # ---------------------------------------------------------------------------
 ADS_FILE = ROOT / "ads.json"
-ADS = json.loads(ADS_FILE.read_text(encoding="utf-8")) if ADS_FILE.exists() else {"slots": []}
+ADS = CONFIG.get("ads") or (json.loads(ADS_FILE.read_text(encoding="utf-8")) if ADS_FILE.exists() else {"slots": []})
 ADS_BY_ID = {sl["id"]: sl for sl in ADS.get("slots", [])}
 
 
@@ -852,6 +852,7 @@ ICONS = {
     "private": f'<path {_S} d="M5 10h14v10H5z"/><path d="M3 11 12 4l9 7M5 10v10h14V10"/><circle cx="12" cy="14" r="2"/><path d="M12 16v2"/>',
     "meal": f'<path {_S} d="M3 12h18a9 6 0 0 1-18 0z"/><path d="M3 12h18a9 6 0 0 1-18 0zM8 21h8M14 3l-3 7M19 4l-5 6"/>',
     "sofa": f'<path {_S} d="M4 11h16v6H4z"/><path d="M6 11V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3M3 11a1.5 1.5 0 0 1 3 0v3h12v-3a1.5 1.5 0 0 1 3 0v6H3zM5 17v2M19 17v2"/>',
+    "brush": f'<path {_S} d="M5 19c0-3 2-5 4-5l2 2c0 2-2 4-5 4z"/><path d="M9 14 18.5 4.5a1.5 1.5 0 0 1 2 2L11 16M5 19c0-3 2-5 4-5l2 2c0 2-2 4-5 4H4"/>',
     "info": f'<circle {_S} cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
 }
 
@@ -876,14 +877,17 @@ SECTIONS = {
     "guide": ("guide", "장례·봉안 가이드", "처음 겪는 일, 차근차근 알려 드립니다", "#1d6b73"),
     "search": ("search", "이름으로 검색", "시설 이름이나 동네 이름으로 찾습니다", "#2f5e4e"),
     "home": ("home", "처음 화면", "", "#2f5e4e"),
+    "tools": ("brush", "장례 도우미", "지방·명정·축문 쓰기, 49재 계산, 부고 문자까지 장례 실무를 도와 드립니다", "#7a3b2e"),
     "info": ("info", "사이트 안내", "사이트 소개와 문의", "#4b5563"),
 }
 NAV = [("home", "index.html", "처음 화면"), ("bongan", "region/index.html", "봉안당"), ("funeral", "funeral/index.html", "장례식장·화장장"),
        ("price", "feature/price.html", "가격 비교"), ("recommend", "pages/recommend.html", "예산 추천"),
-       ("ranking", "pages/ranking.html", "순위"), ("guide", "guides/index.html", "가이드"), ("search", "pages/search.html", "검색")]
+       ("tools", "tools/index.html", "장례 도우미"), ("ranking", "pages/ranking.html", "순위"), ("guide", "guides/index.html", "가이드")]
 
 
 def section_of(path):
+    if path.startswith("tools/"):
+        return "tools"
     if path.startswith("funeral/"):
         return "funeral"
     if path.startswith("compare/") or path == "feature/price.html":
@@ -1024,6 +1028,16 @@ def prepare_seo(facs, groups):
                                      ["봉안당 안치기간", "납골당 기간", "납골당 연장", "영구 납골당"]),
         "guides/index.html": ("장례·봉안 가이드 (절차·비용·계약 주의사항)", "장례 절차, 화장 예약, 봉안당 고르는 법, 비용 구조, 계약 주의사항까지 처음 준비하는 분을 위한 안내 모음.",
                               ["장례 절차", "사망 후 절차", "봉안당 고르는 법", "납골당 계약", "화장 예약"]),
+        "tools/index.html": ("장례 도우미 · 지방·축문·부고 문자·49재 계산", "지방 쓰는 법, 축문 작성, 49재·삼우제 날짜 계산, 부고 문자 양식, 나이·띠 계산, 부의금 금액과 봉투 쓰는 법까지 한곳에서 해결하세요.",
+                             ["장례 도우미", "부의금 얼마", "부의금 봉투 쓰는 법", "나이 계산", "만 나이 계산", "띠 계산", "장례 준비"]),
+        "tools/jibang.html": ("지방 쓰는 법 · 지방 작성기 (한자·한글 지방 양식, 명정 쓰는 법)", "아버지·어머니·조부모 지방을 한자와 한글로 바로 만들어 인쇄하세요. 현고학생부군신위, 현비유인 쓰는 법과 명정 문구까지 정리했습니다.",
+                              ["지방 쓰는 법", "지방 쓰기", "지방 양식", "지방 한글", "현고학생부군신위", "어머니 지방", "부모 지방", "명정 쓰는 법", "명정"]),
+        "tools/chukmun.html": ("축문 쓰는 법 · 기제사 축문 작성기 (한글 축문·음력 간지 자동)", "제사 날짜만 넣으면 세차·삭·일진 간지를 계산해 기제사 축문을 완성합니다. 부모·조부모 축문 한자 원문, 한글 읽기, 뜻풀이 제공.",
+                               ["축문 쓰는 법", "기제사 축문", "축문 양식", "한글 축문", "제사 축문", "축문 작성", "유세차"]),
+        "tools/49jae.html": ("49재 계산기 · 삼우제·100일 탈상·기일 날짜 계산", "돌아가신 날을 넣으면 삼우제, 초재~49재, 100일 탈상, 음력·양력 기일 날짜를 요일과 함께 바로 알려 드립니다. 음력 양력 변환기 포함.",
+                             ["49재 계산", "49재 날짜 계산기", "사십구재", "삼우제 날짜", "탈상", "기일 계산", "음력 기일", "음력 양력 변환"]),
+        "tools/bugo.html": ("부고 문자 양식 · 모바일 부고장 만들기 (답례 문자 포함)", "고인, 빈소, 발인, 장지만 넣으면 정중한 부고 문자를 만들어 드립니다. 카카오톡·문자로 바로 보내고 장례 후 감사 답례 문자도 완성하세요.",
+                            ["부고 문자", "부고 문자 양식", "모바일 부고장", "부고장 만들기", "부고 답례 문자", "장례 감사 문자", "부고 알림"]),
         "pages/search.html": ("봉안당·납골당·장례식장 이름으로 검색", "전국 봉안당(납골당), 장례식장, 화장장을 이름이나 동네 이름으로 바로 찾으세요.",
                               ["납골당 검색", "봉안당 찾기", "장례식장 검색"]),
     }
@@ -1052,7 +1066,7 @@ def verify_meta():
 
 ASSET_VER = hashlib.sha1(b"".join((ROOT / "static" / n).read_bytes() for n in ("style.css", "site.js"))).hexdigest()[:8]
 SECTION_ART = {"bongan": "bongan", "funeral": "funeral", "price": "price", "recommend": "recommend", "ranking": "ranking",
-               "guide": "guide", "search": "search", "info": "info"}
+               "guide": "guide", "search": "search", "info": "info", "tools": "tools"}
 EMBLEM = ('<svg class="emblem" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect width="48" height="48" rx="12" fill="#1f4d3f"/>'
           '<circle cx="33" cy="15" r="5" fill="#d8b46a"/>'
           '<path d="M7 24c6-1 11-4 17-10 6 6 11 9 17 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
@@ -1104,7 +1118,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
         ("pages/recommend.html", "예산으로 추천받기"), ("pages/ranking.html", "봉안당 순위"), ("pages/search.html", "이름으로 검색")))
     foot_info = "".join(f'<li><a href="{r}{u}">{E(t)}</a></li>' for u, t in (
         ("guides/index.html", "장례·봉안 가이드"), ("pages/about.html", "사이트 소개"), ("pages/contact.html", "문의·정보 수정 요청"),
-        ("pages/privacy.html", "개인정보처리방침"), ("pages/terms.html", "이용약관·면책"), ("pages/sitemap.html", "사이트맵")))
+        ("pages/privacy.html", "개인정보처리방침"), ("pages/terms.html", "이용약관·면책")))
     return f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -1121,7 +1135,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 {f'<meta property="og:url" content="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:site_name" content="{E(SITE)}">
 <meta property="og:locale" content="ko_KR">
-<meta property="og:image" content="{SITE_URL}/static/og.png">
+<meta property="og:image" content="{SITE_URL}/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -1143,7 +1157,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 {SPRITE}
 <div class="topbar"><div class="wrap topbar-in"><span class="tb-msg">공공데이터로 만든 전국 봉안당·장례식장·화장장 안내 서비스</span>
-<div class="fs-ctl" role="group" aria-label="글자 크기"><span class="fs-label">글자 크기</span><button type="button" data-fs="" aria-label="글자 보통">가</button><button type="button" data-fs="lg" aria-label="글자 크게">가</button><button type="button" data-fs="xl" aria-label="글자 아주 크게">가</button></div></div></div>
+<div class="tb-right"><a class="tb-search" href="{r}pages/search.html">{icon("search")}검색</a><div class="fs-ctl" role="group" aria-label="글자 크기"><span class="fs-label">글자 크기</span><button type="button" data-fs="" aria-label="글자 보통">가</button><button type="button" data-fs="lg" aria-label="글자 크게">가</button><button type="button" data-fs="xl" aria-label="글자 아주 크게">가</button></div></div></div></div>
 <header class="site-header">
   <div class="wrap header-in">
     <a class="brand" href="{r}index.html">{EMBLEM}<span class="brand-txt"><span class="bn">{E(SITE)}</span><span class="bs">봉안당 · 장례식장 · 화장장 안내</span></span></a>
@@ -2013,7 +2027,7 @@ def load_funeral():
                 continue
             addr = re.sub(r"\s+", " ", r.get("주소", "")).strip()
             sido = normalize_sido(r.get("시도", ""), addr)
-            pr = prices.get(name, {})
+            pr = prices.get(name) or r
             items.append({
                 "id": hashlib.sha1(f"{name}|{addr}".encode("utf-8")).hexdigest()[:10],
                 "kind": (r.get("종류") or "장례식장").strip(), "name": name, "sido": sido,
@@ -2149,6 +2163,189 @@ def page_funeral(out, items):
                                             crumbs=[("장례식장·화장장", None)], depth=depth))
 
 
+# ---------------------------------------------------------------------------
+# 장례 도우미 (tools/): 지방·명정, 축문, 49재 계산, 부고 문자, 나이·부의금
+# 계산과 문구 만들기는 모두 브라우저(static/site.js)에서 처리한다.
+# ---------------------------------------------------------------------------
+TOOLS = [
+    ("jibang", "tools/jibang.html", "지방 쓰기", "아버지·어머니·조부모 지방을 한자와 한글로 바로 만들어 인쇄", "brush"),
+    ("myeongjeong", "tools/jibang.html#myeongjeong", "명정 쓰기", "관 위에 덮는 붉은 천의 글씨(명정) 문구 만들기", "brush"),
+    ("chukmun", "tools/chukmun.html", "축문 쓰기", "제사 날짜만 넣으면 기제사 축문을 음력 간지까지 자동 완성", "guide"),
+    ("49jae", "tools/49jae.html", "49재·삼우제 계산", "별세일로 삼우제·49재·100일 탈상·기일 날짜를 한 번에", "clock"),
+    ("lunar", "tools/49jae.html#lunar", "음력·양력 변환", "기일을 음력으로 지낼 때 올해 양력 날짜 찾기", "clock"),
+    ("bugo", "tools/bugo.html", "부고 문자 만들기", "빈소·발인·장지만 넣으면 부고 문자와 답례 문자 완성", "phone"),
+    ("age", "tools/index.html#age", "나이·띠 계산", "만 나이, 예전 세는 나이, 띠와 간지", "info"),
+    ("bueui", "tools/index.html#bueui", "부의금 얼마? 봉투 쓰는 법", "관계별 부의금 관례와 봉투에 쓰는 글", "won"),
+]
+
+
+def tool_cards(depth, skip=None):
+    r = rel(depth)
+    return '<div class="tool-grid">' + "".join(
+        f'<a class="tool-card" href="{r}{u}"><span class="tool-ic">{icon(ic, "xl")}</span><span><strong>{E(t)}</strong><span>{E(d)}</span></span></a>'
+        for k, u, t, d, ic in TOOLS if k != skip) + "</div>"
+
+
+def page_tools(out):
+    depth = 1
+    r = rel(depth)
+    src_note = '<p class="muted small">지방·축문은 집안과 지역마다 쓰는 법이 조금씩 다릅니다. 여기 문구는 가장 널리 쓰는 형식이니, 집안 어른이 따로 쓰시는 형식이 있으면 그것을 따르세요.</p>'
+    # 1) 허브: 나이 계산 + 부의금
+    body = f"""<header class="page-head"><h1>장례 도우미</h1><p class="lead">지방·명정·축문 쓰기부터 49재 날짜 계산, 부고 문자까지. 장례와 제사 때 막히는 일을 바로 해결하세요.</p></header>
+<section class="block"><div class="block-head"><h2>무엇을 도와드릴까요?</h2></div>{tool_cards(depth)}</section>
+<section class="card" id="age"><h2>나이·띠 계산기</h2>
+<form class="tool-form" id="age-form" onsubmit="return false"><label>생년월일 (양력)<input type="date" id="age-birth" min="1900-01-01"></label>
+<label>기준일 (돌아가신 날 등)<input type="date" id="age-base"></label><button type="button" id="age-go">계산하기</button></form>
+<div id="age-out" class="tool-out" aria-live="polite"></div>
+<p class="small muted">2023년 6월부터 법과 행정에서는 만 나이를 씁니다. 부고에 쓰는 향년(享年)은 집안에 따라 만 나이나 세는 나이를 씁니다.</p></section>
+<section class="card" id="bueui"><h2>부의금은 얼마가 적당할까?</h2>
+<div class="table-wrap"><table class="list"><thead><tr><th>관계</th><th>흔히 하는 금액</th></tr></thead><tbody>
+<tr><td>얼굴만 아는 사이, 거래처</td><td>3만~5만 원</td></tr>
+<tr><td>직장 동료, 지인</td><td>5만 원</td></tr>
+<tr><td>가까운 친구, 직장 상사·팀원</td><td>5만~10만 원</td></tr>
+<tr><td>친한 친구, 친척</td><td>10만 원 이상</td></tr>
+<tr><td>가까운 가족·친척</td><td>20만 원 이상 (집안 형편에 맞게)</td></tr></tbody></table></div>
+<p>예전부터 3·5·7처럼 홀수로 맞추는 관례가 있고, 10만 원부터는 짝수여도 괜찮다고 봅니다. 금액보다 직접 찾아가 위로하는 마음이 먼저입니다.</p>
+<h3>부의 봉투 쓰는 법</h3>
+<ul class="tips"><li>앞면 가운데에 <strong>賻儀(부의)</strong>, <strong>謹弔(근조)</strong>, <strong>追慕(추모)</strong>, <strong>追悼(추도)</strong> 중 하나를 세로로 씁니다. 한글로 써도 됩니다.</li>
+<li>뒷면 왼쪽 아래에 보내는 사람의 이름을 세로로 씁니다. 회사나 모임이면 이름 위에 소속을 작게 씁니다.</li>
+<li>지폐는 새 돈보다 깨끗한 쓰던 돈을 넣고, 봉투는 풀로 붙이지 않는 것이 일반적입니다.</li></ul></section>
+<section class="card"><h2>바로 가는 곳</h2><ul class="link-list cols">
+<li><a href="https://www.15774129.go.kr" target="_blank" rel="noopener">e하늘 장사정보시스템 (화장 예약)</a></li>
+<li><a href="https://www.gov.kr" target="_blank" rel="noopener">정부24 (사망신고·안심상속 원스톱 서비스)</a></li>
+<li><a href="{r}funeral/index.html">지역별 장례식장·화장장</a></li><li><a href="{r}region/index.html">지역별 봉안당</a></li>
+<li><a href="{r}guides/procedure-after-cremation.html">장례 절차 안내</a></li><li><a href="{r}pages/recommend.html">예산으로 봉안당 추천</a></li></ul></section>"""
+    write(out, "tools/index.html", layout("tools/index.html", "장례 도우미", "지방·축문 쓰기, 49재 계산, 부고 문자 만들기, 나이 계산, 부의금 안내", body,
+                                          crumbs=[("장례 도우미", None)], depth=depth))
+
+    # 2) 지방·명정
+    rel_opts = "".join(f'<option value="{v}">{t}</option>' for v, t in (
+        ("f", "아버지"), ("m", "어머니"), ("fm", "아버지·어머니 함께"), ("gf", "할아버지"), ("gm", "할머니"), ("gfm", "할아버지·할머니 함께"),
+        ("ggf", "증조할아버지"), ("ggm", "증조할머니"), ("hus", "남편"), ("wife", "아내"), ("bro", "형"), ("bsil", "형수")))
+    body = f"""<header class="page-head"><h1>지방 쓰는 법 · 지방 작성기</h1><p class="lead">누구의 제사인지 고르고, 어머니·할머니라면 본관과 성씨를 넣으세요. 한자 지방과 한글 지방이 바로 만들어지고 그대로 인쇄할 수 있습니다.</p></header>
+<section class="card"><h2>지방 만들기</h2>
+<form class="tool-form" id="jb-form" onsubmit="return false">
+<label>누구의 지방인가요?<select id="jb-rel">{rel_opts}</select></label>
+<label class="jb-w">여성 고인의 본관 (예: 김해)<input id="jb-bon" placeholder="김해" autocomplete="off"></label>
+<label class="jb-w">여성 고인의 성씨 (예: 김)<input id="jb-sung" placeholder="김" autocomplete="off"></label>
+<label class="jb-w">성씨 한자 (자동 입력, 고칠 수 있음)<input id="jb-sung-h" placeholder="金"></label>
+<label class="jb-w">본관 한자 (자동 입력, 고칠 수 있음)<input id="jb-bon-h" placeholder="金海"></label>
+<label>고인의 호칭<select id="jb-title"><option value="學生|학생">학생 (벼슬이 없는 경우, 가장 많이 씀)</option><option value="處士|처사">처사</option></select></label>
+</form>
+<div id="jb-out" class="jb-out print-area" aria-live="polite"></div>
+<div class="actions"><button type="button" id="jb-print">지방 인쇄하기</button></div>
+<p class="small muted">인쇄할 때 한지나 흰 종이를 가로 6cm, 세로 22cm 정도로 잘라 쓰면 됩니다. 부모님을 함께 모시면 바라볼 때 아버지를 왼쪽, 어머니를 오른쪽에 둡니다.</p></section>
+<section class="card"><h2>지방 쓰는 법 한눈에 보기</h2><div class="table-wrap"><table class="list"><thead><tr><th>모실 분</th><th>한자 지방</th><th>읽는 법</th></tr></thead><tbody>
+<tr><td>아버지</td><td>顯考學生府君神位</td><td>현고학생부군신위</td></tr>
+<tr><td>어머니</td><td>顯妣孺人(본관)(성)氏神位</td><td>현비유인 ○○○씨 신위</td></tr>
+<tr><td>할아버지</td><td>顯祖考學生府君神位</td><td>현조고학생부군신위</td></tr>
+<tr><td>할머니</td><td>顯祖妣孺人(본관)(성)氏神位</td><td>현조비유인 ○○○씨 신위</td></tr>
+<tr><td>남편</td><td>顯辟學生府君神位</td><td>현벽학생부군신위</td></tr>
+<tr><td>아내</td><td>亡室孺人(본관)(성)氏神位</td><td>망실유인 ○○○씨 신위</td></tr>
+<tr><td>형</td><td>顯兄學生府君神位</td><td>현형학생부군신위</td></tr></tbody></table></div>
+<ul class="tips"><li><strong>顯(현)</strong>은 돌아가신 윗분을 높이는 말이고, <strong>考(고)</strong>는 아버지, <strong>妣(비)</strong>는 어머니를 뜻합니다.</li>
+<li><strong>學生(학생)</strong>은 벼슬하지 않은 분을 높여 부르는 말이고, 여성은 <strong>孺人(유인)</strong>이라고 씁니다.</li>
+<li>한글로 「아버님 신위」, 「어머님 신위」처럼 써도 예법에 어긋나지 않습니다.</li></ul>{src_note}</section>
+<section class="card" id="myeongjeong"><h2>명정 쓰는 법 · 명정 문구 만들기</h2>
+<p>명정(銘旌)은 입관 뒤 관 위에 덮는 붉은 천으로, 고인이 누구인지 흰 글씨로 씁니다. 요즘은 장례식장에서 써 주는 경우가 많지만 문구를 미리 확인해 두면 좋습니다.</p>
+<form class="tool-form" id="mj-form" onsubmit="return false">
+<label>고인 성별<select id="mj-sex"><option value="m">남자</option><option value="f">여자</option></select></label>
+<label>본관 (예: 밀양)<input id="mj-bon" placeholder="밀양"></label><label>성씨 (예: 박)<input id="mj-sung" placeholder="박"></label>
+<label>본관 한자<input id="mj-bon-h" placeholder="密陽"></label><label>성씨 한자<input id="mj-sung-h" placeholder="朴"></label>
+<label>직함 (남자, 없으면 학생)<input id="mj-title" value="學生"></label></form>
+<div id="mj-out" class="mj-out" aria-live="polite"></div>
+<p class="small muted">남자는 「學生 ○○ ○公之柩(학생 ○○○공지구)」, 여자는 「孺人 ○○ ○氏之柩(유인 ○○○씨지구)」로 씁니다. 직함이 있으면 學生 자리에 씁니다.</p></section>
+{guide_links(depth, ["procedure-after-cremation", "visiting-etiquette", "pre-planning"], "함께 보면 좋은 글")}
+<section class="block"><div class="block-head"><h2>다른 장례 도우미</h2></div>{tool_cards(depth, "jibang")}</section>"""
+    write(out, "tools/jibang.html", layout("tools/jibang.html", "지방 쓰는 법·지방 작성기", "지방 쓰는 법과 지방 작성기", body,
+                                           crumbs=[("장례 도우미", "tools/index.html"), ("지방·명정 쓰기", None)], depth=depth))
+
+    # 3) 축문
+    ch_opts = "".join(f'<option value="{v}">{t}</option>' for v, t in (
+        ("f", "아버지 제사"), ("m", "어머니 제사"), ("fm-f", "부모님 함께 모심 · 아버지 기일"), ("fm-m", "부모님 함께 모심 · 어머니 기일"),
+        ("gf", "할아버지 제사"), ("gm", "할머니 제사"), ("gfm-f", "조부모님 함께 · 할아버지 기일"), ("gfm-m", "조부모님 함께 · 할머니 기일")))
+    body = f"""<header class="page-head"><h1>축문 쓰는 법 · 기제사 축문 작성기</h1><p class="lead">제사 날짜와 제주 이름만 넣으면 해(歲次)·달·초하루(朔)·날짜의 음력 간지를 계산해 축문을 완성해 드립니다. 한자 원문과 한글 읽기, 뜻풀이를 함께 보여 드립니다.</p></header>
+<section class="card"><h2>축문 만들기</h2>
+<form class="tool-form" id="ch-form" onsubmit="return false">
+<label>누구의 제사인가요?<select id="ch-rel">{ch_opts}</select></label>
+<label>돌아가신 날(기일), 양력<input type="date" id="ch-date"></label>
+<label>제주(맏아들·맏손자) 이름 한글<input id="ch-name" placeholder="예: 길동"></label>
+<label>제주 이름 한자 (모르면 비워 두세요)<input id="ch-name-h" placeholder="예: 吉童"></label>
+<label class="ch-w">어머니·할머니 본관<input id="ch-bon" placeholder="김해"></label><label class="ch-w">성씨<input id="ch-sung" placeholder="김"></label>
+<label class="ch-w">본관 한자<input id="ch-bon-h" placeholder="金海"></label><label class="ch-w">성씨 한자<input id="ch-sung-h" placeholder="金"></label>
+</form>
+<div id="ch-out" class="ch-out print-area" aria-live="polite"></div>
+<div class="actions"><button type="button" id="ch-print">축문 인쇄하기</button></div>
+<p class="small muted">음력 날짜와 간지는 한국천문연구원 기준 음력표로 계산합니다(1000~2050년). 기제사는 돌아가신 날 저녁에 지내는 집이 많고, 축문의 날짜는 돌아가신 날을 씁니다.</p></section>
+<section class="card"><h2>축문의 뜻</h2><div class="table-wrap"><table class="list"><tbody>
+<tr><td>維 歲次 ○○ ○月 ○○朔 ○日 ○○</td><td>○○년 ○월 초하루가 ○○인 달의 ○일(○○일)에</td></tr>
+<tr><td>孝子 ○○ 敢昭告于</td><td>효자 ○○는 감히 밝게 고합니다</td></tr>
+<tr><td>顯考學生府君 / 顯妣孺人 ○○○氏</td><td>아버님 / 어머님께</td></tr>
+<tr><td>歲序遷易 諱日復臨</td><td>해가 바뀌어 돌아가신 날이 다시 돌아오니</td></tr>
+<tr><td>追遠感時 昊天罔極</td><td>그리운 마음이 사무쳐 하늘처럼 넓은 은혜를 잊을 수 없습니다 (조부모는 不勝永慕: 길이 사모하는 마음을 이길 수 없습니다)</td></tr>
+<tr><td>謹以淸酌庶羞 恭伸奠獻 尙饗</td><td>삼가 맑은 술과 여러 음식으로 정성껏 올리오니 흠향하십시오</td></tr></tbody></table></div>
+<p>축문은 초헌(첫 잔)을 올린 뒤 모두 꿇어앉은 상태에서 축관이나 제주가 읽습니다. 요즘은 한글 축문을 읽는 집도 많습니다.</p>{src_note}</section>
+<section class="block"><div class="block-head"><h2>다른 장례 도우미</h2></div>{tool_cards(depth, "chukmun")}</section>"""
+    write(out, "tools/chukmun.html", layout("tools/chukmun.html", "축문 쓰는 법·기제사 축문 작성기", "축문 쓰는 법", body,
+                                            crumbs=[("장례 도우미", "tools/index.html"), ("축문 쓰기", None)], depth=depth))
+
+    # 4) 49재·삼우제·기일
+    body = f"""<header class="page-head"><h1>49재·삼우제·기일 날짜 계산기</h1><p class="lead">돌아가신 날을 넣으면 삼우제, 초재부터 49재(칠칠재), 100일 탈상, 첫 기일과 앞으로 10년 기일 날짜를 요일과 음력까지 바로 알려 드립니다.</p></header>
+<section class="card"><h2>날짜 계산하기</h2>
+<form class="tool-form" id="jae-form" onsubmit="return false">
+<label>돌아가신 날 (양력)<input type="date" id="jae-death"></label>
+<label>장례일(발인일) · 비우면 3일장으로 계산<input type="date" id="jae-burial"></label>
+<label>기일 기준<select id="jae-basis"><option value="lunar">음력 (예전 방식)</option><option value="solar">양력</option></select></label>
+<button type="button" id="jae-go">계산하기</button></form>
+<div id="jae-out" class="tool-out" aria-live="polite"></div>
+<p class="small muted">돌아가신 날을 첫째 날로 세어 7일마다 재를 지내며, 일곱 번째가 49재입니다. 삼우제는 장례(발인)한 날을 첫째 날로 세어 셋째 날입니다. 사찰과 집안에 따라 세는 법이 다를 수 있으니 확인하세요.</p></section>
+<section class="card" id="lunar"><h2>음력·양력 변환기</h2>
+<form class="tool-form" id="lc-form" onsubmit="return false">
+<label>음력 연도<input type="number" id="lc-y" min="1900" max="2050"></label><label>음력 월<input type="number" id="lc-m" min="1" max="12"></label>
+<label>음력 일<input type="number" id="lc-d" min="1" max="30"></label><label class="check"><input type="checkbox" id="lc-leap"> 윤달</label>
+<button type="button" id="lc-go">양력으로 바꾸기</button></form>
+<div id="lc-out" class="tool-out" aria-live="polite"></div>
+<form class="tool-form" id="sc-form" onsubmit="return false"><label>양력 날짜<input type="date" id="sc-date"></label><button type="button" id="sc-go">음력으로 바꾸기</button></form>
+<div id="sc-out" class="tool-out" aria-live="polite"></div></section>
+<section class="card"><h2>알아 두면 좋은 것</h2><ul class="tips">
+<li><strong>삼우제</strong>: 장례 후 처음으로 산소나 봉안당을 찾아 지내는 제사입니다. 요즘은 삼우제를 지내고 탈상하는 집도 많습니다.</li>
+<li><strong>49재</strong>: 불교식으로 돌아가신 뒤 49일 동안 7일마다 지내는 재 가운데 마지막 재입니다. 사찰에 미리 예약하는 경우가 많습니다.</li>
+<li><strong>기일</strong>: 돌아가신 날입니다. 예전에는 음력으로 지냈지만 요즘은 양력으로 지내는 집도 많습니다. 음력으로 지내면 해마다 양력 날짜가 바뀝니다.</li></ul></section>
+<section class="block"><div class="block-head"><h2>다른 장례 도우미</h2></div>{tool_cards(depth, "49jae")}</section>"""
+    write(out, "tools/49jae.html", layout("tools/49jae.html", "49재·삼우제·기일 날짜 계산기", "49재 계산기", body,
+                                          crumbs=[("장례 도우미", "tools/index.html"), ("49재·삼우제 계산", None)], depth=depth))
+
+    # 5) 부고 문자
+    body = f"""<header class="page-head"><h1>부고 문자 만들기 · 모바일 부고장</h1><p class="lead">고인과 상주, 빈소, 발인 정보를 넣으면 보내기 좋은 부고 문자가 바로 만들어집니다. 복사해서 카카오톡이나 문자로 보내세요. 장례를 마친 뒤 보낼 답례 문자도 함께 만들어 드립니다.</p></header>
+<section class="card"><h2>부고 내용 넣기</h2>
+<form class="tool-form" id="bg-form" onsubmit="return false">
+<label>고인 성함<input id="bg-name" placeholder="예: 홍길동"></label>
+<label>고인과의 관계 (보내는 사람 기준)<input id="bg-rel" placeholder="예: 부친, 모친, 조모"></label>
+<label>보내는 사람 (상주 등)<input id="bg-from" placeholder="예: 홍OO"></label>
+<label>향년 (선택)<input id="bg-age" placeholder="예: 85세"></label>
+<label>별세일<input type="date" id="bg-death"></label>
+<label>장례식장 (이름을 치면 목록이 나옵니다)<input id="bg-hall" list="bg-halls" placeholder="예: ○○장례식장" autocomplete="off"><datalist id="bg-halls"></datalist></label>
+<label>호실<input id="bg-room" placeholder="예: 3호실"></label>
+<label>장례식장 주소<input id="bg-addr" placeholder="장례식장을 고르면 자동으로 들어갑니다"></label>
+<label>발인 일시<input type="datetime-local" id="bg-out"></label>
+<label>장지 (선택)<input id="bg-place" placeholder="예: ○○추모공원 봉안당"></label>
+<label class="wide">상주 명단 (한 줄에 한 명, 선택)<textarea id="bg-chief" rows="3" placeholder="아들 홍OO&#10;딸 홍OO"></textarea></label>
+<label>연락처 (선택)<input id="bg-tel" placeholder="010-0000-0000"></label>
+<label>마음 전하실 곳 (선택)<input id="bg-bank" placeholder="예: ○○은행 000-000 홍OO"></label>
+<label>문구 분위기<select id="bg-tone"><option value="formal">정중하게</option><option value="simple">짧고 간단하게</option><option value="family">가족끼리만 조용히</option></select></label>
+</form></section>
+<section class="card"><h2>완성된 부고 문자</h2><pre id="bg-text" class="msg-box" aria-live="polite"></pre>
+<div class="actions"><button type="button" id="bg-copy">문자 복사하기</button><a class="btn" id="bg-sms" href="#">휴대폰 문자로 보내기</a></div>
+<h3>장례 후 답례 문자</h3><pre id="bg-thanks" class="msg-box"></pre><div class="actions"><button type="button" id="bg-copy2">답례 문자 복사하기</button></div></section>
+<section class="card"><h2>부고 보낼 때 알아 둘 점</h2><ul class="tips">
+<li>부고는 돌아가신 날 장례식장과 발인 일정이 정해지면 바로 보냅니다. 가까운 친척과 어른께는 먼저 전화로 알리는 것이 예의입니다.</li>
+<li>계좌번호는 멀리 있어 조문하기 어려운 분들을 위해 넣는 경우가 많지만, 넣지 않아도 됩니다.</li>
+<li>가족장으로 조용히 치르려면 「조문과 부의는 정중히 사양합니다」라고 분명히 적으세요.</li></ul></section>
+<section class="block"><div class="block-head"><h2>다른 장례 도우미</h2></div>{tool_cards(depth, "bugo")}</section>"""
+    write(out, "tools/bugo.html", layout("tools/bugo.html", "부고 문자 만들기·모바일 부고장", "부고 문자 양식", body,
+                                         crumbs=[("장례 도우미", "tools/index.html"), ("부고 문자 만들기", None)], depth=depth))
+
+
 def keyword_links():
     """많이 찾는 검색어로 관련 페이지를 잇는 링크 묶음 (검색엔진이 페이지 주제를 알아보기 쉽게)."""
     links = [("봉안당 가격 비교", "feature/price.html"), ("납골당 가격", "compare/facilities.html"), ("부부단 납골당 가격", "compare/types.html"),
@@ -2159,7 +2356,7 @@ def keyword_links():
              ("주차 되는 납골당", "feature/parking.html"), ("장례식장 비용", "funeral/index.html"), ("서울 장례식장", "funeral/seoul.html"),
              ("경기도 장례식장", "funeral/gyeonggi.html"), ("화장장 비용", "funeral/index.html#crematorium"), ("화장 예약 방법", "guides/ehaneul-guide.html"),
              ("장례 절차", "guides/procedure-after-cremation.html"), ("봉안당 고르는 법", "guides/how-to-choose.html"), ("수목장·자연장", "guides/natural-burial.html"),
-             ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html")]
+             ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui")]
     return ('<section class="block"><div class="block-head"><div><p class="eyebrow">KEYWORD</p><h2>많이 찾는 정보</h2></div></div><nav class="kw-links" aria-label="많이 찾는 정보">'
             + "".join(f'<a href="{u}">{E(t)}</a>' for t, u in links) + "</nav></section>")
 
@@ -2199,6 +2396,13 @@ def page_index(out, facs, groups):
     body = f"""
 <section class="block"><div class="block-head"><div><p class="eyebrow">SERVICE</p><h2>무엇을 도와드릴까요?</h2></div></div>
 <div class="svc-grid">{svc}</div></section>
+<section class="block"><div class="block-head"><div><p class="eyebrow">HELPER</p><h2>장례 도우미</h2></div><a class="more-link" href="tools/index.html">전체 보기 ›</a></div>
+<div class="helper-wrap"><div>{tool_cards(0)}</div>
+<aside class="popular"><p class="pop-eyebrow">주요 서비스</p><h3>가장 많이 찾는 메뉴</h3><ol>
+<li><a href="tools/jibang.html">지방 쓰는 법</a></li><li><a href="tools/bugo.html">부고 문자 만들기</a></li><li><a href="tools/49jae.html">49재·삼우제 날짜</a></li>
+<li><a href="tools/chukmun.html">축문 쓰기</a></li><li><a href="funeral/index.html">장례식장 비용</a></li><li><a href="feature/price.html">봉안당 가격 비교</a></li></ol>
+<a class="ext-link" href="https://www.15774129.go.kr" target="_blank" rel="noopener"><strong>e하늘 장사정보시스템</strong><span>화장 예약 ↗</span></a>
+<a class="ext-link" href="https://www.gov.kr" target="_blank" rel="noopener"><strong>정부24</strong><span>사망신고·안심상속 ↗</span></a></aside></div></section>
 {ad_slot("main_top", 0)}
 <section class="stat-band bleed"><div class="wrap sb-in">
   <div><strong>{st['n']:,}<small>곳</small></strong><span>전국 봉안시설</span></div>
@@ -2387,7 +2591,7 @@ def seo_files(out):
         # 네이버 서치어드바이저에 제출하는 RSS (가이드 글 + 주요 페이지)
         now = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).strftime("%a, %d %b %Y %H:%M:%S +0900")
         items = [(g["title"], f"guides/{g['slug']}.html", g["description"]) for g in GUIDES]
-        for path in ("feature/price.html", "pages/recommend.html", "pages/ranking.html", "funeral/index.html", "region/index.html"):
+        for path in ("feature/price.html", "pages/recommend.html", "pages/ranking.html", "funeral/index.html", "region/index.html", "tools/index.html", "tools/jibang.html", "tools/chukmun.html", "tools/49jae.html", "tools/bugo.html"):
             o = SEO_OVERRIDE.get(path, {})
             items.append((o.get("title", path), path, o.get("desc", "")))
         rss = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0"><channel>',
@@ -2407,7 +2611,7 @@ def seo_files(out):
 # 8. 실행
 # ---------------------------------------------------------------------------
 
-GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral"]
+GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral", "tools"]
 GENERATED_FILES = ["index.html", "404.html", "robots.txt", "sitemap.xml", "rss.xml", "ads.txt", ".nojekyll", ".gitignore"]
 FUNERAL = []
 
@@ -2450,13 +2654,13 @@ def build_site(facs):
     page_period(out, facs)
     page_price(out, facs, groups)
     page_funeral(out, FUNERAL)
+    page_tools(out)
     page_index(out, facs, groups)
     page_search(out, groups)
     search_index(out, facs)
     page_guides(out)
     page_static(out)
     page_404(out)
-    page_sitemap_html(out, groups)
     seo_files(out)
     return out
 

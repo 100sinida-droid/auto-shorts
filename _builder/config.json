@@ -11,5 +11,75 @@
   "mode": "compact",
   "naver_site_verification": "",
   "google_site_verification": "",
-  "daum_webmaster": ""
+  "daum_webmaster": "",
+  "ads": {
+    "_설명": "광고 자리 설정. 지금은 사이트에 표시하지 않고 문의 페이지의 가격표에만 씁니다. 나중에 show_empty 를 true 로 바꾸면 빈 자리에 '광고 문의' 안내가 보이고, 광고주가 생기면 ad 에 내용을 채운 뒤 build.bat 를 다시 실행하세요. 이미지는 인터넷 주소(URL)로 넣습니다.",
+    "show_empty": false,
+    "note": "VAT 별도 · 최소 1개월 · 선결제. 같은 자리는 한 업체만 노출됩니다.",
+    "slots": [
+      {
+        "id": "main_top",
+        "name": "메인 상단 배너",
+        "location": "첫 화면 검색창 바로 아래 (가장 먼저 보이는 자리)",
+        "size": "가로형 배너 (PC 1000×160 / 모바일 640×200 권장)",
+        "price": 100,
+        "ad": {}
+      },
+      {
+        "id": "recommend_top",
+        "name": "예산 추천 상단 추천업체",
+        "location": "예산 추천 페이지, 추천 결과 바로 위",
+        "size": "업체 카드 1개 (이름·한 줄 소개·전화·링크)",
+        "price": 70,
+        "ad": {}
+      },
+      {
+        "id": "main_middle",
+        "name": "메인 중단 추천업체",
+        "location": "첫 화면, 지역별 찾기 바로 위",
+        "size": "업체 카드 1개",
+        "price": 50,
+        "ad": {}
+      },
+      {
+        "id": "price_top",
+        "name": "가격 비교 상단",
+        "location": "가격 비교 첫 화면 맨 위",
+        "size": "가로형 배너 또는 업체 카드",
+        "price": 50,
+        "ad": {}
+      },
+      {
+        "id": "region_top",
+        "name": "지역 페이지 상단 (시도별)",
+        "location": "선택한 시도 페이지 맨 위 (예: 경기도 페이지). 시도마다 따로 판매",
+        "size": "업체 카드 1개",
+        "price": 30,
+        "ad": {}
+      },
+      {
+        "id": "main_bottom",
+        "name": "메인 하단 배너",
+        "location": "첫 화면, 가이드 목록 아래",
+        "size": "가로형 배너",
+        "price": 20,
+        "ad": {}
+      },
+      {
+        "id": "guide_bottom",
+        "name": "가이드 글 하단",
+        "location": "가이드 13편 글 아래 공통",
+        "size": "업체 카드 1개",
+        "price": 10,
+        "ad": {}
+      }
+    ],
+    "_광고_채우는_예시": {
+      "title": "○○추모공원",
+      "text": "김포 하성면 · 개인단 300만 원부터 · 무료 셔틀 운행",
+      "link": "https://example.com",
+      "tel": "031-000-0000",
+      "image": ""
+    }
+  }
 }
