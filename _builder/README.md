@@ -7,6 +7,8 @@
 ```
 (저장소 맨 위)
 ├─ index.html  404.html  robots.txt  sitemap.xml  ads.txt  _worker.js
+├─ place/    봉안당 694곳 개별 페이지 (시도별 폴더, 경기도는 북부·남부로 나눔)
+├─ area/     시군구별 봉안당 페이지 196개 (시도별 폴더)
 ├─ bongan/   봉안당: 지역별 목록, 공설·사설, 가격 비교, 추천, 순위, 가까운 봉안당, 총비용 계산기, 명절 안내
 ├─ funeral/  장례식장·화장장
 ├─ guides/   장례·봉안 가이드
@@ -25,10 +27,24 @@
 예전 주소(region/, type/, feature/, compare/, pages/, static/, data/)로 들어오면 `_worker.js` 가 새 주소로 자동으로 넘겨 줍니다.
 GitHub 저장소에 남아 있는 예전 폴더(region, type, feature, compare, pages, static, data)와 맨 위의 og.png, rss.xml, README.md 는 지워도 됩니다.
 
+## 올리는 방법 (페이지가 900개를 넘으므로 자동 생성 권장)
+
+`_builder/config.json` 의 `mode` 가 `pages` 이면 시설 694곳과 시군구 196곳의 페이지를 따로 만듭니다. 파일이 1,000개 가까이 되므로 GitHub Actions 자동 생성을 쓰는 것이 편합니다.
+1. 저장소 **Settings → Actions → General** 에서 Actions 사용을 허용하고, **Workflow permissions** 를 **Read and write permissions** 로 바꿉니다.
+2. 이제부터는 `_builder` 폴더만 고쳐서 올리면 GitHub가 사이트 전체를 새로 만들어 저장소에 올리고, Cloudflare가 자동으로 배포합니다.
+3. 바로 다시 만들고 싶으면 **Actions → 봉안시설 사이트 자동 생성 → Run workflow** 를 누릅니다.
+
+손으로 올릴 때는 폴더마다 100개 이하라 폴더별로 나눠 올릴 수 있습니다.
+
+## 참배 시간 넣기
+
+`_builder/hours/visit_hours.csv` 에 시설명(공공데이터 이름과 똑같이), 평일, 주말·공휴일, 명절, 비고, 확인일을 한 줄씩 적으면 그 시설 페이지에 참배 시간이 표로 나옵니다. 적지 않은 시설은 "전화로 확인" 안내와 전화 단추가 나옵니다. '예시'로 시작하는 이름은 무시됩니다.
+
 ## 페이지 구성 방식
 
 `_builder/config.json` 의 `mode` 로 고릅니다.
-- `compact` (기본): 시설 상세 정보를 시도 페이지 안에 모아 둡니다. 파일 약 60개.
+- `pages` (지금 설정): 시설마다, 시군구마다 페이지를 따로 만듭니다. 검색 노출에 가장 좋습니다.
+- `compact`: 시설 상세 정보를 시도 페이지 안에 모아 둡니다. 파일 약 100개.
 - `full`: 시설마다 페이지를 따로 만듭니다. 파일 약 1,000개라 웹 업로드 대신 GitHub Desktop이나 자동 생성(Actions)이 필요합니다.
 
 ## 가격 정보

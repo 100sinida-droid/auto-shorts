@@ -266,14 +266,18 @@ function pageInfo(path, title) {
   if (m && SIDO_SLUG[m[1]]) return [`${SIDO_SLUG[m[1]]} 봉안당 목록`, `${SIDO_SLUG[m[1]]} 봉안당·납골당을 시군구별로 보여 주고 시설마다 가격·주차·안치기간을 적은 페이지`];
   m = p.match(/^\/funeral\/([a-z]+)$/);
   if (m && SIDO_SLUG[m[1]]) return [`${SIDO_SLUG[m[1]]} 장례식장·화장장`, `${SIDO_SLUG[m[1]]} 장례식장의 빈소 사용료·전화번호와 화장장 화장료를 모은 페이지`];
-  if (title) return [String(title).replace(/\s*\|\s*봉안당 길잡이$/, "").slice(0, 40), ""];
+  const tt = title ? String(title).replace(/\s*\|\s*봉안당 길잡이$/, "") : "";
+  if (/^\/place\//.test(p)) return [tt ? tt.replace(/\s*참배시간·가격·위치·주차.*$/, "") + " (시설 상세)" : "봉안당 시설 상세 페이지", "봉안당 한 곳의 가격·위치·주차·참배 시간 안내 페이지"];
+  if (/^\/area\//.test(p)) return [tt ? tt.replace(/\s*가격·위치·참배시간.*$/, "") : "시군구 봉안당 목록", "시군구 하나의 봉안당·납골당을 모아 보여 주는 페이지"];
+  if (title) return [tt.slice(0, 40), ""];
   return [p, ""];
 }
 function pageName(path, title) { return pageInfo(path, title)[0]; }
 const PURPOSE = [
   ["price", "봉안당 가격 비교·추천·계산기", p => /^\/bongan\/(price|cost|compare-|recommend)/.test(p)],
   ["ranking", "봉안당 순위 보기", p => p === "/bongan/ranking"],
-  ["bongan", "봉안당 찾기 (지역·조건·가까운 곳)", p => /^\/bongan\//.test(p)],
+  ["place", "봉안당 한 곳 자세히 보기", p => /^\/place\//.test(p)],
+  ["bongan", "봉안당 찾기 (지역·조건·가까운 곳)", p => /^\/(bongan|area)\//.test(p)],
   ["funeral", "장례식장·화장장 찾기", p => /^\/funeral\//.test(p)],
   ["tools", "장례 도우미 (지방·축문·부고·49재)", p => /^\/tools\//.test(p)],
   ["guide", "장례·봉안 정보 읽기 (가이드)", p => /^\/guides\//.test(p)],
@@ -281,7 +285,8 @@ const PURPOSE = [
   ["home", "첫 화면만 보기", p => p === "/"],
 ];
 function purposeOf(p) { p = normPath(p); for (const [k, l, f] of PURPOSE) if (f(p)) return [k, l]; return ["etc", "기타 (소개·문의 등)"]; }
-function regionOf(p) { const m = normPath(p).match(/^\/(bongan|funeral)\/([a-z]+)$/); return m && SIDO_SLUG[m[2]] ? SIDO_SLUG[m[2]] : ""; }
+function regionOf(p) { const m = normPath(p).match(/^\/(?:(?:bongan|funeral)\/([a-z]+)$|(?:area|place)\/([a-z]+))/); if (m) { const k = m[1] || m[2]; return SIDO_SLUG[k] || ""; } return ""; }
+function regionOfOld(p) { const m = normPath(p).match(/^\/(bongan|funeral)\/([a-z]+)$/); return m && SIDO_SLUG[m[2]] ? SIDO_SLUG[m[2]] : ""; }
 const KW_THEME = [
   ["가격·비용", /가격|비용|얼마|시세|요금|관리비|저렴|싼/],
   ["지방·축문·제사", /지방|축문|제사|명정|기일|49재|사십구재|삼우제|탈상|제사상/],

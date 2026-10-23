@@ -30,7 +30,7 @@
       else if (a.id === "jb-print" || a.id === "ch-print") ev = "print";
       else if (/^https?:/.test(href) && href.indexOf(location.host) < 0) ev = a.closest(".facility-block, .fn-card") ? "home" : "ext";
       if (!ev) return;
-      var box = a.closest(".facility-block, .fn-card, article"), h = box && box.querySelector("h3, h2");
+      var box = a.closest(".facility-block, .fn-card, article"), h = box && box.querySelector("h1, h3, h2");
       var label = h ? h.textContent.replace(/\s+/g, " ").replace(/\s*(공설|사설)\s*$/, "").trim() : (ev === "ext" ? href.replace(/^https?:\/\//, "").split("/")[0] : document.title.split("|")[0].trim());
       send({ ev: ev, s: label });
     }, true);

@@ -771,7 +771,11 @@ AMENITIES = [("parking_lot", "주차장"), ("restaurant", "식당"), ("store", "
 GUIDES = []   # content/guides 에서 읽어 채움
 # compact: 시설 상세를 시도 페이지 안에 넣어 전체 파일 수를 100개 안쪽으로 유지 (GitHub 웹 업로드용)
 # full   : 시설마다 페이지를 따로 만듦 (파일 수 1,000개 가까이)
-COMPACT = (CONFIG.get("mode") or "compact").lower() == "compact"
+MODE = (CONFIG.get("mode") or "compact").lower()
+# compact: 시설 상세를 시도 페이지 안에 모음 / pages: 시설·시군구마다 페이지를 따로 만듦(검색 노출용) / full: 예전 방식
+COMPACT = MODE in ("compact", "pages")
+FAC_PAGES = MODE in ("pages", "full")
+GG_NORTH = ("파주", "양주", "포천", "남양주", "김포", "고양", "연천", "동두천", "구리", "의정부", "가평")
 PAGES_WRITTEN = []
 
 
@@ -901,7 +905,7 @@ def section_of(path):
         return "funeral"
     if path.startswith("compare/") or path in ("feature/price.html", "feature/cost.html"):
         return "price"
-    if path.startswith(("region/", "type/", "feature/", "facility/")):
+    if path.startswith(("region/", "type/", "feature/", "facility/", "place/", "area/")):
         return "bongan"
     if path.startswith("guides/"):
         return "guide"
@@ -1341,10 +1345,17 @@ def josa(word, with_final, without_final):
     return with_final + "(" + without_final + ")"
 
 
+def place_folder(f):
+    slug = sido_slug(f["sido"])
+    if slug == "gyeonggi":   # 경기도는 시설이 많아 한 폴더 100개를 넘지 않게 북부·남부로 나눔
+        slug += "-north" if f["sigungu"].startswith(GG_NORTH) else "-south"
+    return slug
+
+
 def facility_url(f):
-    if COMPACT:
-        return f"region/{sido_slug(f['sido'])}.html#f-{f['id']}"
-    return f"facility/{f['id']}.html"
+    if FAC_PAGES:
+        return f"place/{place_folder(f)}/{f['id']}.html"
+    return f"region/{sido_slug(f['sido'])}.html#f-{f['id']}"
 
 
 def sgg_slug(sido, sgg):
@@ -1354,9 +1365,9 @@ def sgg_slug(sido, sgg):
 def region_url(sido, sgg=None):
     if sgg is None:
         return f"region/{sido_slug(sido)}.html"
-    if COMPACT:
-        return f"region/{sido_slug(sido)}.html#g-{sgg_slug(sido, sgg)}"
-    return f"region/{sido_slug(sido)}/{sgg_slug(sido, sgg)}.html"
+    if FAC_PAGES:
+        return f"area/{sido_slug(sido)}/{sgg_slug(sido, sgg)}.html"
+    return f"region/{sido_slug(sido)}.html#g-{sgg_slug(sido, sgg)}"
 
 
 def facility_table(facs, depth, show_region=True):
@@ -1433,7 +1444,7 @@ def guide_links(depth, slugs=None, title="함께 읽으면 좋은 가이드"):
 # ---------------------------------------------------------------------------
 
 def page_facility(out, f, same_sgg, same_sido):
-    depth = 1
+    depth = 2 if FAC_PAGES else 1
     r = rel(depth)
     region = f["sido"] if f["sigungu"] in (f["sido"], "기타") else f"{f['sido']} {f['sigungu']}"
     kind_text = {"공설": "공설", "사설": "사설"}.get(f["kind"], "")
@@ -1542,6 +1553,11 @@ def page_facility(out, f, same_sgg, same_sido):
         faq.append((f"{f['name']}의 안치기간은 몇 년인가요?", a))
     if f["parking_lot"] is not None:
         faq.append((f"{f['name']}에 주차할 수 있나요?", ("주차장이 있습니다." + (f" 주차대수는 {f['parking_count']:g}대입니다." if isinstance(f["parking_count"], (int, float)) and f["parking_count"] else "")) if f["parking_lot"] else "주차장이 없는 것으로 등록되어 있습니다. 대중교통이나 인근 주차장을 확인하세요."))
+    vh = VISIT_HOURS.get(f["name"])
+    faq.append((f"{f['name']} 참배 시간은 어떻게 되나요?",
+                (" · ".join(f"{k} {v}" for k, v in vh.items() if v and k != "확인일") + ". 명절에는 달라질 수 있으니 전화로 확인하세요.") if vh else
+                ("공개 자료에 참배 시간이 아직 등록되어 있지 않습니다. 봉안당은 대체로 오전 9시 무렵부터 오후 5~6시 무렵까지 참배할 수 있지만 시설마다 다르니 "
+                 + (f"대표 전화({f['tel']})로 " if f["tel"] else "") + "확인하세요.")))
     if f.get("price_min"):
         faq.append((f"{f['name']}의 가격은 얼마인가요?", f"공개된 가격 정보 기준으로 {fmt_won(f['price_min'])}부터입니다. 안치단 위치와 기간, 관리비에 따라 달라지니 시설에 확인하세요."))
     faq_html = "".join(f"<details><summary>{E(qq)}</summary><p>{E(aa)}</p></details>" for qq, aa in faq)
@@ -1554,7 +1570,7 @@ def page_facility(out, f, same_sgg, same_sido):
     if f["homepage"]:
         place_ld["url"] = f["homepage"]
 
-    if COMPACT:
+    if not FAC_PAGES:
         tel_btn = f'<a class="btn primary" href="tel:{E(re.sub(r"[^0-9+]", "", f["tel"]))}">전화 걸기</a>' if f["tel"] else ""
         mini_period = period_html.replace('<section class="card"><h2>안치기간 한눈에 보기</h2>', '<div class="period-mini"><h4>안치기간</h4>').replace("</p></section>", "</p></div>")
         block = f"""<article class="card facility-block" id="f-{f['id']}">
@@ -1574,6 +1590,17 @@ def page_facility(out, f, same_sgg, same_sido):
         return block, place_ld
 
     near = [x for x in same_sgg if x["id"] != f["id"]][:12]
+    gf = geo_of(f["address"])
+    if gf:
+        dist = []
+        for x in same_sido + [y for y in ALL_FACS if y["sido"] != f["sido"]]:
+            gx = GEO_CACHE.get(x["id"])
+            if x["id"] != f["id"] and gx:
+                dist.append((_hav(gf["la"], gf["lo"], gx["la"], gx["lo"]), x))
+        dist.sort(key=lambda t: t[0])
+        near_d = dist[:8]
+    else:
+        near_d = []
     near_html = ""
     if near:
         near_html = f'<section class="card"><h2>{E(f["sigungu"])}의 다른 봉안시설</h2>{facility_table(near, depth, show_region=False)}</section>'
@@ -1584,6 +1611,30 @@ def page_facility(out, f, same_sgg, same_sido):
                       + "".join(f'<li><a href="{r}{facility_url(x)}">{E(x["name"])}</a> <span class="muted">{E(x["sigungu"])}</span></li>' for x in other)
                       + "</ul></section>")
 
+    hours = VISIT_HOURS.get(f["name"])
+    if hours:
+        hrow = "".join(f"<tr><th scope=row>{E(k)}</th><td>{E(v)}</td></tr>" for k, v in hours.items() if v and k != "확인일")
+        hours_html = (f'<section class="card" id="hours"><h2>참배 시간·운영 시간</h2><table class="info">{hrow}</table>'
+                      f'<p class="muted small">{E(hours.get("확인일", ""))} 기준입니다. 명절과 공휴일에는 달라질 수 있으니 방문 전 전화로 확인하세요.</p></section>')
+    else:
+        hours_html = (f'<section class="card" id="hours"><h2>참배 시간·운영 시간</h2>'
+                      f'<p>{E(f["name"])}의 참배 시간은 공개 자료에 아직 등록되어 있지 않습니다. 봉안당은 대체로 아침 9시 무렵 문을 열어 오후 5~6시 무렵 닫고, '
+                      f'겨울에는 일찍 닫거나 명절에는 시간을 늘리는 곳이 많습니다. 시설마다 다르니 가기 전에 꼭 전화로 확인하세요.</p>'
+                      + (f'<div class="actions"><a class="btn primary big" href="tel:{E(re.sub(r"[^0-9+]", "", f["tel"]))}">{icon("phone")}참배 시간 전화로 묻기 {E(f["tel"])}</a></div>' if f["tel"] else "")
+                      + f'<p class="small muted">시설 관계자께서 참배 시간을 알려 주시면 바로 올려 드립니다. <a href="{r}pages/contact.html">정보 보내기</a> · '
+                        f'<a href="{r}feature/holiday.html">명절 성묘 안내</a></p></section>')
+    fun = [x for x in FUNERAL if x["sido"] == f["sido"] and x["kind"] == "장례식장" and gf and GEO_CACHE.get("fn-" + x["id"])]
+    fun = sorted(fun, key=lambda x: _hav(gf["la"], gf["lo"], GEO_CACHE["fn-" + x["id"]]["la"], GEO_CACHE["fn-" + x["id"]]["lo"]))[:5] if gf else []
+    crem = [x for x in FUNERAL if x["kind"] == "화장시설" and gf and GEO_CACHE.get("fn-" + x["id"])]
+    crem = sorted(crem, key=lambda x: _hav(gf["la"], gf["lo"], GEO_CACHE["fn-" + x["id"]]["la"], GEO_CACHE["fn-" + x["id"]]["lo"]))[:3] if gf else []
+    fun_html = ""
+    if fun or crem:
+        li = "".join(f'<li><a href="{r}{funeral_url(x)}">{E(x["name"])}</a> <span class="muted small">{"화장장" if x["kind"] == "화장시설" else "장례식장"} · {E(x["sigungu"])}</span></li>' for x in crem + fun)
+        fun_html = f'<section class="card"><h2>가까운 화장장·장례식장</h2><ul class="link-list">{li}</ul></section>'
+    neard_html = ""
+    if near_d:
+        li = "".join(f'<li><a href="{r}{facility_url(x)}">{E(x["name"])}</a> {kind_badge(x["kind"])} <span class="muted small">약 {max(1, round(d))}km · {E(x["sigungu"])}</span></li>' for d, x in near_d)
+        neard_html = f'<section class="card"><h2>{E(f["name"])} 근처 다른 봉안당</h2><ul class="link-list">{li}</ul><p class="small"><a href="{r}feature/near.html">우리 집에서 가까운 봉안당 찾기</a></p></section>'
     body = f"""
 <article class="facility">
   <header class="page-head">
@@ -1600,35 +1651,76 @@ def page_facility(out, f, same_sgg, same_sido):
   {period_html}
   {f'<section class="card">{cap_html.replace("<h4>안치 규모</h4>", "<h2>안치 규모</h2>", 1)}</section>' if cap_html else ""}
   <section class="card">{price_html.replace("<h4>서비스·가격</h4>", "<h2>서비스·가격</h2>", 1)}</section>
+  {hours_html}
   <section class="card"><h2>방문·계약 전 확인할 점</h2><ul class="tips">{tip_html}</ul>
-    <p class="small"><a href="{r}guides/how-to-choose.html">봉안당 고르는 체크리스트</a> · <a href="{r}guides/contract-checklist.html">사설 봉안당 계약 전 주의사항</a></p></section>
+    <p class="small"><a href="{r}guides/how-to-choose.html">봉안당 고르는 체크리스트</a> · <a href="{r}guides/contract-checklist.html">사설 봉안당 계약 전 주의사항</a> · <a href="{r}feature/cost.html">총비용 계산기</a></p></section>
   <section class="card"><h2>자주 묻는 질문</h2><div class="faq">{faq_html}</div></section>
+  {neard_html}
+  {fun_html}
   {near_html}
   {other_html}
   <p class="source muted small">출처: 보건복지부 「전국 봉안시설 현황」 · 정보가 실제와 다르다면 <a href="{r}pages/contact.html">정보 수정 요청</a>을 남겨 주세요.</p>
 </article>"""
     desc = summary[:150]
-    write(out, facility_url(f), layout(facility_url(f), f"{f['name']} ({SIDO_SHORT.get(f['sido'], f['sido'])} {f['sigungu']} 봉안당)", desc, body,
+    sg = sgg_short(f["sigungu"]) if f["sigungu"] and f["sigungu"] != f["sido"] else SEO_NAME.get(f["sido"], f["sido"])
+    SEO_OVERRIDE[facility_url(f)] = {"kw": [f["name"], f"{f['name']} 가격", f"{f['name']} 참배시간", f"{f['name']} 위치", f"{f['name']} 주차",
+                                            f"{sg} 봉안당", f"{sg} 납골당", f"{SIDO_SHORT.get(f['sido'], f['sido'])} 납골당"]}
+    write(out, facility_url(f), layout(facility_url(f), f"{f['name']} 참배시간·가격·위치·주차 ({SIDO_SHORT.get(f['sido'], f['sido'])} {f['sigungu']})", desc, body,
                                        crumbs=[(f["sido"], region_url(f["sido"])), (f["sigungu"], region_url(f["sido"], f["sigungu"])), (f["name"], None)],
                                        jsonld=[place_ld, faq_ld], depth=depth))
 
 
+def sgg_short(sgg):
+    """검색어에 맞춘 시군구 이름: 김포시→김포, 가평군→가평, 용인시 처인구→용인 처인구, 강남구→강남구"""
+    t = sgg.split()
+    if len(t) >= 2:
+        return re.sub(r"(시|군)$", "", t[0]) + " " + t[-1]
+    return re.sub(r"(시|군)$", "", t[0]) if t and len(t[0]) > 2 else (t[0] if t else "")
+
+
 def page_sigungu(out, sido, sgg, facs):
     depth = 2
+    r = rel(depth)
     st = stats_of(facs)
-    place = f"{sido} {sgg}"
+    place = sido if sgg in (sido, "기타") else f"{SEO_NAME.get(sido, sido)} {sgg}"
+    short = sgg_short(sgg) if sgg and sgg not in (sido, "기타") else SEO_NAME.get(sido, sido)
+    if short in SIDO_SHORT.values() and SIDO_SHORT.get(sido) != short:
+        short = f"{SIDO_SHORT.get(sido, sido)} {short}"
+    pub = [f for f in facs if f["kind"] == "공설"]
+    priced = sorted([f for f in facs if f.get("p_single") or f.get("price_min")], key=lambda f: f.get("p_single") or f["price_min"])
+    def _line(f):
+        bits = []
+        if f.get("price_min"):
+            bits.append("개인단 " + fmt_won(f.get("p_single") or f["price_min"]) + "부터")
+        if f["parking_lot"]:
+            bits.append("주차 가능")
+        if f.get("max_period"):
+            bits.append(f"최대 {f['max_period']:g}년")
+        return " · ".join(bits)
+    cards = "".join(
+        f'<a class="result" href="{r}{facility_url(f)}"><strong>{E(f["name"])}</strong> {kind_badge(f["kind"])}'
+        f'<span class="addr">{E(f["address"])}</span><span class="addr">{E(_line(f))}</span></a>' for f in facs)
+    faq = [(f"{short} 봉안당(납골당)은 몇 곳인가요?", f"{place}에는 봉안시설이 {len(facs)}곳 있습니다(공설 {len(pub)}곳, 사설 {len(facs) - len(pub)}곳). 시설마다 이름을 누르면 가격·위치·주차·참배 시간 안내를 볼 수 있습니다.")]
+    if priced:
+        faq.append((f"{short} 봉안당 가격은 얼마인가요?", f"가격이 공개된 곳 가운데 가장 저렴한 곳은 {priced[0]['name']}({fmt_won(priced[0].get('p_single') or priced[0]['price_min'])}부터)입니다. 안치단 위치와 관리비에 따라 달라지니 시설에 확인하세요."))
+    if pub:
+        faq.append((f"{short} 공설 봉안당은 어디인가요?", ", ".join(f["name"] for f in pub[:5]) + "입니다. 공설은 지역 주민 등 이용 자격이 있는 경우가 많습니다."))
     body = f"""
 <header class="page-head">
-  <p class="eyebrow">{E(sido)}</p>
-  <h1>{E(sgg)} 봉안당·납골당 {len(facs)}곳</h1>
+  <p class="eyebrow"><a href="{r}{region_url(sido)}">{E(sido)}</a></p>
+  <h1>{E(short)} 봉안당·납골당 {len(facs)}곳</h1>
   {summary_sentence(place, st)}
+  <nav class="rank-nav"><a class="chip-link" href="{r}{region_url(sido)}">{E(SEO_NAME.get(sido, sido))} 전체 보기</a><a class="chip-link" href="{r}feature/near.html">가까운 봉안당 찾기</a><a class="chip-link" href="{r}feature/cost.html">총비용 계산기</a></nav>
 </header>
 {stat_cards(st)}
-<section class="card"><h2>{E(sgg)} 봉안시설 목록</h2>{facility_table(facs, depth, show_region=False)}</section>
+<section class="card"><h2>{E(short)} 봉안시설 {len(facs)}곳</h2><div class="results">{cards}</div></section>
+<section class="card"><h2>{E(short)} 봉안시설 한눈에 비교</h2>{facility_table(facs, depth, show_region=False)}</section>
 {guide_links(depth, ["public-vs-private", "how-to-choose", "cost-structure"])}"""
     path = region_url(sido, sgg)
-    write(out, path, layout(path, f"{sido} {sgg} 봉안당·납골당 목록", f"{place}의 봉안시설 {len(facs)}곳의 공설·사설 구분, 안치기간, 주차장·편의시설 정보를 모았습니다.",
-                            body, crumbs=[(sido, region_url(sido)), (sgg, None)], depth=depth))
+    SEO_OVERRIDE[path] = {"title": f"{short} 봉안당·납골당 {len(facs)}곳 가격·위치·참배시간", "faq": faq,
+                          "desc": f"{place} 봉안당(납골당) {len(facs)}곳(공설 {len(pub)}·사설 {len(facs) - len(pub)})의 가격, 위치, 주차, 안치기간을 비교하고 시설별 참배 시간 안내를 확인하세요.",
+                          "kw": [f"{short} 봉안당", f"{short} 납골당", f"{short} 봉안당 가격", f"{short} 납골당 가격", f"{short} 납골당 추천", f"{short} 공설 봉안당", f"{short} 추모공원"]}
+    write(out, path, layout(path, f"{short} 봉안당·납골당", place, body, crumbs=[(sido, region_url(sido)), (sgg, None)], depth=depth))
 
 
 def page_sido(out, sido, facs):
@@ -1654,7 +1746,7 @@ def page_sido(out, sido, facs):
 <section class="card"><h2>{E(sido)} 전체 목록</h2>{facility_table(facs, depth)}</section>
 {guide_links(depth)}"""
     jsonld = None
-    if COMPACT:
+    if not FAC_PAGES:
         parts, jsonld = [], []
         for sgg, v in by_sgg.items():
             blocks = []
@@ -2731,6 +2823,24 @@ def page_search(out, groups):
 # ---------------------------------------------------------------------------
 # 시설 위치(대략): 주소의 시군구 중심점. 거리순 찾기에 쓴다 (data/sgg_centroids.json)
 # ---------------------------------------------------------------------------
+ALL_FACS = []
+GEO_CACHE = {}
+HOURS_DIR = ROOT / "hours"
+
+
+def load_visit_hours():
+    """_builder/hours/*.csv : 시설명, 평일, 주말·공휴일, 명절, 비고, 확인일"""
+    out = {}
+    if HOURS_DIR.exists():
+        for p in HOURS_DIR.glob("*.csv"):
+            for r in read_csv_any(p):
+                name = (r.get("시설명") or "").strip()
+                if name and not name.startswith("예시"):
+                    out[name] = {k: (r.get(k) or "").strip() for k in ("평일", "주말·공휴일", "명절", "비고", "확인일")}
+    return out
+
+
+VISIT_HOURS = load_visit_hours()
 SGG_FILE = ROOT / "data" / "sgg_centroids.json"
 SGG = json.loads(SGG_FILE.read_text(encoding="utf-8"))["items"] if SGG_FILE.exists() else []
 
@@ -2921,7 +3031,7 @@ def seo_files(out):
 # 8. 실행
 # ---------------------------------------------------------------------------
 
-GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral", "tools", "bongan", "info", "assets"]
+GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral", "tools", "bongan", "info", "assets", "place", "area"]
 GENERATED_FILES = ["index.html", "404.html", "robots.txt", "sitemap.xml", "rss.xml", "ads.txt", ".nojekyll", ".gitignore"]
 FUNERAL = []
 
@@ -2950,7 +3060,17 @@ def build_site(facs):
     FUNERAL[:] = load_funeral()
     prepare_seo(facs, groups)
 
-    if not COMPACT:
+    ALL_FACS[:] = facs
+    GEO_CACHE.clear()
+    for f in facs:
+        g = geo_of(f["address"])
+        if g:
+            GEO_CACHE[f["id"]] = g
+    for x in FUNERAL:
+        g = geo_of(x["address"])
+        if g:
+            GEO_CACHE["fn-" + x["id"]] = g
+    if FAC_PAGES:
         for f in facs:
             page_facility(out, f, by_sgg[(f["sido"], f["sigungu"])], groups[f["sido"]])
         for (sido, sgg), v in by_sgg.items():
