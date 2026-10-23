@@ -18,6 +18,22 @@
     var start = function () { send({}); };
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
     window.addEventListener("hashchange", function () { if (subName()) send({ h: 1 }); });
+    window.__track = function (ev, label) { send({ ev: ev, s: label || "" }); };
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest("a, button");
+      if (!a) return;
+      var href = a.getAttribute("href") || "", ev = "";
+      if (/^tel:/.test(href)) ev = "tel";
+      else if (/map\.naver\.com|map\.kakao\.com|maps\.google/.test(href)) ev = "map";
+      else if (/^sms:/.test(href)) ev = "sms";
+      else if (a.id === "bg-copy" || a.id === "bg-copy2") ev = "copy";
+      else if (a.id === "jb-print" || a.id === "ch-print") ev = "print";
+      else if (/^https?:/.test(href) && href.indexOf(location.host) < 0) ev = a.closest(".facility-block, .fn-card") ? "home" : "ext";
+      if (!ev) return;
+      var box = a.closest(".facility-block, .fn-card, article"), h = box && box.querySelector("h3, h2");
+      var label = h ? h.textContent.replace(/\s+/g, " ").replace(/\s*(공설|사설)\s*$/, "").trim() : (ev === "ext" ? href.replace(/^https?:\/\//, "").split("/")[0] : document.title.split("|")[0].trim());
+      send({ ev: ev, s: label });
+    }, true);
   } catch (e) {}
 })();
 

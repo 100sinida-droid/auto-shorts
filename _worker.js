@@ -86,7 +86,8 @@ async function ensure(db) {
       entry INTEGER, src_type TEXT, src_name TEXT, ref_host TEXT, keyword TEXT, campaign TEXT, device TEXT, site_q TEXT)`),
     db.prepare("CREATE INDEX IF NOT EXISTS hits_day ON hits(day)"),
   ]);
-  for (const col of ["title", "sub"]) {
+  await db.prepare(`CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, day TEXT, vid TEXT, ev TEXT, label TEXT, path TEXT)`).run();
+  for (const col of ["title", "sub", "from_path"]) {
     try { await db.prepare(`ALTER TABLE hits ADD COLUMN ${col} TEXT DEFAULT ''`).run(); } catch (e) { /* 이미 있음 */ }
   }
   ready = true;
@@ -108,15 +109,22 @@ async function recordHit(request, env) {
   const ip = request.headers.get("cf-connecting-ip") || "";
   const vid = (await sha(`${day}|${ip}|${ua}|${env.STATS_PASSWORD || "salt"}`)).slice(0, 16);
   const device = /mobile|android|iphone|ipad/i.test(ua) ? "모바일" : "PC";
-  const siteQ = page.pathname.endsWith("/pages/search.html") ? (params.q || "").slice(0, 60) : "";
+  const siteQ = normPath(page.pathname) === "/pages/search" ? (params.q || "").slice(0, 60) : "";
   await ensure(env.DB);
+  if (d.ev) {
+    await env.DB.prepare(`INSERT INTO events (ts, day, vid, ev, label, path) VALUES (?,?,?,?,?,?)`)
+      .bind(now, day, vid, String(d.ev).slice(0, 20), String(d.s || "").slice(0, 80), normPath(page.pathname).slice(0, 200)).run();
+    return new Response(null, { status: 204 });
+  }
+  let fromPath = "";
+  try { const ru = new URL(String(d.r || "")); if (ru.hostname === host) fromPath = normPath(ru.pathname); } catch (e) {}
   const title = String(d.t || "").replace(/\s*\|\s*봉안당 길잡이$/, "").slice(0, 80);
   const sub = String(d.s || "").slice(0, 80);
   // 같은 페이지 안에서 시설로 이동(#)한 기록은 entry=0 으로만 남김
   const entry = d.h ? 0 : (c.type === "internal" ? 0 : 1);
-  await env.DB.prepare(`INSERT INTO hits (ts, day, vid, path, entry, src_type, src_name, ref_host, keyword, campaign, device, site_q, title, sub)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(now, day, vid, page.pathname.slice(0, 200), entry,
-    d.h ? "internal" : c.type, d.h ? "사이트 안 이동" : c.name.slice(0, 80), c.refHost.slice(0, 120), d.h ? "" : c.keyword, c.campaign.slice(0, 120), device, d.h ? "" : siteQ, title, sub).run();
+  await env.DB.prepare(`INSERT INTO hits (ts, day, vid, path, entry, src_type, src_name, ref_host, keyword, campaign, device, site_q, title, sub, from_path)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(now, day, vid, normPath(page.pathname).slice(0, 200), entry,
+    d.h ? "internal" : c.type, d.h ? "사이트 안 이동" : c.name.slice(0, 80), c.refHost.slice(0, 120), d.h ? "" : c.keyword, c.campaign.slice(0, 120), device, d.h ? "" : siteQ, title, sub, d.h ? "" : fromPath).run();
   return new Response(null, { status: 204 });
 }
 
@@ -138,7 +146,7 @@ h1{font-size:26px;margin:0 0 6px}h2{font-size:19px;margin:0 0 12px;padding-botto
 .muted{color:var(--ink2)}.small{font-size:14px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 22px}.tabs a{padding:9px 16px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600}
 .tabs a.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.kpi div{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--acc);border-radius:10px;padding:14px 16px}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}.kpi div{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--acc);border-radius:10px;padding:14px 16px}
 .kpi span{display:block;color:var(--ink2);font-size:14px}.kpi strong{font-size:30px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px;min-width:0;overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--ink2);font-size:13px;font-weight:600}
@@ -151,8 +159,8 @@ td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .tag.search{background:#e3ecfb;color:#1f5b8f}.tag.direct{background:#eee;color:#444}.tag.social{background:#efe8f8;color:#5a4a8a}.tag.referral{background:#fbefe0;color:#9a4f12}.tag.campaign{background:#fbf3d8;color:#80620a}
 input,button{font:inherit;padding:11px 14px;border-radius:8px;border:2px solid var(--line)}button{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700;cursor:pointer}
 .linkmaker{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}.linkmaker input{min-width:0}#lm-out{margin-top:10px;word-break:break-all;background:#f6f4ee;padding:10px 12px;border-radius:8px;font-size:15px}
-.note{background:#fbf3d8;border-radius:10px;padding:12px 16px;font-size:15px}.kpi em{display:block;font-style:normal;font-size:13px;color:var(--ink2)}.analysis{border-left:6px solid var(--gold)}.analysis ul{margin:0;padding-left:20px}.analysis li{margin-bottom:8px;line-height:1.7}.analysis h3{margin:16px 0 8px;font-size:17px}.sugg li::marker{content:'✔  ';color:var(--acc)}.hbars{display:grid;gap:10px}.hb{display:grid;grid-template-columns:minmax(120px,1.3fr) 2fr auto;gap:10px;align-items:center;font-size:15px}.hb-t{background:#e7efe9;border-radius:6px;height:14px;overflow:hidden}.hb-t i{display:block;height:100%;background:var(--acc);border-radius:6px}.hb-v{white-space:nowrap;font-variant-numeric:tabular-nums}.hb-v small{color:var(--ink2)}a.path,.path{font-size:12px;color:var(--ink2)}@media(max-width:800px){.hb{grid-template-columns:1fr auto}.hb-t{grid-column:1/-1;grid-row:2}}
-@media(max-width:800px){.kpi{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.linkmaker{grid-template-columns:1fr}.chart small{display:none}}
+.note{background:#fbf3d8;border-radius:10px;padding:12px 16px;font-size:15px}.bad{color:#b42318;font-weight:700}.chart.hrs{height:140px;gap:2px}.mkt{border-left:6px solid var(--acc)}.mkt ol{margin:0;padding-left:22px}.mkt li{margin-bottom:12px;line-height:1.7}.kpi em{display:block;font-style:normal;font-size:13px;color:var(--ink2)}.analysis{border-left:6px solid var(--gold)}.analysis ul{margin:0;padding-left:20px}.analysis li{margin-bottom:8px;line-height:1.7}.analysis h3{margin:16px 0 8px;font-size:17px}.sugg li::marker{content:'✔  ';color:var(--acc)}.hbars{display:grid;gap:10px}.hb{display:grid;grid-template-columns:minmax(120px,1.3fr) 2fr auto;gap:10px;align-items:center;font-size:15px}.hb-t{background:#e7efe9;border-radius:6px;height:14px;overflow:hidden}.hb-t i{display:block;height:100%;background:var(--acc);border-radius:6px}.hb-v{white-space:nowrap;font-variant-numeric:tabular-nums}.hb-v small{color:var(--ink2)}a.path,.path{display:block;font-size:12px;color:var(--ink2);margin-top:2px}.pdesc{display:block;font-size:14px;color:#444;margin-top:2px;line-height:1.5}@media(max-width:800px){.hb{grid-template-columns:1fr auto}.hb-t{grid-column:1/-1;grid-row:2}}
+@media(max-width:800px){.kpi{grid-template-columns:1fr 1fr}.chart.hrs small{display:block;font-size:9px}.grid{grid-template-columns:1fr}.linkmaker{grid-template-columns:1fr}.chart small{display:none}}
 </style></head><body><header><div class="in"><b>봉안당 길잡이 · 방문 통계</b><span><a href="/">사이트로 가기</a> · <a href="/stats/logout">나가기</a></span></div></header><main>${body}</main></body></html>`,
     { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
 }
@@ -186,43 +194,79 @@ function rows(list, cols, total) {
 // ---------------------------------------------------------------- 페이지 이름·관심사 분류
 const SIDO_SLUG = { seoul: "서울", busan: "부산", daegu: "대구", incheon: "인천", gwangju: "광주", daejeon: "대전", ulsan: "울산", sejong: "세종",
   gyeonggi: "경기도", gangwon: "강원도", chungbuk: "충북", chungnam: "충남", jeonbuk: "전북", jeonnam: "전남", gyeongbuk: "경북", gyeongnam: "경남", jeju: "제주" };
-const PAGE_NAME = {
-  "/": "첫 화면", "/index.html": "첫 화면", "/region/index.html": "지역별 봉안당 찾기", "/funeral/index.html": "전국 장례식장·화장장",
-  "/type/public.html": "공설 봉안당 목록", "/type/private.html": "사설 봉안당 목록", "/feature/price.html": "봉안당 가격 비교",
-  "/feature/parking.html": "주차장 있는 봉안당", "/feature/amenities.html": "편의시설로 봉안당 찾기", "/feature/long-period.html": "안치기간 비교",
-  "/compare/facilities.html": "업체별 가격 비교표", "/compare/types.html": "개인단·부부단 가격 비교", "/compare/regions.html": "지역별 가격 비교",
-  "/pages/recommend.html": "예산으로 봉안당 추천", "/pages/ranking.html": "봉안당 순위", "/pages/search.html": "이름으로 검색",
-  "/pages/about.html": "사이트 소개", "/pages/contact.html": "문의·광고 문의", "/pages/privacy.html": "개인정보처리방침", "/pages/terms.html": "이용약관",
-  "/tools/index.html": "장례 도우미 (나이·부의금)", "/tools/jibang.html": "지방·명정 쓰기", "/tools/chukmun.html": "축문 쓰기",
-  "/tools/49jae.html": "49재·삼우제 계산", "/tools/bugo.html": "부고 문자 만들기", "/guides/index.html": "가이드 목록",
-  "/guides/procedure-after-cremation.html": "가이드: 장례 절차", "/guides/ehaneul-guide.html": "가이드: 화장 예약(e하늘)",
-  "/guides/how-to-choose.html": "가이드: 봉안당 고르는 법", "/guides/cost-structure.html": "가이드: 봉안당 비용 구조",
-  "/guides/public-vs-private.html": "가이드: 공설과 사설 차이", "/guides/contract-checklist.html": "가이드: 계약 주의사항",
-  "/guides/enshrinement-period.html": "가이드: 안치기간·연장", "/guides/bongandang-vs-napgoldang.html": "가이드: 봉안당과 납골당",
-  "/guides/natural-burial.html": "가이드: 수목장·자연장", "/guides/pre-planning.html": "가이드: 미리 준비하기", "/guides/reburial.html": "가이드: 이장·개장",
-  "/guides/visiting-etiquette.html": "가이드: 참배 예절", "/guides/accessibility-visit.html": "가이드: 어르신·장애인 참배", "/404.html": "없는 페이지(404)",
-};
-function pageName(path, title) {
-  if (PAGE_NAME[path]) return PAGE_NAME[path];
-  let m = path.match(/^\/region\/([a-z]+)\.html$/);
-  if (m && SIDO_SLUG[m[1]]) return `${SIDO_SLUG[m[1]]} 봉안당 목록`;
-  m = path.match(/^\/funeral\/([a-z]+)\.html$/);
-  if (m && SIDO_SLUG[m[1]]) return `${SIDO_SLUG[m[1]]} 장례식장·화장장`;
-  if (title) return String(title).replace(/\s*\|\s*봉안당 길잡이$/, "").slice(0, 40);
-  return path;
+// 주소 정리: Cloudflare 는 .html 을 떼고 보여 주므로 /a/b.html, /a/b, /a/b/ 를 같은 페이지로 본다
+function normPath(p) {
+  p = String(p || "/").split("?")[0].split("#")[0] || "/";
+  p = p.replace(/\.html$/, "").replace(/\/index$/, "/");
+  if (p.length > 1 && p.endsWith("/") && !/^\/(region|funeral|guides|tools)\/$/.test(p)) p = p.slice(0, -1);
+  return p || "/";
 }
+// [페이지 이름, 한 줄 설명]
+const PAGE_INFO = {
+  "/": ["첫 화면", "사이트 대문. 봉안당·장례식장 찾기, 가격 비교, 장례 도우미로 가는 입구"],
+  "/region/": ["지역별 봉안당 찾기", "전국 지도와 17개 시도 목록에서 지역을 고르는 페이지"],
+  "/funeral/": ["전국 장례식장·화장장", "지역을 골라 장례식장·화장장을 찾고 화장료를 비교하는 페이지"],
+  "/type/public": ["공설 봉안당 목록", "시·군·구가 운영하는 저렴한 공설 봉안당을 시도별로 모은 목록"],
+  "/type/private": ["사설 봉안당 목록", "재단·종교단체가 운영하는 사설 봉안당을 시도별로 모은 목록"],
+  "/feature/price": ["봉안당 가격 비교", "가격대별·시도별로 봉안당 가격을 비교하는 가격 비교 첫 화면"],
+  "/feature/parking": ["주차장 있는 봉안당", "주차장을 갖춘 봉안당만 시도별로 모은 목록"],
+  "/feature/amenities": ["편의시설로 봉안당 찾기", "장애인 편의시설·유족대기실·식당이 있는 봉안당 목록"],
+  "/feature/long-period": ["안치기간 비교", "최대 몇 년까지 모실 수 있는지 봉안당별로 비교한 페이지"],
+  "/compare/facilities": ["업체별 가격 비교표", "봉안당마다 개인단·부부단·관리비 가격을 한 표로 정렬해 보는 페이지"],
+  "/compare/types": ["개인단·부부단 가격 비교", "개인단·부부단·가족단 종류별 가격 분포와 가장 싼 곳"],
+  "/compare/regions": ["지역별 가격 비교", "시도별 봉안당 중간 가격을 막대그래프로 비교한 페이지"],
+  "/pages/recommend": ["예산으로 봉안당 추천", "예산과 지역을 넣으면 맞는 봉안당을 골라 주는 추천 기능"],
+  "/pages/ranking": ["봉안당 순위", "주차·가격·안치기간 등 기준별 봉안당 TOP 20"],
+  "/pages/search": ["이름으로 검색", "시설 이름이나 동네 이름으로 봉안당·장례식장을 찾는 검색"],
+  "/pages/about": ["사이트 소개", "이 사이트가 무엇이고 자료를 어디서 가져왔는지 설명"],
+  "/pages/contact": ["문의·광고 문의", "정보 수정 요청과 광고 자리·가격 안내"],
+  "/pages/privacy": ["개인정보처리방침", "개인정보·쿠키·광고에 관한 안내"],
+  "/pages/terms": ["이용약관", "이용약관과 면책 안내"],
+  "/pages/sitemap": ["사이트맵 (지금은 없앤 페이지)", "예전 사이트 전체 목록. 지금은 없어 404로 나옴"],
+  "/404": ["없는 페이지(404)", "주소가 틀렸거나 없어진 페이지에 들어온 경우"],
+  "/tools/": ["장례 도우미 첫 화면", "지방·축문·부고·49재 도우미 모음과 나이 계산·부의금 안내"],
+  "/tools/jibang": ["지방·명정 쓰기", "제사 지방과 명정 문구를 한자·한글로 만들어 인쇄하는 도구"],
+  "/tools/chukmun": ["축문 쓰기", "제사 날짜를 넣으면 음력 간지까지 넣어 축문을 완성하는 도구"],
+  "/tools/49jae": ["49재·삼우제 계산", "별세일로 삼우제·49재·100일·기일 날짜를 계산하고 음력을 바꾸는 도구"],
+  "/tools/bugo": ["부고 문자 만들기", "빈소·발인 정보를 넣어 부고 문자와 답례 문자를 만드는 도구"],
+  "/guides/": ["가이드 목록", "장례·봉안 안내글 13편 모음"],
+  "/guides/procedure-after-cremation": ["가이드: 장례 절차", "임종부터 화장·봉안까지 장례 순서를 설명한 글"],
+  "/guides/ehaneul-guide": ["가이드: 화장 예약 방법", "e하늘 장사정보시스템으로 화장장을 예약하는 법"],
+  "/guides/how-to-choose": ["가이드: 봉안당 고르는 법", "봉안당을 고를 때 확인할 체크리스트 10가지"],
+  "/guides/cost-structure": ["가이드: 봉안당 비용 구조", "사용료·관리비·부대비용 등 봉안당 가격표 읽는 법"],
+  "/guides/public-vs-private": ["가이드: 공설과 사설 차이", "공설 봉안당과 사설 봉안당의 자격·가격 차이"],
+  "/guides/contract-checklist": ["가이드: 계약 주의사항", "사설 봉안당 계약 전에 꼭 확인할 것"],
+  "/guides/enshrinement-period": ["가이드: 안치기간·연장", "봉안당에 몇 년 모실 수 있고 어떻게 연장하는지"],
+  "/guides/bongandang-vs-napgoldang": ["가이드: 봉안당과 납골당", "봉안당·납골당·봉안묘·봉안탑의 차이"],
+  "/guides/natural-burial": ["가이드: 수목장·자연장", "수목장·잔디장 같은 자연장 비용과 방법"],
+  "/guides/pre-planning": ["가이드: 미리 준비하기", "생전에 봉안당·장례를 미리 알아보는 법"],
+  "/guides/reburial": ["가이드: 이장·개장", "묘를 옮기거나 봉안당으로 모시는 개장 절차"],
+  "/guides/visiting-etiquette": ["가이드: 참배 예절", "봉안당 참배 순서와 예절"],
+  "/guides/accessibility-visit": ["가이드: 어르신·장애인 참배", "거동이 불편한 분과 함께 참배할 때 확인할 것"],
+};
+function pageInfo(path, title) {
+  const p = normPath(path);
+  if (PAGE_INFO[p]) return PAGE_INFO[p];
+  let m = p.match(/^\/region\/([a-z]+)$/);
+  if (m && SIDO_SLUG[m[1]]) return [`${SIDO_SLUG[m[1]]} 봉안당 목록`, `${SIDO_SLUG[m[1]]} 봉안당·납골당을 시군구별로 보여 주고 시설마다 가격·주차·안치기간을 적은 페이지`];
+  m = p.match(/^\/funeral\/([a-z]+)$/);
+  if (m && SIDO_SLUG[m[1]]) return [`${SIDO_SLUG[m[1]]} 장례식장·화장장`, `${SIDO_SLUG[m[1]]} 장례식장의 빈소 사용료·전화번호와 화장장 화장료를 모은 페이지`];
+  if (title) return [String(title).replace(/\s*\|\s*봉안당 길잡이$/, "").slice(0, 40), ""];
+  return [p, ""];
+}
+function pageName(path, title) { return pageInfo(path, title)[0]; }
 const PURPOSE = [
   ["price", "봉안당 가격 비교·추천", p => /^\/(feature\/price|compare\/|pages\/recommend)/.test(p)],
   ["bongan", "봉안당 찾기 (지역·조건)", p => /^\/(region|type|feature)\//.test(p)],
   ["funeral", "장례식장·화장장 찾기", p => /^\/funeral\//.test(p)],
   ["tools", "장례 도우미 (지방·축문·부고·49재)", p => /^\/tools\//.test(p)],
   ["guide", "장례·봉안 정보 읽기 (가이드)", p => /^\/guides\//.test(p)],
-  ["ranking", "봉안당 순위 보기", p => p === "/pages/ranking.html"],
-  ["search", "이름으로 검색", p => p === "/pages/search.html"],
-  ["home", "첫 화면만 보기", p => p === "/" || p === "/index.html"],
+  ["ranking", "봉안당 순위 보기", p => p === "/pages/ranking"],
+  ["search", "이름으로 검색", p => p === "/pages/search"],
+  ["home", "첫 화면만 보기", p => p === "/"],
 ];
-function purposeOf(p) { for (const [k, l, f] of PURPOSE) if (f(p)) return [k, l]; return ["etc", "기타 (소개·문의 등)"]; }
-function regionOf(p) { const m = p.match(/^\/(region|funeral)\/([a-z]+)\.html$/); return m && SIDO_SLUG[m[2]] ? SIDO_SLUG[m[2]] : ""; }
+function purposeOf(p) { p = normPath(p); for (const [k, l, f] of PURPOSE) if (f(p)) return [k, l]; return ["etc", "기타 (소개·문의 등)"]; }
+function regionOf(p) { const m = normPath(p).match(/^\/(region|funeral)\/([a-z]+)$/); return m && SIDO_SLUG[m[2]] ? SIDO_SLUG[m[2]] : ""; }
 const KW_THEME = [
   ["가격·비용", /가격|비용|얼마|시세|요금|관리비|저렴|싼/],
   ["지방·축문·제사", /지방|축문|제사|명정|기일|49재|사십구재|삼우제|탈상|제사상/],
@@ -253,12 +297,44 @@ async function statsPage(request, env) {
   const sources = await q(`SELECT src_type t, src_name s, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND entry=1 GROUP BY src_type, src_name ORDER BY n DESC LIMIT 30`);
   const kws = await q(`SELECT keyword k, src_name s, COUNT(*) n, COUNT(DISTINCT vid) u, MAX(path) p FROM hits WHERE day>=? AND keyword<>'' GROUP BY keyword, src_name ORDER BY n DESC LIMIT 40`);
   const camps = await q(`SELECT src_name s, campaign c, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND src_type='campaign' AND entry=1 GROUP BY src_name, campaign ORDER BY n DESC LIMIT 20`);
-  const pages = await q(`SELECT path p, MAX(title) t, COUNT(*) n, COUNT(DISTINCT vid) u, SUM(entry) e FROM hits WHERE day>=? GROUP BY path ORDER BY u DESC, n DESC LIMIT 40`);
+  const pageRaw = await q(`SELECT path p, vid, MAX(title) t, COUNT(*) n, SUM(entry) e FROM hits WHERE day>=? GROUP BY path, vid`);
+  const pageAgg = {};
+  for (const r of pageRaw) {
+    const k = normPath(r.p), a = (pageAgg[k] = pageAgg[k] || { p: k, t: "", n: 0, e: 0, v: new Set() });
+    a.n += r.n; a.e += r.e || 0; a.v.add(r.vid); if (r.t && !a.t) a.t = r.t;
+  }
+  const pages = Object.values(pageAgg).map(a => ({ p: a.p, t: a.t, n: a.n, e: a.e, u: a.v.size })).sort((x, y) => y.u - x.u || y.n - x.n).slice(0, 60);
   const subs = await q(`SELECT sub s, path p, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND sub<>'' GROUP BY sub, path ORDER BY u DESC LIMIT 20`);
   const visitPaths = await q(`SELECT vid, path FROM hits WHERE day>=? GROUP BY vid, path`);
   const siteq = await q(`SELECT site_q k, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND site_q<>'' GROUP BY site_q ORDER BY n DESC LIMIT 30`);
   const devices = await q(`SELECT device d, COUNT(DISTINCT vid) n FROM hits WHERE day>=? GROUP BY device ORDER BY n DESC`);
   const recent = await q(`SELECT ts, path, title, src_type, src_name, keyword, campaign, device FROM hits WHERE day>=? AND entry=1 ORDER BY ts DESC LIMIT 30`);
+  // ---- 구글 애널리틱스식 지표 ----
+  const sessRaw = await q(`SELECT day, vid, COUNT(*) n FROM hits WHERE day>=? GROUP BY day, vid`);
+  const landRaw = await q(`SELECT day, vid, path, src_type, src_name, MIN(ts) ts FROM hits WHERE day>=? AND entry=1 GROUP BY day, vid`);
+  const hours = await q(`SELECT CAST(((ts/1000 + 32400) % 86400) / 3600 AS INTEGER) h, COUNT(DISTINCT day || vid) n FROM hits WHERE day>=? GROUP BY h`);
+  const wdays = await q(`SELECT CAST(strftime('%w', day) AS INTEGER) w, COUNT(DISTINCT day || vid) n FROM hits WHERE day>=? GROUP BY w`);
+  const flowsRaw = await q(`SELECT from_path f, path p, COUNT(*) n FROM hits WHERE day>=? AND from_path<>'' GROUP BY from_path, path ORDER BY n DESC LIMIT 60`);
+  const evs = await q(`SELECT ev, label, path, COUNT(*) n, COUNT(DISTINCT vid) u FROM events WHERE day>=? GROUP BY ev, label ORDER BY n DESC LIMIT 40`).catch(() => []);
+  const sessN = {};
+  for (const r of sessRaw) sessN[r.day + r.vid] = r.n;
+  const sessions = sessRaw.length, bounces = sessRaw.filter(r => r.n === 1).length;
+  const bounceRate = pct(bounces, sessions);
+  const landAgg = {}, srcAgg = {};
+  for (const r of landRaw) {
+    const n = sessN[r.day + r.vid] || 1, k = normPath(r.path);
+    const a = (landAgg[k] = landAgg[k] || { p: k, s: 0, b: 0, pv: 0 }); a.s++; a.pv += n; if (n === 1) a.b++;
+    const t = r.src_type === "search" ? `search|${r.src_name}` : r.src_type;
+    const b = (srcAgg[t] = srcAgg[t] || { t: r.src_type, nm: r.src_type === "search" ? r.src_name : (TYPE_LABEL[r.src_type] || r.src_type), s: 0, b: 0, pv: 0 }); b.s++; b.pv += n; if (n === 1) b.b++;
+  }
+  const landing = Object.values(landAgg).sort((x, y) => y.s - x.s).slice(0, 15);
+  const srcPerf = Object.values(srcAgg).sort((x, y) => y.s - x.s).slice(0, 12);
+  const flowAgg = {};
+  for (const r of flowsRaw) { const f = normPath(r.f), p = normPath(r.p); if (f === p) continue; const k = f + ">" + p; flowAgg[k] = (flowAgg[k] || { f, p, n: 0 }); flowAgg[k].n += r.n; }
+  const flows = Object.values(flowAgg).sort((a, b) => b.n - a.n).slice(0, 15);
+  const EV_LABEL = { tel: "전화 걸기", map: "지도 보기", home: "시설 홈페이지", ext: "바깥 사이트", copy: "부고 문자 복사", print: "지방·축문 인쇄", sms: "문자로 보내기" };
+  const evTotal = {}; for (const r of evs) evTotal[r.ev] = (evTotal[r.ev] || 0) + r.n;
+  const telClicks = evTotal.tel || 0;
 
   const entries = types.reduce((s, r) => s + r.n, 0);
   const uv = tot.uv || 0;
@@ -302,8 +378,8 @@ async function statsPage(request, env) {
       const portals = sources.filter(r => r.t === "search").slice(0, 3).map(r => `${esc(r.s)} ${num(r.n)}회`);
       A.push(`들어온 길은 ${parts.join(", ")}입니다.` + (portals.length ? ` 검색으로는 ${portals.join(", ")} 들어왔습니다.` : ""));
     }
-    if (themes.length) A.push(`검색어를 주제로 나누면 <b>${esc(themes[0].l)}</b>(${num(themes[0].n)}회)를 가장 많이 찾았고` +
-      (themes[1] ? `, ${esc(themes[1].l)}(${num(themes[1].n)}회)` : "") + (themes[2] ? `, ${esc(themes[2].l)}(${num(themes[2].n)}회)` : "") + "가 뒤를 잇습니다.");
+    if (themes.length) A.push(`검색어를 주제로 나누면 가장 많은 주제는 <b>${esc(themes[0].l)}</b>(${num(themes[0].n)}회)이고` +
+      (themes[1] ? `, ${esc(themes[1].l)}(${num(themes[1].n)}회)` : "") + (themes[2] ? `, ${esc(themes[2].l)}(${num(themes[2].n)}회)` : "") + " 순입니다.");
     A.push(`휴대폰으로 들어온 사람이 <b>${pct(mobile, uv)}%</b>입니다.`);
 
     if (uv < 30) S.push("아직 방문자가 적어 숫자가 크게 흔들립니다. 30명 이상 쌓인 뒤의 흐름을 보는 것이 정확합니다.");
@@ -317,6 +393,28 @@ async function statsPage(request, env) {
     if (mobile && pct(mobile, uv) >= 70) S.push("대부분 휴대폰으로 봅니다. 새 기능은 휴대폰 화면 기준으로 먼저 확인하세요.");
   }
 
+  // ---- 마케팅 제안 (기록을 바탕으로) ----
+  const M = [];
+  const topKw = kws.slice(0, 5).map(r => r.k);
+  const topThemes = themes.slice(0, 3).map(t => t.l);
+  const bestSrc = srcPerf.filter(x => x.s >= 3).sort((a, b) => (b.pv / b.s) - (a.pv / a.s))[0];
+  const weakLand = landing.filter(x => x.s >= 3 && pct(x.b, x.s) >= 70).slice(0, 3);
+  const peakH = hours.slice().sort((a, b) => b.n - a.n)[0];
+  const WD = "일월화수목금토";
+  const peakW = wdays.slice().sort((a, b) => b.n - a.n)[0];
+  if (topKw.length) M.push(["블로그 글 주제", `실제로 들어온 검색어(「${topKw.map(esc).join("」, 「")}」)를 제목에 넣어 네이버 블로그 글을 쓰고, 글 끝에 이 사이트의 해당 페이지 링크(추적 링크)를 거세요. 이미 사람들이 찾는 말이라 효과가 가장 빠릅니다.`]);
+  else M.push(["블로그 글 주제", "아직 검색어 기록이 적습니다. 「지역+납골당 가격」(예: 김포 납골당 가격), 「지방 쓰는 법」, 「49재 날짜 계산」, 「부고 문자 양식」처럼 검색이 많고 이 사이트에 답이 있는 주제부터 블로그 글을 쓰세요."]);
+  if (regions[0]) M.push(["지역 집중", `${esc(regions.slice(0, 2).map(r => r.l).join("·"))} 관심이 가장 큽니다. 「${esc(regions[0].l)} 납골당 추천」, 「${esc(regions[0].l)} 공설 봉안당」 같은 지역 글을 먼저 쓰고, 그 지역 맘카페·지역 카페에 정보글로 올리세요.`]);
+  if (purposeVids.tools && purposeVids.tools.s.size) M.push(["장례 도우미로 사람 모으기", `장례 도우미를 ${num(purposeVids.tools.s.size)}명이 썼습니다. 지방·축문·부고 문자는 검색이 아주 많은 말입니다. 네이버 지식iN의 「지방 쓰는 법」, 「부고 문자 어떻게」 질문에 답을 달고 도구 링크를 붙이면 꾸준히 사람이 들어옵니다.`]);
+  if (bestSrc) M.push(["잘 되는 유입 경로 키우기", `${esc(bestSrc.nm)}로 온 사람이 한 번에 평균 ${(bestSrc.pv / bestSrc.s).toFixed(1)}페이지를 봐서 가장 오래 머뭅니다. 이 경로에 글과 링크를 더 늘리세요.`]);
+  if (weakLand.length) M.push(["바로 나가는 페이지 고치기", "처음 들어온 사람이 금방 나가는 페이지가 있습니다: " + weakLand.map(x => `「${esc(pageName(x.p))}」(들어온 ${x.s}회 중 ${pct(x.b, x.s)}%가 바로 나감)`).join(", ") + ". 페이지 위쪽에 다음에 볼 곳(가격 비교, 가까운 봉안당, 장례 도우미) 단추를 크게 두세요."]);
+  if (telClicks) M.push(["제휴 영업 근거", `이 기간에 시설 전화 걸기 단추가 ${num(telClicks)}번 눌렸습니다. 아래 「전화·지도 클릭」 표의 상위 시설에 "우리 사이트에서 연락이 이만큼 갔다"는 자료로 광고·제휴를 제안해 보세요.`]);
+  else M.push(["제휴 영업 근거 쌓기", "전화 걸기·지도 보기 클릭은 이번부터 기록됩니다. 한 달쯤 쌓이면 시설별 연락 수를 보여 주며 봉안당에 광고·제휴를 제안할 수 있습니다."]);
+  if (peakH) M.push(["올리는 시간", `방문이 가장 많은 때는 ${peakW ? WD[peakW.w] + "요일, " : ""}${peakH.h}시 무렵입니다. 블로그·카페 글은 이 시간 1~2시간 전에 올리면 더 많이 읽힙니다.`]);
+  M.push(["명절·계절 일정", "설과 추석 2~3주 전에는 성묘·봉안당 검색이, 한식(4월 초)과 윤달이 든 해에는 이장·개장 검색이 크게 늘어납니다. 그 전에 「명절 봉안당 참배 주차」, 「이장 비용」 글을 미리 올려 두세요."]);
+  M.push(["오프라인 연결", "장례식장·상조 담당자에게 「부고 문자 만들기」와 「49재 계산」 페이지를 유족 안내용으로 소개해 달라고 부탁하세요. 유족이 직접 쓰는 도구라 자연스럽게 퍼집니다."]);
+  M.push(["검색 등록 점검", "네이버 서치어드바이저·구글 서치 콘솔·다음 웹마스터도구에 사이트맵(sitemap.xml)과 RSS(rss.xml)를 제출했는지 확인하세요. 등록이 안 되면 검색 유입이 거의 생기지 않습니다."]);
+  if (topThemes.length) M.push(["콘텐츠 보강 순서", `사람들이 가장 많이 찾는 주제는 ${topThemes.map(t => `「${esc(t)}」`).join(", ")}입니다. 이 주제의 가이드 글과 페이지 정보를 먼저 늘리세요.`]);
   // ------------------- 화면 -------------------
   const byDay = Object.fromEntries(daily.map(r => [r.day, r]));
   const allDays = [];
@@ -325,7 +423,7 @@ async function statsPage(request, env) {
   const chart = `<div class="legend"><span><i style="background:#1f4d3f"></i>방문자</span><span><i style="background:#cfe0d6"></i>페이지뷰</span></div><div class="chart">` +
     allDays.slice(-60).map(d => { const r = byDay[d] || { uv: 0, pv: 0 }; return `<div class="c" title="${d} 방문자 ${r.uv}명, 페이지뷰 ${r.pv}회"><div class="p" style="height:${100 * (r.pv - r.uv) / maxPv}%"></div><div class="v" style="height:${100 * r.uv / maxPv}%"></div><small>${d.slice(5).replace("-", "/")}</small></div>`; }).join("") + `</div>`;
   const tag = t => `<span class="tag ${esc(t)}">${esc(TYPE_LABEL[t] || t)}</span>`;
-  const plink = (p, t) => `<b>${esc(pageName(p, t))}</b><br><a class="path" href="${esc(p)}" target="_blank">${esc(p)}</a>`;
+  const plink = (p, t) => { const [nm, ds] = pageInfo(p, t); return `<b>${esc(nm)}</b>${ds ? `<span class="pdesc">${esc(ds)}</span>` : ""}<a class="path" href="${esc(p)}" target="_blank">${esc(p)} ↗</a>`; };
   const tabs = [[1, "오늘"], [7, "최근 7일"], [30, "최근 30일"], [90, "최근 90일"]].map(([d, l]) => `<a class="${d === days ? "on" : ""}" href="/stats?d=${d}">${l}</a>`).join("");
   const time = ts => new Date(ts + 9 * 3600e3).toISOString().slice(5, 16).replace("T", " ");
   const barRows = (list, unit, total) => list.length ? `<div class="hbars">` + list.map(r => `<div class="hb"><span class="hb-l">${esc(r.l)}</span><span class="hb-t"><i style="width:${Math.max(2, pct(r.n, total))}%"></i></span><span class="hb-v">${num(r.n)}${unit} <small>${pct(r.n, total)}%</small></span></div>`).join("") + `</div>` : `<p class="muted small">아직 기록이 없습니다.</p>`;
@@ -333,7 +431,7 @@ async function statsPage(request, env) {
   const body = `<h1>방문 통계</h1><p class="muted small">한국 시간 기준 · ${from} ~ ${kstDay(now)} · 검색엔진 로봇은 빼고 셉니다. 같은 사람은 하루에 한 명으로 셉니다.</p>
 <nav class="tabs">${tabs}</nav>
 <section class="kpi"><div><span>오늘 방문자</span><strong>${num(today.uv)}명</strong></div><div><span>기간 방문자</span><strong>${num(uv)}명</strong>${prev.uv ? `<em>앞 기간 ${num(prev.uv)}명</em>` : ""}</div>
-<div><span>방문 횟수</span><strong>${num(tot.visits)}회</strong></div><div><span>본 페이지 수</span><strong>${num(tot.pv)}회</strong><em>1회 방문당 ${perVisit.toFixed(1)}페이지</em></div></section>
+<div><span>방문 횟수</span><strong>${num(tot.visits)}회</strong></div><div><span>바로 나간 비율 (이탈률)</span><strong>${bounceRate}%</strong><em>한 페이지만 보고 나감</em></div><div><span>전화 걸기 클릭</span><strong>${num(telClicks)}회</strong><em>지도 보기 ${num(evTotal.map || 0)}회</em></div><div><span>본 페이지 수</span><strong>${num(tot.pv)}회</strong><em>1회 방문당 ${perVisit.toFixed(1)}페이지</em></div></section>
 <section class="card analysis"><h2>한눈에 보는 분석</h2><ul>${A.map(a => `<li>${a}</li>`).join("")}</ul>
 ${S.length ? `<h3>이렇게 해 보세요</h3><ul class="sugg">${S.map(a => `<li>${a}</li>`).join("")}</ul>` : ""}</section>
 <div class="grid">
@@ -343,6 +441,22 @@ ${S.length ? `<h3>이렇게 해 보세요</h3><ul class="sugg">${S.map(a => `<li
 <p class="small muted">시도별 봉안당 목록과 장례식장 페이지를 본 사람 수입니다.</p></section>
 </div>
 <section class="card"><h2>날짜별 방문자</h2>${chart}</section>
+<div class="grid">
+<section class="card"><h2>몇 시에 많이 오나</h2>${(() => { const mx = Math.max(1, ...hours.map(h => h.n)); const by = Object.fromEntries(hours.map(h => [h.h, h.n]));
+  return `<div class="chart hrs">` + Array.from({ length: 24 }, (_, h) => `<div class="c" title="${h}시 ${by[h] || 0}회"><div class="v" style="height:${100 * (by[h] || 0) / mx}%"></div><small>${h % 3 === 0 ? h + "시" : ""}</small></div>`).join("") + `</div>`; })()}
+<p class="small muted">한국 시간 기준, 시간대별 방문 횟수입니다.</p></section>
+<section class="card"><h2>무슨 요일에 많이 오나</h2>${barRows([0,1,2,3,4,5,6].map(w => ({ l: "일월화수목금토"[w] + "요일", n: (wdays.find(x => x.w === w) || { n: 0 }).n })), "회", Math.max(1, wdays.reduce((a, b) => a + b.n, 0)))}</section>
+</div>
+<section class="card"><h2>처음 들어온 페이지별 성과</h2>${rows(landing, [["처음 본 페이지", r => plink(r.p)], ["들어온 횟수", r => num(r.s) + "회", 1], ["1회 방문당 페이지", r => (r.pv / r.s).toFixed(1), 1], ["바로 나간 비율", r => `<span class="${pct(r.b, r.s) >= 70 ? "bad" : ""}">${pct(r.b, r.s)}%</span>`, 1]])}
+<p class="small muted">바로 나간 비율이 70% 이상이면 빨간색입니다. 처음 들어온 사람이 다음 페이지로 넘어가지 않는다는 뜻이라, 그 페이지에 볼거리나 다음 단추를 보강하면 좋습니다.</p></section>
+<section class="card"><h2>유입 경로별 성과</h2>${rows(srcPerf, [["경로", r => `${tag(r.t)} ${esc(r.nm)}`], ["방문", r => num(r.s) + "회", 1], ["1회 방문당 페이지", r => (r.pv / r.s).toFixed(1), 1], ["바로 나간 비율", r => pct(r.b, r.s) + "%", 1]])}
+<p class="small muted">어디서 온 사람이 더 오래 머무는지 비교합니다. 페이지 수가 많고 바로 나간 비율이 낮은 경로가 좋은 경로입니다.</p></section>
+<section class="card"><h2>사람들이 어디서 어디로 이동했나</h2>${rows(flows, [["이전 페이지", r => `<b>${esc(pageName(r.f))}</b>`], ["", r => "→"], ["다음 페이지", r => `<b>${esc(pageName(r.p))}</b>`], ["횟수", r => num(r.n) + "회", 1]])}
+<p class="small muted">사이트 안에서 많이 다니는 길입니다. 많이 가는 길은 단추를 더 크게, 가야 하는데 안 가는 길은 링크를 새로 만들어 주세요.</p></section>
+<section class="card"><h2>전화·지도 클릭 (관심 행동)</h2>${rows(evs, [["행동", r => `<span class="tag">${esc(EV_LABEL[r.ev] || r.ev)}</span>`], ["시설·대상", r => `<b>${esc(r.label || "-")}</b><span class="path">${esc(pageName(r.path))}</span>`], ["사람", r => num(r.u) + "명", 1], ["횟수", r => num(r.n) + "회", 1]])}
+<p class="small muted">시설 전화 걸기, 지도 보기, 부고 문자 복사, 지방·축문 인쇄 같은 행동을 셉니다. 이번 업데이트 뒤부터 기록됩니다.</p></section>
+<section class="card mkt"><h2>사람을 더 모으는 방법 (마케팅 제안)</h2><ol>${M.map(([t, d]) => `<li><b>${t}</b><br>${d}</li>`).join("")}</ol>
+<p class="small muted">위 제안은 이 기간의 방문 기록을 바탕으로 자동으로 만들어집니다. 기간을 30일·90일로 바꾸면 더 안정된 제안이 나옵니다.</p></section>
 <section class="card"><h2>많이 본 페이지</h2>${rows(pages, [["페이지", r => plink(r.p, r.t)], ["본 사람", r => num(r.u) + "명", 1], ["조회수", r => num(r.n) + "회", 1], ["여기로 처음 들어옴", r => num(r.e) + "회", 1]])}
 <p class="small muted">본 사람 = 그 페이지를 한 번 이상 연 사람 수 · 여기로 처음 들어옴 = 검색이나 다른 사이트에서 바로 이 페이지로 들어온 횟수</p></section>
 ${subs.length ? `<section class="card"><h2>많이 본 시설</h2>${rows(subs, [["시설", r => `<b>${esc(r.s)}</b><br><span class="path">${esc(pageName(r.p))}</span>`], ["본 사람", r => num(r.u) + "명", 1], ["조회수", r => num(r.n) + "회", 1]])}</section>` : ""}
