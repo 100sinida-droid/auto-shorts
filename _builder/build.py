@@ -23,6 +23,7 @@ import html
 import json
 import os
 import re
+import posixpath
 import shutil
 import sys
 import time
@@ -819,12 +820,20 @@ def rel(depth):
     return "../" * depth
 
 
+def adsense_clients():
+    v = CONFIG.get("adsense_clients") or CONFIG.get("adsense_client") or []
+    if isinstance(v, str):
+        v = [v]
+    return [c.strip() for c in v if c and c.strip()]
+
+
 def adsense_head():
-    client = (CONFIG.get("adsense_client") or "").strip()
-    if not client:
-        return ""
-    return (f'<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={E(client)}" '
-            'crossorigin="anonymous"></script>')
+    out = [f'<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={E(c)}" crossorigin="anonymous"></script>'
+           for c in adsense_clients()]
+    acct = (CONFIG.get("adsense_account") or "").strip()
+    if acct:
+        out.insert(0, f'<meta name="google-adsense-account" content="{E(acct)}">')
+    return "\n".join(out)
 
 
 # ---------------------------------------------------------------------------
@@ -890,7 +899,7 @@ def section_of(path):
         return "tools"
     if path.startswith("funeral/"):
         return "funeral"
-    if path.startswith("compare/") or path == "feature/price.html":
+    if path.startswith("compare/") or path in ("feature/price.html", "feature/cost.html"):
         return "price"
     if path.startswith(("region/", "type/", "feature/", "facility/")):
         return "bongan"
@@ -1038,6 +1047,14 @@ def prepare_seo(facs, groups):
                              ["49재 계산", "49재 날짜 계산기", "사십구재", "삼우제 날짜", "탈상", "기일 계산", "음력 기일", "음력 양력 변환"]),
         "tools/bugo.html": ("부고 문자 양식 · 모바일 부고장 만들기 (답례 문자 포함)", "고인, 빈소, 발인, 장지만 넣으면 정중한 부고 문자를 만들어 드립니다. 카카오톡·문자로 바로 보내고 장례 후 감사 답례 문자도 완성하세요.",
                             ["부고 문자", "부고 문자 양식", "모바일 부고장", "부고장 만들기", "부고 답례 문자", "장례 감사 문자", "부고 알림"]),
+        "tools/after-death.html": ("장례 후 해야 할 일 체크리스트 (사망신고·상속·세금 기한)", "사망신고 1개월, 상속 포기 3개월, 상속세 6개월 등 장례 후 해야 할 일과 마감 날짜를 돌아가신 날 기준으로 계산해 드립니다.",
+                                   ["장례 후 해야 할 일", "사망 후 해야 할 일", "사망신고 기한", "사망신고 방법", "안심상속 원스톱", "상속 포기 기간", "상속세 신고 기한", "유족연금 신청"]),
+        "feature/near.html": ("가까운 봉안당 찾기 · 서울 근교 납골당 거리순", "사는 곳을 고르면 가까운 봉안당을 거리순으로 보여 드립니다. 서울·인천·부산·대구 근교 봉안당 목록도 정리했습니다.",
+                              ["가까운 납골당", "서울 근교 납골당", "서울 근교 봉안당", "인천 근교 납골당", "부산 근교 납골당", "내 주변 봉안당", "근처 납골당"]),
+        "feature/cost.html": ("봉안당 총비용 계산기 · 납골당 관리비·연장비 포함 비용 계산", "사용료에 관리비와 연장 비용까지 더해 15년·30년·45년 모실 때 총비용을 봉안당끼리 비교하세요.",
+                              ["납골당 비용 계산", "봉안당 총비용", "납골당 관리비", "봉안당 연장 비용", "납골당 30년 비용", "봉안당 가격 계산기"]),
+        "feature/holiday.html": ("명절 봉안당 성묘 안내 (설·추석 날짜·주차·셔틀·대형 봉안당 연락처)", "설·추석 봉안당 성묘 전 확인할 운영 시간·셔틀·제례실, 덜 붐비게 다녀오는 법, 대형 봉안당 연락처를 정리했습니다.",
+                                 ["명절 성묘", "추석 성묘", "설 성묘", "납골당 명절 운영", "봉안당 셔틀버스", "명절 납골당 주차", "2027 설날"]),
         "pages/search.html": ("봉안당·납골당·장례식장 이름으로 검색", "전국 봉안당(납골당), 장례식장, 화장장을 이름이나 동네 이름으로 바로 찾으세요.",
                               ["납골당 검색", "봉안당 찾기", "장례식장 검색"]),
     }
@@ -1135,11 +1152,11 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 {f'<meta property="og:url" content="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:site_name" content="{E(SITE)}">
 <meta property="og:locale" content="ko_KR">
-<meta property="og:image" content="{SITE_URL}/og.png">
+<meta property="og:image" content="{SITE_URL}/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="alternate" type="application/rss+xml" title="{E(SITE)}" href="{SITE_URL}/rss.xml">
+<link rel="alternate" type="application/rss+xml" title="{E(SITE)}" href="{SITE_URL}/assets/rss.xml">
 <meta name="theme-color" content="#1f4d3f">
 {robots}
 <link rel="icon" href="{FAVICON}" type="image/svg+xml">
@@ -1218,9 +1235,67 @@ def email_off(html_text):
     return "".join(res)
 
 
+# ---------------------------------------------------------------------------
+# 폴더 정리: 페이지는 원래 경로로 만들고, 저장할 때 새 폴더 구조로 옮긴다.
+#   bongan/ 봉안당(지역·공설사설·조건·가격 비교·추천·순위·계산기)  funeral/ 장례식장·화장장
+#   guides/ 가이드  tools/ 장례 도우미  info/ 소개·문의·검색  assets/ CSS·JS·데이터
+# ---------------------------------------------------------------------------
+_COMPARE = {"compare/facilities.html": "bongan/compare-facilities.html", "compare/types.html": "bongan/compare-types.html",
+            "compare/regions.html": "bongan/compare-regions.html"}
+
+
+def newpath(p):
+    p = p.lstrip("/")
+    if p.startswith("region/"):
+        return "bongan/" + p[len("region/"):]
+    if p in ("type/public.html", "type/private.html"):
+        return "bongan/" + p.split("/", 1)[1]
+    if p.startswith("feature/"):
+        return "bongan/" + p[len("feature/"):]
+    if p in _COMPARE:
+        return _COMPARE[p]
+    if p in ("pages/ranking.html", "pages/recommend.html"):
+        return "bongan/" + p.split("/", 1)[1]
+    if p.startswith("pages/"):
+        return "info/" + p[len("pages/"):]
+    if p.startswith("static/"):
+        return "assets/" + p[len("static/"):]
+    if p == "data/search.json":
+        return "assets/search.json"
+    return p
+
+
+_ATTR = re.compile(r'((?:href|src|action)=")([^"]*)(")')
+_ABS = re.compile(re.escape(SITE_URL) + r'/([A-Za-z0-9_./-]+)')
+
+
+def _relink(value, old_page, new_page):
+    if not value or value.startswith(("#", "http:", "https:", "mailto:", "tel:", "sms:", "data:", "javascript:", "//", "{")):
+        return value
+    m = re.match(r"([^?#]*)(.*)", value)
+    path, rest = m.group(1), m.group(2)
+    if not path:
+        return value
+    if path.startswith("/"):
+        target = path.lstrip("/")
+        return "/" + newpath(target) + rest if target else value
+    target = posixpath.normpath(posixpath.join(posixpath.dirname(old_page), path))
+    if target.startswith(".."):
+        return value
+    nd = posixpath.dirname(new_page) or "."
+    return posixpath.relpath(newpath(target), nd) + rest
+
+
+def relink_html(content, old_page):
+    new_page = newpath(old_page)
+    content = _ATTR.sub(lambda m: m.group(1) + _relink(m.group(2), old_page, new_page) + m.group(3), content)
+    return _ABS.sub(lambda m: f"{SITE_URL}/{newpath(m.group(1))}", content)
+
+
 def write(out_dir, path, content):
     if path.endswith(".html"):
-        content = email_off(content)
+        content = relink_html(email_off(content), path)
+    path = newpath(path)
     p = out_dir / path
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")
@@ -1607,7 +1682,8 @@ def page_region_index(out, groups):
     r = rel(depth)
     cards = "".join(f'<a class="region-card" href="{r}{region_url(s)}">{art.region_thumb(s)}<span class="rc-txt"><strong>{E(s)}</strong><span>봉안시설 {len(v)}곳 · 공설 {sum(1 for f in v if f["kind"] == "공설")} · 사설 {sum(1 for f in v if f["kind"] == "사설")}</span></span></a>' for s, v in groups.items())
     kmap = art.map_svg({s: f"{r}{region_url(s)}" for s in groups}, {s: len(v) for s, v in groups.items()}, "봉안당 지역 선택 지도")
-    body = f"""<header class="page-head"><h1>지역별 봉안시설</h1><p class="lead">지도나 아래 목록에서 시도를 고르면 시군구별 봉안당·납골당 목록을 볼 수 있습니다.</p></header>
+    body = f"""<header class="page-head"><h1>지역별 봉안시설</h1><p class="lead">지도나 아래 목록에서 시도를 고르면 시군구별 봉안당·납골당 목록을 볼 수 있습니다.</p>
+<nav class="rank-nav"><a class="chip-link" href="{r}feature/near.html">우리 집에서 가까운 봉안당</a><a class="chip-link" href="{r}feature/cost.html">총비용 계산기</a><a class="chip-link" href="{r}feature/holiday.html">명절 성묘 안내</a><a class="chip-link" href="{r}type/public.html">공설 봉안당</a><a class="chip-link" href="{r}type/private.html">사설 봉안당</a></nav></header>
 <div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">색이 진할수록 시설이 많은 지역입니다.</p></div><div class="region-grid compact">{cards}</div></div>
 """
     write(out, "region/index.html", layout("region/index.html", "지역별 봉안당·납골당 찾기", "전국 17개 시도의 봉안시설을 지역별로 찾아보세요.", body, crumbs=[("지역별", None)], depth=depth))
@@ -1729,7 +1805,8 @@ def price_hub_links(depth):
     cards = [("compare/facilities.html", "업체별 가격 비교", "시설마다 개인단·부부단·관리비를 한 표에서 비교"),
              ("compare/types.html", "종류별 가격 비교", "개인단·부부단·가족단의 전국 가격 분포"),
              ("compare/regions.html", "지역별 가격 비교", "시도별 중간 가격과 가장 저렴한 곳"),
-             ("pages/recommend.html", "예산으로 추천받기", "원하는 가격을 넣으면 맞는 봉안당을 골라 줌")]
+             ("pages/recommend.html", "예산으로 추천받기", "원하는 가격을 넣으면 맞는 봉안당을 골라 줌"),
+             ("feature/cost.html", "총비용 계산기", "관리비·연장비까지 더한 15년·30년 총비용")]
     return '<div class="feature-grid hub">' + "".join(
         f'<a class="feature-card" href="{r}{u}"><strong>{E(t)}</strong><span>{E(d)}</span></a>' for u, t, d in cards) + "</div>"
 
@@ -2168,6 +2245,10 @@ def page_funeral(out, items):
 # 계산과 문구 만들기는 모두 브라우저(static/site.js)에서 처리한다.
 # ---------------------------------------------------------------------------
 TOOLS = [
+    ("after", "tools/after-death.html", "장례 후 할 일 체크리스트", "사망신고·상속·세금까지 할 일과 마감 날짜를 순서대로", "info"),
+    ("near", "feature/near.html", "가까운 봉안당 찾기", "우리 집에서 가까운 봉안당을 거리순으로", "map"),
+    ("cost", "feature/cost.html", "봉안당 총비용 계산기", "관리비·연장비까지 더해 몇 년에 모두 얼마인지 비교", "won"),
+    ("holiday", "feature/holiday.html", "명절 성묘 안내", "설·추석 날짜, 붐비지 않게 다녀오는 법, 대형 봉안당 연락처", "bongan"),
     ("jibang", "tools/jibang.html", "지방 쓰기", "아버지·어머니·조부모 지방을 한자와 한글로 바로 만들어 인쇄", "brush"),
     ("myeongjeong", "tools/jibang.html#myeongjeong", "명정 쓰기", "관 위에 덮는 붉은 천의 글씨(명정) 문구 만들기", "brush"),
     ("chukmun", "tools/chukmun.html", "축문 쓰기", "제사 날짜만 넣으면 기제사 축문을 음력 간지까지 자동 완성", "guide"),
@@ -2346,6 +2427,200 @@ def page_tools(out):
                                          crumbs=[("장례 도우미", "tools/index.html"), ("부고 문자 만들기", None)], depth=depth))
 
 
+# ---------------------------------------------------------------------------
+# 검색 유입용 새 기능: 가까운 봉안당, 총비용 계산기, 명절 성묘 정보, 장례 후 할 일
+# ---------------------------------------------------------------------------
+def _hav(la1, lo1, la2, lo2):
+    import math
+    p = math.pi / 180
+    a = math.sin((la2 - la1) * p / 2) ** 2 + math.cos(la1 * p) * math.cos(la2 * p) * math.sin((lo2 - lo1) * p / 2) ** 2
+    return 12742 * math.asin(math.sqrt(a))
+
+
+NEAR_CITIES = [("서울", "서울특별시"), ("인천", "인천광역시"), ("부산", "부산광역시"), ("대구", "대구광역시"), ("대전", "대전광역시"), ("광주", "광주광역시"), ("울산", "울산광역시")]
+
+
+def page_near(out, facs):
+    depth = 1
+    r = rel(depth)
+    geo = {f["id"]: geo_of(f["address"]) for f in facs}
+    secs, toc = [], []
+    for short, sido in NEAR_CITIES:
+        pts = [g for g in SGG if g["s"] == sido]
+        if not pts:
+            continue
+        la = sum(g["la"] for g in pts) / len(pts)
+        lo = sum(g["lo"] for g in pts) / len(pts)
+        cand = []
+        for f in facs:
+            g = geo.get(f["id"])
+            if g:
+                cand.append((_hav(la, lo, g["la"], g["lo"]), f))
+        cand.sort(key=lambda x: x[0])
+        top = cand[:15]
+        rows = "".join(f'<tr><td><a href="{r}{facility_url(f)}">{E(f["name"])}</a> {kind_badge(f["kind"])}</td><td class="hide-sm">{E(f["address"])}</td>'
+                       f'<td class="num">약 {d:.0f}km</td><td class="num">{fmt_won(f.get("p_single") or f.get("price_min")) if f.get("price_min") else "–"}</td></tr>' for d, f in top)
+        toc.append(f'<a class="chip-link" href="#near-{sido_slug(sido)}">{short} 근교</a>')
+        secs.append(f'<section class="card" id="near-{sido_slug(sido)}"><h2>{short}에서 가까운 봉안당 15곳</h2>'
+                    f'<div class="table-wrap"><table class="list"><thead><tr><th>봉안당</th><th class="hide-sm">주소</th><th class="num">직선거리</th><th class="num">개인단 가격</th></tr></thead><tbody>{rows}</tbody></table></div></section>')
+    sgg_json = json.dumps([{"s": g["s"], "n": g["n"], "la": g["la"], "lo": g["lo"]} for g in SGG], ensure_ascii=False, separators=(",", ":"))
+    sido_opts = "".join(f'<option value="{E(s)}">{E(s)}</option>' for s in SIDO)
+    body = f"""<header class="page-head"><h1>우리 집에서 가까운 봉안당 찾기</h1><p class="lead">사는 곳을 고르면 가까운 봉안당을 거리순으로 보여 드립니다. 자주 찾아뵙기 쉬운 곳을 고르는 것이 봉안당 선택에서 가장 중요합니다.</p>
+<nav class="rank-nav">{"".join(toc)}</nav></header>
+<section class="card"><h2>사는 곳으로 찾기</h2>
+<form class="tool-form" id="near-form" onsubmit="return false">
+<label>시도<select id="near-sido"><option value="">시도를 고르세요</option>{sido_opts}</select></label>
+<label>시군구<select id="near-sgg"><option value="">먼저 시도를 고르세요</option></select></label>
+<label>거리<select id="near-km"><option value="30">30km 이내</option><option value="50" selected>50km 이내</option><option value="80">80km 이내</option><option value="150">150km 이내</option><option value="9999">거리 상관없이</option></select></label>
+<label>구분<select id="near-kind"><option value="">전체</option><option>공설</option><option>사설</option></select></label>
+<label class="check"><input type="checkbox" id="near-park"> 주차장 있는 곳만</label>
+<button type="button" id="near-gps">지금 내 위치로 찾기</button></form>
+<p id="near-count" class="muted" aria-live="polite"></p><div id="near-out" class="results"></div>
+<script type="application/json" id="near-sgg-data">{sgg_json}</script>
+<p class="small muted">거리는 시설 주소가 있는 시군구의 중심에서 잰 직선거리라 실제 길과 다를 수 있습니다. 차로 걸리는 시간은 대략적인 값이니 지도 앱으로 꼭 확인하세요.</p></section>
+{"".join(secs)}
+{guide_links(depth, ["how-to-choose", "visiting-etiquette", "accessibility-visit"])}"""
+    write(out, "feature/near.html", layout("feature/near.html", "우리 집에서 가까운 봉안당 찾기", "가까운 봉안당 찾기", body,
+                                           crumbs=[("봉안당 찾기", "region/index.html"), ("가까운 봉안당", None)], depth=depth))
+
+
+def page_cost(out, facs):
+    depth = 1
+    body = f"""<header class="page-head"><h1>봉안당 총비용 계산기</h1><p class="lead">봉안당 비용은 처음 내는 사용료만으로 끝나지 않습니다. 관리비와 기간 연장 비용까지 더해 「몇 년 모시면 모두 얼마」인지 시설끼리 비교해 보세요.</p></header>
+<section class="card"><h2>모실 기간</h2>
+<form class="tool-form" onsubmit="return false"><label>몇 년 모실 계획인가요?<select id="cc-years"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></label>
+<label class="wide small muted">봉안당을 이름으로 고르면 공개된 가격표의 사용료·관리비와 안치기간이 자동으로 들어갑니다. 비어 있거나 틀린 값은 시설에 확인한 금액으로 고쳐 넣으세요.</label></form>
+<datalist id="cc-list"></datalist>
+<div class="cc-cols">{"".join(f'''<div class="cc-col" data-i="{i}"><h3>비교 {i + 1}</h3>
+<label>봉안당 이름<input class="cc-name" list="cc-list" placeholder="이름을 치면 목록이 나옵니다" autocomplete="off"></label>
+<label>사용료 (원)<input class="cc-use" type="number" min="0" step="10000" placeholder="예: 3000000"></label>
+<label>관리비 (원, 한 번 낼 때)<input class="cc-mg" type="number" min="0" step="10000" placeholder="예: 250000"></label>
+<label>관리비를 몇 년마다 내나요<input class="cc-mgy" type="number" min="0" step="1" placeholder="예: 5 (한 번만 내면 0)"></label>
+<label>처음 계약 기간 (년)<input class="cc-first" type="number" min="1" step="1" placeholder="예: 15"></label>
+<label>연장 1번에 늘어나는 기간 (년)<input class="cc-ext" type="number" min="0" step="1" placeholder="예: 5"></label>
+<label>연장 1번 비용 (원, 모르면 비워 두세요)<input class="cc-extfee" type="number" min="0" step="10000"></label>
+<p class="cc-note small muted"></p></div>''' for i in range(3))}</div>
+<div id="cc-out" class="tool-out" aria-live="polite"></div></section>
+<section class="card"><h2>봉안당 비용, 이렇게 계산됩니다</h2><ul class="tips">
+<li><strong>사용료</strong>: 처음 계약할 때 내는 돈입니다. 같은 시설이라도 안치단의 층과 높이에 따라 몇 배까지 차이가 납니다.</li>
+<li><strong>관리비</strong>: 1년, 5년, 10년마다 내거나 처음에 한꺼번에 내는 곳이 있습니다. 가격표에 「5년 관리비」처럼 적혀 있으면 5년마다 낸다는 뜻입니다.</li>
+<li><strong>연장 비용</strong>: 처음 계약 기간(보통 15년)이 끝나면 연장해야 하고, 그때 사용료나 관리비를 다시 받는 곳이 많습니다. 연장 횟수에 제한이 있는지도 확인하세요.</li>
+<li>공설 봉안당은 조례로 금액이 정해져 있어 저렴하지만 관내·관외 주민에 따라 가격이 다릅니다.</li></ul>
+<p><a href="{rel(depth)}guides/cost-structure.html">봉안당 비용 구조 자세히 보기</a> · <a href="{rel(depth)}compare/facilities.html">업체별 가격 비교표</a></p></section>"""
+    write(out, "feature/cost.html", layout("feature/cost.html", "봉안당 총비용 계산기", "봉안당 총비용 계산기", body,
+                                           crumbs=[("가격 비교", "feature/price.html"), ("총비용 계산기", None)], depth=depth))
+
+
+HOLIDAYS = [(2027, "2027-02-07", "일", "2027-09-15", "수"), (2028, "2028-01-27", "목", "2028-10-03", "화"), (2029, "2029-02-13", "화", "2029-09-22", "토")]
+
+
+def page_holiday(out, facs, groups):
+    depth = 1
+    r = rel(depth)
+    rows = "".join(f"<tr><td>{y}년</td><td>{a[5:7].lstrip('0')}월 {a[8:].lstrip('0')}일 ({aw})</td><td>{b[5:7].lstrip('0')}월 {b[8:].lstrip('0')}일 ({bw})</td></tr>" for y, a, aw, b, bw in HOLIDAYS)
+    big = []
+    for sido, v in groups.items():
+        top = sorted([f for f in v if (f.get("cap") or {}).get("total") or (isinstance(f.get("parking_count"), (int, float)) and f["parking_count"])],
+                     key=lambda f: -(((f.get("cap") or {}).get("total") or 0) + (f.get("parking_count") or 0) * 50))[:3]
+        for f in top:
+            capt = (f.get("cap") or {}).get("total")
+            cap_s = f"{capt:,}기" if capt else "–"
+            pk = f.get("parking_count")
+            pk_s = f"{int(pk):,}대" if isinstance(pk, (int, float)) and pk else "–"
+            big.append(f'<tr><td>{E(SIDO_SHORT.get(sido, sido))}</td><td><a href="{r}{facility_url(f)}">{E(f["name"])}</a> {kind_badge(f["kind"])}</td>'
+                       f'<td class="num">{cap_s}</td><td class="num">{pk_s}</td><td>{tel_link(f["tel"])}</td></tr>')
+    body = f"""<header class="page-head"><h1>명절 봉안당 성묘 안내</h1><p class="lead">설과 추석에는 봉안당마다 참배객이 몰려 길이 막히고 주차하기 어렵습니다. 미리 확인할 것과 붐비는 시간을 피하는 방법, 대형 봉안당 연락처를 모았습니다.</p>
+<div id="hd-next" class="hd-next" aria-live="polite"></div></header>
+<section class="card"><h2>다가오는 설·추석</h2><div class="table-wrap"><table class="list"><thead><tr><th>해</th><th>설날</th><th>추석</th></tr></thead><tbody>{rows}</tbody></table></div>
+<p class="small muted">음력 날짜를 한국천문연구원 기준으로 바꾼 날입니다. 연휴는 보통 명절 앞뒤 하루씩이고, 대체공휴일에 따라 더 길어질 수 있습니다.</p></section>
+<section class="card"><h2>가기 전에 시설에 꼭 물어볼 것</h2><ul class="tips">
+<li><strong>명절 운영 시간</strong>: 평소보다 일찍 열고 늦게 닫는 곳도, 명절 당일 오후에 일찍 닫는 곳도 있습니다.</li>
+<li><strong>차량 통제와 셔틀버스</strong>: 큰 봉안당은 명절 당일 자가용 진입을 막고 가까운 역이나 임시 주차장에서 셔틀버스를 운행하기도 합니다.</li>
+<li><strong>제례실 예약</strong>: 차례를 지낼 수 있는 제례실은 명절에 예약이 빨리 찹니다. 미리 예약이 되는지 물어보세요.</li>
+<li><strong>가져가도 되는 것</strong>: 생화, 음식, 향과 초를 들일 수 있는지 시설마다 규칙이 다릅니다. 안치단 앞에는 작은 조화나 사진 액자만 허용하는 곳이 많습니다.</li></ul></section>
+<section class="card"><h2>덜 붐비게 다녀오는 방법</h2><ul class="tips">
+<li>명절 1~2주 전 주말이나 명절이 지난 뒤 평일에 미리 다녀오는 가족이 많습니다. 길도 덜 막히고 충분히 머물 수 있습니다.</li>
+<li>명절 당일에 가야 한다면 문 여는 시간에 맞춰 이른 아침에 출발하세요.</li>
+<li>어르신과 함께라면 휠체어 대여, 엘리베이터, 경사로가 있는지 미리 확인하세요. <a href="{r}guides/accessibility-visit.html">어르신·장애인과 함께 참배할 때</a></li>
+<li>참배 순서와 예절은 <a href="{r}guides/visiting-etiquette.html">봉안당 참배 예절</a>에 정리해 두었습니다.</li></ul></section>
+<section class="card"><h2>명절에 많이 찾는 대형 봉안당 연락처</h2>
+<p class="small">안치 규모가 크거나 주차장이 넓은 곳을 시도별로 골랐습니다. 명절 운영 시간과 셔틀은 전화로 확인하세요.</p>
+<div class="table-wrap"><table class="list"><thead><tr><th>지역</th><th>봉안당</th><th class="num">안치 규모</th><th class="num">주차</th><th>전화</th></tr></thead><tbody>{"".join(big)}</tbody></table></div>
+<p class="small muted">시설 관계자께서 명절 운영 정보를 보내 주시면 이 페이지에 올려 드립니다. <a href="{r}pages/contact.html">정보 보내기</a></p></section>
+<section class="block"><div class="block-head"><h2>함께 쓰면 좋은 기능</h2></div>
+<div class="feature-grid"><a class="feature-card" href="{r}feature/parking.html">{icon("parking", "lg")}<strong>주차장 있는 봉안당</strong><span>명절 주차 걱정 덜기</span></a>
+<a class="feature-card" href="{r}tools/chukmun.html">{icon("guide", "lg")}<strong>축문 쓰기</strong><span>차례·기제사 축문</span></a>
+<a class="feature-card" href="{r}tools/jibang.html">{icon("brush", "lg")}<strong>지방 쓰기</strong><span>한자·한글 지방 인쇄</span></a>
+<a class="feature-card" href="{r}feature/near.html">{icon("map", "lg")}<strong>가까운 봉안당</strong><span>우리 집에서 거리순</span></a></div></section>"""
+    write(out, "feature/holiday.html", layout("feature/holiday.html", "명절 봉안당 성묘 안내", "명절 성묘 안내", body,
+                                              crumbs=[("봉안당 찾기", "region/index.html"), ("명절 성묘 안내", None)], depth=depth))
+
+
+AFTER_DEATH = [
+    ("당일", "임종 직후", [
+        ("ad-cert", "사망진단서(또는 시체검안서) 받기", "병원에서 발급합니다. 사망신고·보험·은행 등에 계속 쓰이니 5~10부를 넉넉히 받아 두세요.", "", ""),
+        ("ad-hall", "장례식장 정하고 고인 모시기", "병원 장례식장이 아니라면 이송 차량을 장례식장에 요청합니다. 상조에 가입했다면 상조회사에 먼저 연락하세요.", "funeral/index.html", "지역별 장례식장"),
+        ("ad-cremate", "화장 예약하기", "e하늘 장사정보시스템에서 화장장을 예약합니다. 보통 장례식장이나 상조 담당자가 대신 해 줍니다.", "https://www.15774129.go.kr", "e하늘 장사정보시스템"),
+    ]),
+    ("1~3일", "장례 기간", [
+        ("ad-bugo", "부고 알리기", "장례식장과 발인 일정이 정해지면 문자로 알립니다.", "tools/bugo.html", "부고 문자 만들기"),
+        ("ad-bongan", "봉안당·자연장지 정하기", "화장 뒤 모실 곳을 발인 전까지 정해야 합니다. 거리와 총비용을 비교해 보세요.", "feature/near.html", "가까운 봉안당 찾기"),
+        ("ad-receipt", "장례비용 영수증 모으기", "장례식장·봉안당 영수증은 상속세를 계산할 때 비용으로 빼 주는 근거가 됩니다. 버리지 말고 한곳에 모아 두세요.", "", ""),
+    ]),
+    ("장례 뒤 1주", "장례 직후", [
+        ("ad-samu", "삼우제 지내기", "장례 뒤 셋째 날 처음으로 봉안당이나 산소를 찾아뵙는 제사입니다.", "tools/49jae.html", "삼우제·49재 날짜 계산"),
+        ("ad-phone", "휴대폰·인터넷·방송 해지 또는 명의 변경", "통신사 대리점에 사망진단서와 가족관계증명서를 가져가면 됩니다. 해지 전 휴대폰 속 사진·연락처를 백업해 두세요.", "", ""),
+        ("ad-bills", "전기·가스·수도 요금 명의 변경", "고인 명의로 된 공과금 자동이체와 명의를 정리합니다.", "", ""),
+    ]),
+    ("1개월 안", "사망신고", [
+        ("ad-report", "사망신고 하기", "사망 사실을 안 날부터 1개월 안에 주민센터나 시·구청에 신고합니다. 늦으면 과태료가 나옵니다.", "https://www.gov.kr", "정부24", "1m"),
+        ("ad-onestop", "안심상속 원스톱 서비스 신청", "사망신고 할 때 같이 신청하면 고인의 예금·대출·보험, 땅, 자동차, 세금, 연금을 한 번에 조회해 줍니다.", "https://www.gov.kr", "정부24", "eom1y"),
+        ("ad-pension", "국민연금 유족연금·사망일시금 청구", "고인이 국민연금 가입자나 수급자였다면 국민연금공단에 청구합니다. 5년이 지나면 받을 수 없습니다.", "https://www.nps.or.kr", "국민연금공단", "5y"),
+    ]),
+    ("3개월 안", "상속 정리", [
+        ("ad-renounce", "빚이 많다면 상속 포기·한정승인", "고인의 빚이 재산보다 많다면 상속이 시작된 것을 안 날부터 3개월 안에 가정법원에 신청해야 합니다. 이 기간이 지나면 빚까지 그대로 물려받습니다.", "", "", "3m"),
+        ("ad-split", "상속 재산 나누기 협의", "상속인끼리 재산을 어떻게 나눌지 정하고, 필요하면 상속재산 분할협의서를 씁니다.", "", ""),
+    ]),
+    ("6개월 안", "세금·명의 이전", [
+        ("ad-tax", "상속세 신고·납부", "돌아가신 날이 속한 달의 마지막 날부터 6개월 안에 세무서에 신고합니다. 재산이 공제액보다 적어 낼 세금이 없어도 신고해 두면 나중에 도움이 됩니다.", "https://www.hometax.go.kr", "홈택스", "eom6m"),
+        ("ad-realty", "상속 부동산 취득세 신고와 등기", "돌아가신 날이 속한 달의 마지막 날부터 6개월 안에 취득세를 신고하고 소유권 이전 등기를 합니다.", "", "", "eom6m"),
+        ("ad-car", "자동차 상속 이전 등록", "돌아가신 날이 속한 달의 마지막 날부터 6개월 안에 해야 하고, 늦으면 과태료가 나옵니다.", "", "", "eom6m"),
+    ]),
+    ("그 밖에", "때를 놓치기 쉬운 일", [
+        ("ad-insure", "사망보험금 청구", "고인 이름으로 든 생명보험·상해보험이 있다면 청구합니다. 3년이 지나면 청구할 수 없습니다.", "", "", "3y"),
+        ("ad-49", "49재와 첫 기일 준비", "49재 날짜와 앞으로의 기일을 미리 확인해 두세요.", "tools/49jae.html", "기일 날짜 계산"),
+        ("ad-bank", "고인 예금 찾기와 계좌 해지", "상속인 전원의 동의 서류가 필요한 경우가 많습니다. 안심상속 조회 결과를 보고 은행별로 처리하세요.", "", ""),
+    ]),
+]
+
+
+def page_after_death(out):
+    depth = 1
+    r = rel(depth)
+    blocks = []
+    for when, title, items in AFTER_DEATH:
+        lis = []
+        for it in items:
+            key, name, desc, link, ltext = it[:5]
+            dl = it[5] if len(it) > 5 else ""
+            href = link if link.startswith("http") else (r + link if link else "")
+            tgt = ' target="_blank" rel="noopener"' if link.startswith("http") else ""
+            more = f' <a href="{E(href)}"{tgt}>{E(ltext)} ›</a>' if link else ""
+            lis.append(f'<li class="ad-item" data-dl="{dl}"><label><input type="checkbox" data-k="{key}"><span class="ad-t"><strong>{E(name)}</strong>'
+                       f'<span class="ad-due"></span></span></label><p>{E(desc)}{more}</p></li>')
+        blocks.append(f'<section class="card ad-sec"><h2><span class="ad-when">{E(when)}</span>{E(title)}</h2><ul class="ad-list">{"".join(lis)}</ul></section>')
+    body = f"""<header class="page-head"><h1>장례 후 해야 할 일 체크리스트</h1><p class="lead">사망진단서부터 사망신고, 상속, 세금까지 장례를 치른 가족이 해야 할 일을 순서대로 정리했습니다. 돌아가신 날을 넣으면 일마다 마감 날짜를 계산해 드립니다.</p></header>
+<section class="card"><form class="tool-form" id="ad-form" onsubmit="return false"><label>돌아가신 날<input type="date" id="ad-date"></label>
+<button type="button" id="ad-print">체크리스트 인쇄하기</button></form>
+<p id="ad-progress" class="small muted" aria-live="polite"></p>
+<p class="small muted">체크한 내용은 이 기기에만 저장됩니다.</p></section>
+{"".join(blocks)}
+<section class="card note"><h2>꼭 알아 두세요</h2><p>기한과 절차는 2026년 기준의 일반적인 안내이며 법률·세무 상담이 아닙니다. 상속 포기, 상속세처럼 금액이 큰 일은 정부24·홈택스 안내와 법무사·세무사 상담으로 꼭 다시 확인하세요.</p></section>
+<section class="block"><div class="block-head"><h2>다른 장례 도우미</h2></div>{tool_cards(depth, "after")}</section>"""
+    write(out, "tools/after-death.html", layout("tools/after-death.html", "장례 후 해야 할 일 체크리스트", "장례 후 해야 할 일", body,
+                                                crumbs=[("장례 도우미", "tools/index.html"), ("장례 후 할 일", None)], depth=depth))
+
+
 def keyword_links():
     """많이 찾는 검색어로 관련 페이지를 잇는 링크 묶음 (검색엔진이 페이지 주제를 알아보기 쉽게)."""
     links = [("봉안당 가격 비교", "feature/price.html"), ("납골당 가격", "compare/facilities.html"), ("부부단 납골당 가격", "compare/types.html"),
@@ -2356,7 +2631,7 @@ def keyword_links():
              ("주차 되는 납골당", "feature/parking.html"), ("장례식장 비용", "funeral/index.html"), ("서울 장례식장", "funeral/seoul.html"),
              ("경기도 장례식장", "funeral/gyeonggi.html"), ("화장장 비용", "funeral/index.html#crematorium"), ("화장 예약 방법", "guides/ehaneul-guide.html"),
              ("장례 절차", "guides/procedure-after-cremation.html"), ("봉안당 고르는 법", "guides/how-to-choose.html"), ("수목장·자연장", "guides/natural-burial.html"),
-             ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui")]
+             ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html")]
     return ('<section class="block"><div class="block-head"><div><p class="eyebrow">KEYWORD</p><h2>많이 찾는 정보</h2></div></div><nav class="kw-links" aria-label="많이 찾는 정보">'
             + "".join(f'<a href="{u}">{E(t)}</a>' for t, u in links) + "</nav></section>")
 
@@ -2453,18 +2728,53 @@ def page_search(out, groups):
     write(out, "pages/search.html", layout("pages/search.html", "봉안당·장례식장·화장장 검색", "전국 봉안당, 장례식장, 화장시설을 이름, 주소, 지역, 공설·사설, 편의시설로 검색합니다.", body, crumbs=[("검색", None)], depth=1))
 
 
+# ---------------------------------------------------------------------------
+# 시설 위치(대략): 주소의 시군구 중심점. 거리순 찾기에 쓴다 (data/sgg_centroids.json)
+# ---------------------------------------------------------------------------
+SGG_FILE = ROOT / "data" / "sgg_centroids.json"
+SGG = json.loads(SGG_FILE.read_text(encoding="utf-8"))["items"] if SGG_FILE.exists() else []
+
+
+def geo_of(address):
+    toks = (address or "").replace(",", " ").split()
+    if len(toks) < 2:
+        return None
+    sido = normalize_sido(toks[0], address)
+    cands = [g for g in SGG if g["s"] == sido]
+    if not cands:
+        return None
+    if sido == "세종특별자치시":
+        return cands[0]
+    t2 = toks[1]
+    t3 = toks[2] if len(toks) > 2 else ""
+    key = lambda n: n.replace(" ", "")
+    for want in ((t2 + t3) if t3.endswith("구") else None, t2):
+        if want:
+            for g in cands:
+                if key(g["n"]) == want or key(g["n"]).endswith(want) and want.endswith("구") and t2.endswith("시") is False:
+                    return g
+    for g in cands:
+        if key(g["n"]).startswith(t2):
+            return g
+    return None
+
+
 def search_index(out, facs):
     data = [{"i": f["id"], "n": f["name"], "s": f["sido"], "g": f["sigungu"], "a": f["address"], "k": f["kind"],
              "p": f["first_period"], "pr": f.get("price_min"), "ps": f.get("p_single"), "pc": f.get("p_couple"), "po": f.get("p_other"),
              "mg": f.get("p_mgmt"), "psn": f.get("pn_single", ""), "pcn": f.get("pn_couple", ""), "pon": f.get("pn_other", ""),
-             "mp": f.get("max_period"), "t": f["tel"], "u": facility_url(f), "f": [k for k, _ in AMENITIES if f[k] is True]} for f in facs]
+             "mp": f.get("max_period"), "t": f["tel"], "u": facility_url(f), "f": [k for k, _ in AMENITIES if f[k] is True],
+             "mgn": f.get("pn_mgmt", ""), "fp": f["first_period"], "ey": f["ext_years"], "ec": f["ext_count"],
+             **({"la": g["la"], "lo": g["lo"]} if (g := geo_of(f["address"])) else {})} for f in facs]
     for x in FUNERAL:
         data.append({"i": x["id"], "n": x["name"], "s": x["sido"], "g": x["sigungu"], "a": x["address"], "k": x["pubpri"] or x["kind"],
                      "c": "c" if x["kind"] == "화장시설" else "f", "u": funeral_url(x), "t": x["tel"],
                      "f": [FN_AMEN_KEY[a] for a in x["amen"] if a in FN_AMEN_KEY],
                      "pr": x["price"].get("빈소1일최저") or x["cre_in"]})
-    (out / "data").mkdir(parents=True, exist_ok=True)
-    (out / "data" / "search.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    for x in data:
+        x["u"] = newpath(x["u"])
+    (out / "assets").mkdir(parents=True, exist_ok=True)
+    (out / "assets" / "search.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -2591,27 +2901,27 @@ def seo_files(out):
         # 네이버 서치어드바이저에 제출하는 RSS (가이드 글 + 주요 페이지)
         now = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).strftime("%a, %d %b %Y %H:%M:%S +0900")
         items = [(g["title"], f"guides/{g['slug']}.html", g["description"]) for g in GUIDES]
-        for path in ("feature/price.html", "pages/recommend.html", "pages/ranking.html", "funeral/index.html", "region/index.html", "tools/index.html", "tools/jibang.html", "tools/chukmun.html", "tools/49jae.html", "tools/bugo.html"):
+        for path in ("feature/price.html", "pages/recommend.html", "pages/ranking.html", "funeral/index.html", "region/index.html", "tools/index.html", "tools/jibang.html", "tools/chukmun.html", "tools/49jae.html", "tools/bugo.html", "tools/after-death.html", "feature/near.html", "feature/cost.html", "feature/holiday.html"):
             o = SEO_OVERRIDE.get(path, {})
             items.append((o.get("title", path), path, o.get("desc", "")))
         rss = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0"><channel>',
                f"<title>{E(SITE)}</title><link>{E(SITE_URL)}/</link><description>{E(SEO_OVERRIDE.get('index.html', {}).get('desc', SITE))}</description>",
                f"<language>ko</language><lastBuildDate>{now}</lastBuildDate>"]
         for t, path, d in items:
+            path = newpath(path)
             rss.append(f"<item><title>{E(t)}</title><link>{E(SITE_URL)}/{path}</link><guid>{E(SITE_URL)}/{path}</guid><description>{E(d)}</description><pubDate>{now}</pubDate></item>")
         rss.append("</channel></rss>")
-        (out / "rss.xml").write_text("\n".join(rss), encoding="utf-8")
-    client = (CONFIG.get("adsense_client") or "").strip()
-    if client:
-        pub = client.replace("ca-", "")
-        (out / "ads.txt").write_text(f"google.com, {pub}, DIRECT, f08c47fec0942fa0\n", encoding="utf-8")
+        (out / "assets" / "rss.xml").write_text("\n".join(rss), encoding="utf-8")
+    clients = adsense_clients()
+    if clients:
+        (out / "ads.txt").write_text("".join(f"google.com, {c.replace('ca-', '')}, DIRECT, f08c47fec0942fa0\n" for c in clients), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
 # 8. 실행
 # ---------------------------------------------------------------------------
 
-GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral", "tools"]
+GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral", "tools", "bongan", "info", "assets"]
 GENERATED_FILES = ["index.html", "404.html", "robots.txt", "sitemap.xml", "rss.xml", "ads.txt", ".nojekyll", ".gitignore"]
 FUNERAL = []
 
@@ -2626,7 +2936,7 @@ def build_site(facs):
     for name in GENERATED_FILES:
         if (out / name).is_file():
             (out / name).unlink()
-    shutil.copytree(ROOT / "static", out / "static")
+    shutil.copytree(ROOT / "static", out / "assets")
     load_guides()
     PAGES_WRITTEN.clear()
 
@@ -2655,6 +2965,10 @@ def build_site(facs):
     page_price(out, facs, groups)
     page_funeral(out, FUNERAL)
     page_tools(out)
+    page_after_death(out)
+    page_near(out, facs)
+    page_cost(out, facs)
+    page_holiday(out, facs, groups)
     page_index(out, facs, groups)
     page_search(out, groups)
     search_index(out, facs)

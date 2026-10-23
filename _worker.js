@@ -4,6 +4,7 @@
 //   1) /api/hit   : 각 페이지가 보내는 방문 기록을 D1 데이터베이스에 저장
 //   2) /stats     : 비밀번호로 들어가는 통계 페이지 (방문자 수, 유입 경로, 검색어, 배너 등)
 //   3) /_builder/, /.github/ : 사이트 만드는 프로그램 폴더는 바깥에서 못 보게 막음
+//   4) 2026-10 폴더 정리 전의 예전 주소(region/, pages/ 등)는 새 주소로 301 이동
 //   나머지 주소는 원래대로 사이트 파일을 보여 줌
 //
 // 설정 (Cloudflare 대시보드, 한 번만)
@@ -109,7 +110,7 @@ async function recordHit(request, env) {
   const ip = request.headers.get("cf-connecting-ip") || "";
   const vid = (await sha(`${day}|${ip}|${ua}|${env.STATS_PASSWORD || "salt"}`)).slice(0, 16);
   const device = /mobile|android|iphone|ipad/i.test(ua) ? "모바일" : "PC";
-  const siteQ = normPath(page.pathname) === "/pages/search" ? (params.q || "").slice(0, 60) : "";
+  const siteQ = normPath(page.pathname) === "/info/search" ? (params.q || "").slice(0, 60) : "";
   await ensure(env.DB);
   if (d.ev) {
     await env.DB.prepare(`INSERT INTO events (ts, day, vid, ev, label, path) VALUES (?,?,?,?,?,?)`)
@@ -194,9 +195,20 @@ function rows(list, cols, total) {
 // ---------------------------------------------------------------- 페이지 이름·관심사 분류
 const SIDO_SLUG = { seoul: "서울", busan: "부산", daegu: "대구", incheon: "인천", gwangju: "광주", daejeon: "대전", ulsan: "울산", sejong: "세종",
   gyeonggi: "경기도", gangwon: "강원도", chungbuk: "충북", chungnam: "충남", jeonbuk: "전북", jeonnam: "전남", gyeongbuk: "경북", gyeongnam: "경남", jeju: "제주" };
+// 2026-10 폴더 정리: 예전 주소 → 새 주소
+function migratePath(p) {
+  const m = [
+    [/^\/region\//, "/bongan/"], [/^\/type\/(public|private)/, "/bongan/$1"], [/^\/feature\//, "/bongan/"],
+    [/^\/compare\/(facilities|types|regions)/, "/bongan/compare-$1"], [/^\/pages\/(ranking|recommend)/, "/bongan/$1"],
+    [/^\/pages\/sitemap(\.html)?$/, "/"], [/^\/pages\//, "/info/"], [/^\/static\//, "/assets/"], [/^\/data\/search\.json$/, "/assets/search.json"],
+    [/^\/og\.png$/, "/assets/og.png"], [/^\/rss\.xml$/, "/assets/rss.xml"],
+  ];
+  for (const [re, to] of m) if (re.test(p)) return p.replace(re, to);
+  return p;
+}
 // 주소 정리: Cloudflare 는 .html 을 떼고 보여 주므로 /a/b.html, /a/b, /a/b/ 를 같은 페이지로 본다
 function normPath(p) {
-  p = String(p || "/").split("?")[0].split("#")[0] || "/";
+  p = migratePath(String(p || "/").split("?")[0].split("#")[0] || "/");
   p = p.replace(/\.html$/, "").replace(/\/index$/, "/");
   if (p.length > 1 && p.endsWith("/") && !/^\/(region|funeral|guides|tools)\/$/.test(p)) p = p.slice(0, -1);
   return p || "/";
@@ -204,26 +216,29 @@ function normPath(p) {
 // [페이지 이름, 한 줄 설명]
 const PAGE_INFO = {
   "/": ["첫 화면", "사이트 대문. 봉안당·장례식장 찾기, 가격 비교, 장례 도우미로 가는 입구"],
-  "/region/": ["지역별 봉안당 찾기", "전국 지도와 17개 시도 목록에서 지역을 고르는 페이지"],
+  "/bongan/": ["지역별 봉안당 찾기", "전국 지도와 17개 시도 목록에서 지역을 고르는 페이지"],
   "/funeral/": ["전국 장례식장·화장장", "지역을 골라 장례식장·화장장을 찾고 화장료를 비교하는 페이지"],
-  "/type/public": ["공설 봉안당 목록", "시·군·구가 운영하는 저렴한 공설 봉안당을 시도별로 모은 목록"],
-  "/type/private": ["사설 봉안당 목록", "재단·종교단체가 운영하는 사설 봉안당을 시도별로 모은 목록"],
-  "/feature/price": ["봉안당 가격 비교", "가격대별·시도별로 봉안당 가격을 비교하는 가격 비교 첫 화면"],
-  "/feature/parking": ["주차장 있는 봉안당", "주차장을 갖춘 봉안당만 시도별로 모은 목록"],
-  "/feature/amenities": ["편의시설로 봉안당 찾기", "장애인 편의시설·유족대기실·식당이 있는 봉안당 목록"],
-  "/feature/long-period": ["안치기간 비교", "최대 몇 년까지 모실 수 있는지 봉안당별로 비교한 페이지"],
-  "/compare/facilities": ["업체별 가격 비교표", "봉안당마다 개인단·부부단·관리비 가격을 한 표로 정렬해 보는 페이지"],
-  "/compare/types": ["개인단·부부단 가격 비교", "개인단·부부단·가족단 종류별 가격 분포와 가장 싼 곳"],
-  "/compare/regions": ["지역별 가격 비교", "시도별 봉안당 중간 가격을 막대그래프로 비교한 페이지"],
-  "/pages/recommend": ["예산으로 봉안당 추천", "예산과 지역을 넣으면 맞는 봉안당을 골라 주는 추천 기능"],
-  "/pages/ranking": ["봉안당 순위", "주차·가격·안치기간 등 기준별 봉안당 TOP 20"],
-  "/pages/search": ["이름으로 검색", "시설 이름이나 동네 이름으로 봉안당·장례식장을 찾는 검색"],
-  "/pages/about": ["사이트 소개", "이 사이트가 무엇이고 자료를 어디서 가져왔는지 설명"],
-  "/pages/contact": ["문의·광고 문의", "정보 수정 요청과 광고 자리·가격 안내"],
-  "/pages/privacy": ["개인정보처리방침", "개인정보·쿠키·광고에 관한 안내"],
-  "/pages/terms": ["이용약관", "이용약관과 면책 안내"],
-  "/pages/sitemap": ["사이트맵 (지금은 없앤 페이지)", "예전 사이트 전체 목록. 지금은 없어 404로 나옴"],
+  "/bongan/public": ["공설 봉안당 목록", "시·군·구가 운영하는 저렴한 공설 봉안당을 시도별로 모은 목록"],
+  "/bongan/private": ["사설 봉안당 목록", "재단·종교단체가 운영하는 사설 봉안당을 시도별로 모은 목록"],
+  "/bongan/price": ["봉안당 가격 비교", "가격대별·시도별로 봉안당 가격을 비교하는 가격 비교 첫 화면"],
+  "/bongan/parking": ["주차장 있는 봉안당", "주차장을 갖춘 봉안당만 시도별로 모은 목록"],
+  "/bongan/amenities": ["편의시설로 봉안당 찾기", "장애인 편의시설·유족대기실·식당이 있는 봉안당 목록"],
+  "/bongan/long-period": ["안치기간 비교", "최대 몇 년까지 모실 수 있는지 봉안당별로 비교한 페이지"],
+  "/bongan/compare-facilities": ["업체별 가격 비교표", "봉안당마다 개인단·부부단·관리비 가격을 한 표로 정렬해 보는 페이지"],
+  "/bongan/compare-types": ["개인단·부부단 가격 비교", "개인단·부부단·가족단 종류별 가격 분포와 가장 싼 곳"],
+  "/bongan/compare-regions": ["지역별 가격 비교", "시도별 봉안당 중간 가격을 막대그래프로 비교한 페이지"],
+  "/bongan/recommend": ["예산으로 봉안당 추천", "예산과 지역을 넣으면 맞는 봉안당을 골라 주는 추천 기능"],
+  "/bongan/ranking": ["봉안당 순위", "주차·가격·안치기간 등 기준별 봉안당 TOP 20"],
+  "/info/search": ["이름으로 검색", "시설 이름이나 동네 이름으로 봉안당·장례식장을 찾는 검색"],
+  "/info/about": ["사이트 소개", "이 사이트가 무엇이고 자료를 어디서 가져왔는지 설명"],
+  "/info/contact": ["문의·광고 문의", "정보 수정 요청과 광고 자리·가격 안내"],
+  "/info/privacy": ["개인정보처리방침", "개인정보·쿠키·광고에 관한 안내"],
+  "/info/terms": ["이용약관", "이용약관과 면책 안내"],
   "/404": ["없는 페이지(404)", "주소가 틀렸거나 없어진 페이지에 들어온 경우"],
+  "/bongan/near": ["가까운 봉안당 찾기", "사는 곳을 고르면 가까운 봉안당을 거리순으로 보여 주는 기능 (서울·인천·부산 근교 목록 포함)"],
+  "/bongan/cost": ["봉안당 총비용 계산기", "사용료·관리비·연장비를 더해 몇 년 모시면 모두 얼마인지 비교하는 계산기"],
+  "/bongan/holiday": ["명절 성묘 안내", "설·추석 날짜, 붐비지 않게 다녀오는 법, 대형 봉안당 연락처"],
+  "/tools/after-death": ["장례 후 할 일 체크리스트", "사망신고·상속·세금 등 장례 뒤 할 일과 마감 날짜를 계산해 주는 체크리스트"],
   "/tools/": ["장례 도우미 첫 화면", "지방·축문·부고·49재 도우미 모음과 나이 계산·부의금 안내"],
   "/tools/jibang": ["지방·명정 쓰기", "제사 지방과 명정 문구를 한자·한글로 만들어 인쇄하는 도구"],
   "/tools/chukmun": ["축문 쓰기", "제사 날짜를 넣으면 음력 간지까지 넣어 축문을 완성하는 도구"],
@@ -247,7 +262,7 @@ const PAGE_INFO = {
 function pageInfo(path, title) {
   const p = normPath(path);
   if (PAGE_INFO[p]) return PAGE_INFO[p];
-  let m = p.match(/^\/region\/([a-z]+)$/);
+  let m = p.match(/^\/bongan\/([a-z]+)$/);
   if (m && SIDO_SLUG[m[1]]) return [`${SIDO_SLUG[m[1]]} 봉안당 목록`, `${SIDO_SLUG[m[1]]} 봉안당·납골당을 시군구별로 보여 주고 시설마다 가격·주차·안치기간을 적은 페이지`];
   m = p.match(/^\/funeral\/([a-z]+)$/);
   if (m && SIDO_SLUG[m[1]]) return [`${SIDO_SLUG[m[1]]} 장례식장·화장장`, `${SIDO_SLUG[m[1]]} 장례식장의 빈소 사용료·전화번호와 화장장 화장료를 모은 페이지`];
@@ -256,17 +271,17 @@ function pageInfo(path, title) {
 }
 function pageName(path, title) { return pageInfo(path, title)[0]; }
 const PURPOSE = [
-  ["price", "봉안당 가격 비교·추천", p => /^\/(feature\/price|compare\/|pages\/recommend)/.test(p)],
-  ["bongan", "봉안당 찾기 (지역·조건)", p => /^\/(region|type|feature)\//.test(p)],
+  ["price", "봉안당 가격 비교·추천·계산기", p => /^\/bongan\/(price|cost|compare-|recommend)/.test(p)],
+  ["ranking", "봉안당 순위 보기", p => p === "/bongan/ranking"],
+  ["bongan", "봉안당 찾기 (지역·조건·가까운 곳)", p => /^\/bongan\//.test(p)],
   ["funeral", "장례식장·화장장 찾기", p => /^\/funeral\//.test(p)],
   ["tools", "장례 도우미 (지방·축문·부고·49재)", p => /^\/tools\//.test(p)],
   ["guide", "장례·봉안 정보 읽기 (가이드)", p => /^\/guides\//.test(p)],
-  ["ranking", "봉안당 순위 보기", p => p === "/pages/ranking"],
-  ["search", "이름으로 검색", p => p === "/pages/search"],
+  ["search", "이름으로 검색", p => p === "/info/search"],
   ["home", "첫 화면만 보기", p => p === "/"],
 ];
 function purposeOf(p) { p = normPath(p); for (const [k, l, f] of PURPOSE) if (f(p)) return [k, l]; return ["etc", "기타 (소개·문의 등)"]; }
-function regionOf(p) { const m = normPath(p).match(/^\/(region|funeral)\/([a-z]+)$/); return m && SIDO_SLUG[m[2]] ? SIDO_SLUG[m[2]] : ""; }
+function regionOf(p) { const m = normPath(p).match(/^\/(bongan|funeral)\/([a-z]+)$/); return m && SIDO_SLUG[m[2]] ? SIDO_SLUG[m[2]] : ""; }
 const KW_THEME = [
   ["가격·비용", /가격|비용|얼마|시세|요금|관리비|저렴|싼/],
   ["지방·축문·제사", /지방|축문|제사|명정|기일|49재|사십구재|삼우제|탈상|제사상/],
@@ -521,6 +536,9 @@ self.addEventListener("activate",e=>e.waitUntil((async()=>{for(const k of await 
 for(const c of await self.clients.matchAll({type:"window"}))c.navigate(c.url);})()));`,
         { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
     }
+    // 폴더 정리 전 예전 주소로 들어오면 새 주소로 보냄
+    const moved = migratePath(p);
+    if (moved !== p && (request.method === "GET" || request.method === "HEAD")) return Response.redirect(`${url.origin}${moved}${url.search}`, 301);
     if (p === "/api/hit" && request.method === "POST") {
       try { return await recordHit(request, env); } catch (e) { return new Response(null, { status: 204 }); }
     }

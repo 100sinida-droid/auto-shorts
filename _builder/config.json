@@ -4,7 +4,6 @@
   "site_tagline": "전국 봉안시설을 지역·편의시설·안치기간으로 한눈에",
   "site_url": "https://stockmind.kr",
   "contact_email": "shinnamho@naver.com",
-  "adsense_client": "ca-pub-7875289894722650",
   "output_dir": "..",
   "api_endpoint": "https://apis.data.go.kr/1352000/ODMS_DATA_07_1/callData07_1Api",
   "rows_per_page": 500,
@@ -81,5 +80,10 @@
       "tel": "031-000-0000",
       "image": ""
     }
-  }
+  },
+  "adsense_clients": [
+    "ca-pub-7875289894722650",
+    "ca-pub-7938956361770773"
+  ],
+  "adsense_account": "ca-pub-7938956361770773"
 }

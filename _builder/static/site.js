@@ -134,7 +134,7 @@
 
   function update() { shown = PAGE; writeUrl(); render(); }
 
-  fetch("../data/search.json").then(function (r) { return r.json(); }).then(function (d) {
+  fetch("../assets/search.json").then(function (r) { return r.json(); }).then(function (d) {
     data = d; readUrl(); render();
     q.addEventListener("input", update);
     [sido, kind, pmax, sort, cat].filter(Boolean).concat(boxes).forEach(function (el) { el.addEventListener("change", update); });
@@ -299,7 +299,7 @@
 
   budget.addEventListener("input", function () { err.textContent = ""; });
   budget.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); if (data) run(); } });
-  fetch("../data/search.json").then(function (r) { return r.json(); }).then(function (d) {
+  fetch("../assets/search.json").then(function (r) { return r.json(); }).then(function (d) {
     data = d;
     $("rgo").addEventListener("click", run);
     [type, sido, kind, order].concat(boxes).forEach(function (el) { el.addEventListener("change", function () { if (budget.value) run(); }); });
@@ -726,7 +726,7 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
   // ---------------- 부고 문자 ----------------
   if ($("bg-form")) {
     var halls = {};
-    fetch("../data/search.json").then(function (r) { return r.json(); }).then(function (d) {
+    fetch("../assets/search.json").then(function (r) { return r.json(); }).then(function (d) {
       var dl = $("bg-halls"), html = "";
       d.forEach(function (x) { if (x.c === "f") { halls[x.n] = x; html += '<option value="' + esc(x.n) + '">' + esc(x.a) + "</option>"; } });
       dl.innerHTML = html;
@@ -774,5 +774,160 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
     }
     $("bg-copy").onclick = function () { copy("bg-text", this); };
     $("bg-copy2").onclick = function () { copy("bg-thanks", this); };
+  }
+})();
+
+/* 가까운 봉안당 · 총비용 계산기 · 장례 후 할 일 · 다음 명절 */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function won(n) { if (!n && n !== 0) return "–"; var m = n / 10000; return m >= 1 ? (Math.round(m * 10) / 10).toLocaleString() + "만 원" : Math.round(n).toLocaleString() + "원"; }
+  function hav(a, b, c, d) { var p = Math.PI / 180, x = Math.sin((c - a) * p / 2), y = Math.sin((d - b) * p / 2); return 12742 * Math.asin(Math.sqrt(x * x + Math.cos(a * p) * Math.cos(c * p) * y * y)); }
+  var dataP = null;
+  function data() { return dataP || (dataP = fetch("../assets/search.json").then(function (r) { return r.json(); })); }
+
+  // ---- 가까운 봉안당 ----
+  if ($("near-form")) {
+    var SGG = JSON.parse($("near-sgg-data").textContent), here = null;
+    var sido = $("near-sido"), sgg = $("near-sgg");
+    sido.addEventListener("change", function () {
+      sgg.innerHTML = '<option value="">시군구를 고르세요</option>' + SGG.filter(function (g) { return g.s === sido.value; })
+        .map(function (g, i) { return '<option value="' + esc(g.n) + '">' + esc(g.n) + "</option>"; }).join("");
+      if (sido.value === "세종특별자치시") { sgg.selectedIndex = 1; pick(); }
+    });
+    function pick() { var g = SGG.filter(function (x) { return x.s === sido.value && x.n === sgg.value; })[0]; if (g) { here = { la: g.la, lo: g.lo, label: g.s + " " + g.n }; run(); } }
+    sgg.addEventListener("change", pick);
+    ["near-km", "near-kind", "near-park"].forEach(function (id) { $(id).addEventListener("change", function () { if (here) run(); }); });
+    $("near-gps").onclick = function () {
+      if (!navigator.geolocation) { $("near-count").textContent = "이 기기에서는 위치를 쓸 수 없습니다. 시도와 시군구를 골라 주세요."; return; }
+      $("near-count").textContent = "위치를 확인하는 중입니다…";
+      navigator.geolocation.getCurrentPosition(function (p) { here = { la: p.coords.latitude, lo: p.coords.longitude, label: "지금 계신 곳" }; run(); },
+        function () { $("near-count").textContent = "위치 사용이 허락되지 않았습니다. 시도와 시군구를 골라 주세요."; }, { timeout: 10000 });
+    };
+    function run() {
+      data().then(function (d) {
+        var km = +$("near-km").value, kind = $("near-kind").value, park = $("near-park").checked;
+        var list = d.filter(function (x) { return !x.c && x.la && (!kind || x.k === kind) && (!park || x.f.indexOf("parking_lot") >= 0); })
+          .map(function (x) { return { x: x, km: hav(here.la, here.lo, x.la, x.lo) }; })
+          .filter(function (o) { return o.km <= km; }).sort(function (a, b) { return a.km - b.km; });
+        $("near-count").textContent = here.label + "에서 " + (km < 9999 ? km + "km 안에 " : "") + "봉안당 " + list.length + "곳 (가까운 순)";
+        $("near-out").innerHTML = list.slice(0, 60).map(function (o) {
+          var x = o.x, badge = x.k === "공설" ? "pub" : x.k === "사설" ? "pri" : "etc", mins = Math.round(o.km * 1.3 / 45 * 60 / 5) * 5;
+          return '<div class="result"><a class="rec-name" href="../' + esc(x.u) + '"><strong>' + esc(x.n) + '</strong></a> <span class="badge ' + badge + '">' + esc(x.k) + "</span>" +
+            '<span class="addr">' + esc(x.a) + "</span>" +
+            '<p class="near-dist"><strong>직선 약 ' + Math.max(1, Math.round(o.km)) + "km</strong> · 차로 대략 " + (mins < 60 ? Math.max(10, mins) + "분" : Math.floor(mins / 60) + "시간 " + (mins % 60 ? mins % 60 + "분" : "")) +
+            (x.ps || x.pr ? " · 개인단 " + won(x.ps || x.pr) + "부터" : "") + "</p>" +
+            '<div class="actions">' + (x.t ? '<a class="btn" href="tel:' + esc(x.t.replace(/[^0-9+]/g, "")) + '">전화 걸기</a>' : "") +
+            '<a class="btn" href="https://map.naver.com/p/search/' + encodeURIComponent(x.a || x.n) + '" target="_blank" rel="noopener">지도 보기</a><a class="btn primary" href="../' + esc(x.u) + '">자세히 보기</a></div></div>';
+        }).join("") || '<p class="muted">조건에 맞는 봉안당이 없습니다. 거리를 늘려 보세요.</p>';
+      });
+    }
+  }
+
+  // ---- 총비용 계산기 ----
+  if ($("cc-years")) {
+    var byName = {}, cols = Array.prototype.slice.call(document.querySelectorAll(".cc-col"));
+    data().then(function (d) {
+      var html = "";
+      d.forEach(function (x) { if (!x.c && (x.ps || x.pr)) { byName[x.n] = x; html += '<option value="' + esc(x.n) + '">' + esc(x.s + " " + x.g) + "</option>"; } });
+      $("cc-list").innerHTML = html;
+    });
+    function num(el) { var v = parseFloat(el.value); return isNaN(v) ? null : v; }
+    function fill(col) {
+      var x = byName[col.querySelector(".cc-name").value.trim()];
+      if (!x) return;
+      var set = function (cls, v) { var e = col.querySelector(cls); e.value = v == null || v === "" ? "" : v; };
+      set(".cc-use", x.ps || x.pr || "");
+      set(".cc-mg", x.mg || "");
+      var m = /(\d+)\s*년/.exec(x.mgn || ""), per = m ? +m[1] : (x.mg ? "" : 0);
+      if (/1년|매년|연간/.test(x.mgn || "")) per = 1;
+      set(".cc-mgy", per);
+      set(".cc-first", x.fp || "");
+      set(".cc-ext", x.ey || "");
+      col.querySelector(".cc-note").textContent = (x.psn ? "사용료 항목: " + x.psn + ". " : "") + (x.mgn ? "관리비 항목: " + x.mgn + ". " : "관리비 정보 없음. ") +
+        (x.ec ? "연장은 최대 " + x.ec + "번까지. " : "") + "가격표 기준이라 실제와 다를 수 있습니다.";
+      col.dataset.ec = x.ec || "";
+      calc();
+    }
+    function calc() {
+      var Y = +$("cc-years").value, res = [];
+      cols.forEach(function (col, i) {
+        var use = num(col.querySelector(".cc-use"));
+        if (use == null) return;
+        var mg = num(col.querySelector(".cc-mg")) || 0, mgy = num(col.querySelector(".cc-mgy")), first = num(col.querySelector(".cc-first")) || Y,
+          ext = num(col.querySelector(".cc-ext")) || 0, fee = num(col.querySelector(".cc-extfee")) || 0, ec = +col.dataset.ec || 0;
+        var need = Y > first ? (ext ? Math.ceil((Y - first) / ext) : null) : 0;
+        var mgN = mg ? (mgy ? Math.ceil(Y / mgy) : 1) : 0;
+        var total = use + mg * mgN + (need ? need * fee : 0);
+        var warn = need === null ? "처음 계약 기간이 " + first + "년이라 " + Y + "년을 모시려면 연장 조건을 시설에 확인해야 합니다." :
+          (ec && need > ec ? "이 시설은 최대 " + ec + "번까지 연장할 수 있어 " + Y + "년을 다 채우지 못할 수 있습니다." : "");
+        res.push({ n: col.querySelector(".cc-name").value.trim() || "비교 " + (i + 1), use: use, mgT: mg * mgN, mgN: mgN, ext: need, extT: need ? need * fee : 0, fee: fee, total: total, warn: warn });
+      });
+      if (!res.length) { $("cc-out").innerHTML = '<p class="muted">봉안당 이름을 고르거나 사용료를 넣으면 총비용이 계산됩니다.</p>'; return; }
+      var mx = Math.max.apply(null, res.map(function (r) { return r.total; }));
+      $("cc-out").innerHTML = '<h3>' + Y + "년 모실 때 총비용</h3>" + res.map(function (r) {
+        return '<div class="cc-res"><div class="cc-res-h"><strong>' + esc(r.n) + '</strong><span class="cc-total">' + won(r.total) + "</span></div>" +
+          '<div class="bar-track"><span class="bar" style="width:' + Math.max(3, 100 * r.total / mx) + '%"></span></div>' +
+          '<p class="small">사용료 ' + won(r.use) + " + 관리비 " + won(r.mgT) + (r.mgN ? " (" + r.mgN + "번)" : "") +
+          (r.ext ? " + 연장 " + r.ext + "번" + (r.fee ? " " + won(r.extT) : " (연장 비용은 시설에 확인)") : "") + "</p>" +
+          (r.warn ? '<p class="err">' + esc(r.warn) + "</p>" : "") + "</div>";
+      }).join("") + '<p class="small muted">공개 가격표와 입력한 값으로 계산한 참고 금액입니다. 계약 전에는 시설의 최신 가격표를 꼭 확인하세요.</p>';
+    }
+    cols.forEach(function (col) {
+      col.querySelector(".cc-name").addEventListener("change", function () { fill(col); });
+      col.querySelector(".cc-name").addEventListener("input", function () { if (byName[this.value.trim()]) fill(col); });
+      Array.prototype.forEach.call(col.querySelectorAll("input:not(.cc-name)"), function (e) { e.addEventListener("input", calc); });
+    });
+    $("cc-years").addEventListener("change", calc);
+    calc();
+  }
+
+  // ---- 장례 후 할 일 ----
+  if ($("ad-form")) {
+    var KEY = "after-death";
+    var st = {}; try { st = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+    var boxes = Array.prototype.slice.call(document.querySelectorAll(".ad-list input[type=checkbox]"));
+    function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+    function addM(d, m) { var x = new Date(d.getFullYear(), d.getMonth() + m, d.getDate()); if (x.getDate() !== d.getDate()) x.setDate(0); return x; }
+    function eom(d, m) { return new Date(d.getFullYear(), d.getMonth() + 1 + m, 0); }
+    var W = "일월화수목금토";
+    function f(d) { return d.getFullYear() + "년 " + (d.getMonth() + 1) + "월 " + d.getDate() + "일(" + W[d.getDay()] + ")"; }
+    function due() {
+      var v = $("ad-date").value, d = v ? new Date(+v.slice(0, 4), +v.slice(5, 7) - 1, +v.slice(8, 10)) : null, today = new Date();
+      Array.prototype.forEach.call(document.querySelectorAll(".ad-item"), function (li) {
+        var k = li.dataset.dl, el = li.querySelector(".ad-due"), t = null;
+        if (d && k) t = k === "1m" ? addM(d, 1) : k === "3m" ? addM(d, 3) : k === "eom6m" ? eom(d, 6) : k === "eom1y" ? eom(d, 12) : k === "5y" ? addM(d, 60) : k === "3y" ? addM(d, 36) : null;
+        if (!t) { el.textContent = ""; el.className = "ad-due"; return; }
+        var left = Math.ceil((t - today) / 86400000);
+        el.textContent = "마감 " + f(t) + (left >= 0 ? " · " + left + "일 남음" : " · 기한 지남");
+        el.className = "ad-due" + (left < 0 ? " over" : left <= 14 ? " soon" : "");
+      });
+      var done = boxes.filter(function (b) { return b.checked; }).length;
+      $("ad-progress").textContent = boxes.length + "가지 중 " + done + "가지를 마쳤습니다.";
+      st.date = v; save();
+    }
+    boxes.forEach(function (b) {
+      b.checked = !!st[b.dataset.k];
+      b.addEventListener("change", function () { st[b.dataset.k] = b.checked; save(); due(); });
+    });
+    if (st.date) $("ad-date").value = st.date;
+    $("ad-date").addEventListener("change", due);
+    $("ad-print").onclick = function () { window.print(); };
+    due();
+  }
+
+  // ---- 다음 명절 ----
+  if ($("hd-next") && window.KoreanLunarCalendar) {
+    var now = new Date(), y = now.getFullYear(), list = [];
+    for (var yy = y; yy <= y + 2; yy++) [[1, 1, "설날"], [8, 15, "추석"]].forEach(function (h) {
+      var c = new window.KoreanLunarCalendar(); if (!c.setLunarDate(yy, h[0], h[1], false)) return;
+      var s = c.getSolarCalendar(), d = new Date(s.year, s.month - 1, s.day); if (d >= new Date(now.getFullYear(), now.getMonth(), now.getDate())) list.push([h[2], d]);
+    });
+    list.sort(function (a, b) { return a[1] - b[1]; });
+    if (list[0]) {
+      var d = list[0][1], left = Math.ceil((d - now) / 86400000), pre = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 14);
+      $("hd-next").innerHTML = "<strong>다음 " + list[0][0] + "은 " + (d.getMonth() + 1) + "월 " + d.getDate() + "일(" + "일월화수목금토"[d.getDay()] + "), " + left + "일 남았습니다.</strong> " +
+        "덜 붐비게 다녀오려면 " + (pre.getMonth() + 1) + "월 " + pre.getDate() + "일 무렵 주말을 추천합니다.";
+    }
   }
 })();

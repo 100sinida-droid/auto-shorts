@@ -575,3 +575,33 @@ details.fold > summary { cursor: pointer; font-weight: 700; min-height: 44px; di
   body[data-print] .vstrip { width: 6cm; min-height: 22cm; box-shadow: none; }
   body[data-print] .vstrip span { font-size: 40pt; }
 }
+
+/* 가까운 봉안당 · 계산기 · 체크리스트 · 명절 */
+.near-dist { margin: 6px 0 0; }
+.cc-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+.cc-col { background: var(--bg); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cc-col h3 { margin: 0; font-size: 1.05rem; }
+.cc-col label { display: flex; flex-direction: column; gap: 3px; font-size: .88rem; color: var(--ink-2); }
+.cc-col input { font: inherit; font-size: 1rem; padding: 10px 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); min-height: 48px; width: 100%; min-width: 0; }
+.cc-res { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.cc-res-h { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.cc-total { font-size: 1.4rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.cc-res .bar-track { margin: 6px 0; }
+.ad-sec > h2 { gap: 10px; }
+.ad-when { display: inline-block; background: #7a3b2e; color: #fff; font-family: "Pretendard Variable", sans-serif; font-size: .85rem; font-weight: 700; padding: 3px 12px; border-radius: 999px; }
+.ad-list { list-style: none; margin: 0; padding: 0; }
+.ad-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ad-item:last-child { border-bottom: 0; }
+.ad-item label { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.ad-item input { margin-top: 4px; width: 1.5em; height: 1.5em; flex: none; }
+.ad-t { display: flex; flex-direction: column; }
+.ad-t strong { font-size: 1.08rem; }
+.ad-item input:checked + .ad-t strong { text-decoration: line-through; color: var(--ink-2); }
+.ad-due { font-size: .9rem; color: var(--accent); font-weight: 700; }
+.ad-due.soon { color: #b45309; }
+.ad-due.over { color: #b42318; }
+.ad-item p { margin: 4px 0 0 2.6em; color: var(--ink-2); }
+.hd-next { background: #fbf3d8; border-radius: 12px; padding: 14px 18px; margin-top: 12px; }
+.hd-next:empty { display: none; }
+@media (max-width: 900px) { .cc-cols { grid-template-columns: 1fr; } }
+@media print { .site-header, .topbar, .subvisual, .pre-footer, .site-footer, .block, #ad-form button { display: none !important; } }
