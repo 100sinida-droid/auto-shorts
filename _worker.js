@@ -5,6 +5,7 @@
 //   2) /stats     : 비밀번호로 들어가는 통계 페이지 (방문자 수, 유입 경로, 검색어, 배너 등)
 //   3) /_builder/, /.github/ : 사이트 만드는 프로그램 폴더는 바깥에서 못 보게 막음
 //   4) 2026-10 폴더 정리 전의 예전 주소(region/, pages/ 등)는 새 주소로 301 이동
+//   5) /api/lead  : 제휴 시설 상담 신청 저장 + 카카오톡·이메일 알림, /stats/leads 에서 관리
 //   나머지 주소는 원래대로 사이트 파일을 보여 줌
 //
 // 설정 (Cloudflare 대시보드, 한 번만)
@@ -160,7 +161,7 @@ td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .tag.search{background:#e3ecfb;color:#1f5b8f}.tag.direct{background:#eee;color:#444}.tag.social{background:#efe8f8;color:#5a4a8a}.tag.referral{background:#fbefe0;color:#9a4f12}.tag.campaign{background:#fbf3d8;color:#80620a}
 input,button{font:inherit;padding:11px 14px;border-radius:8px;border:2px solid var(--line)}button{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700;cursor:pointer}
 .linkmaker{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}.linkmaker input{min-width:0}#lm-out{margin-top:10px;word-break:break-all;background:#f6f4ee;padding:10px 12px;border-radius:8px;font-size:15px}
-.note{background:#fbf3d8;border-radius:10px;padding:12px 16px;font-size:15px}.bad{color:#b42318;font-weight:700}.chart.hrs{height:140px;gap:2px}.mkt{border-left:6px solid var(--acc)}.mkt ol{margin:0;padding-left:22px}.mkt li{margin-bottom:12px;line-height:1.7}.kpi em{display:block;font-style:normal;font-size:13px;color:var(--ink2)}.analysis{border-left:6px solid var(--gold)}.analysis ul{margin:0;padding-left:20px}.analysis li{margin-bottom:8px;line-height:1.7}.analysis h3{margin:16px 0 8px;font-size:17px}.sugg li::marker{content:'✔  ';color:var(--acc)}.hbars{display:grid;gap:10px}.hb{display:grid;grid-template-columns:minmax(120px,1.3fr) 2fr auto;gap:10px;align-items:center;font-size:15px}.hb-t{background:#e7efe9;border-radius:6px;height:14px;overflow:hidden}.hb-t i{display:block;height:100%;background:var(--acc);border-radius:6px}.hb-v{white-space:nowrap;font-variant-numeric:tabular-nums}.hb-v small{color:var(--ink2)}a.path,.path{display:block;font-size:12px;color:var(--ink2);margin-top:2px}.pdesc{display:block;font-size:14px;color:#444;margin-top:2px;line-height:1.5}@media(max-width:800px){.hb{grid-template-columns:1fr auto}.hb-t{grid-column:1/-1;grid-row:2}}
+.leadsum{border-left:6px solid var(--gold)}.leadsum h2{display:flex;justify-content:space-between;align-items:center}.leadsum .more{font-size:15px}.note{background:#fbf3d8;border-radius:10px;padding:12px 16px;font-size:15px}.bad{color:#b42318;font-weight:700}.chart.hrs{height:140px;gap:2px}.mkt{border-left:6px solid var(--acc)}.mkt ol{margin:0;padding-left:22px}.mkt li{margin-bottom:12px;line-height:1.7}.kpi em{display:block;font-style:normal;font-size:13px;color:var(--ink2)}.analysis{border-left:6px solid var(--gold)}.analysis ul{margin:0;padding-left:20px}.analysis li{margin-bottom:8px;line-height:1.7}.analysis h3{margin:16px 0 8px;font-size:17px}.sugg li::marker{content:'✔  ';color:var(--acc)}.hbars{display:grid;gap:10px}.hb{display:grid;grid-template-columns:minmax(120px,1.3fr) 2fr auto;gap:10px;align-items:center;font-size:15px}.hb-t{background:#e7efe9;border-radius:6px;height:14px;overflow:hidden}.hb-t i{display:block;height:100%;background:var(--acc);border-radius:6px}.hb-v{white-space:nowrap;font-variant-numeric:tabular-nums}.hb-v small{color:var(--ink2)}a.path,.path{display:block;font-size:12px;color:var(--ink2);margin-top:2px}.pdesc{display:block;font-size:14px;color:#444;margin-top:2px;line-height:1.5}@media(max-width:800px){.hb{grid-template-columns:1fr auto}.hb-t{grid-column:1/-1;grid-row:2}}
 @media(max-width:800px){.kpi{grid-template-columns:1fr 1fr}.chart.hrs small{display:block;font-size:9px}.grid{grid-template-columns:1fr}.linkmaker{grid-template-columns:1fr}.chart small{display:none}}
 </style></head><body><header><div class="in"><b>봉안당 길잡이 · 방문 통계</b><span><a href="/">사이트로 가기</a> · <a href="/stats/logout">나가기</a></span></div></header><main>${body}</main></body></html>`,
     { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
@@ -170,10 +171,10 @@ async function authToken(env) {
   return (await sha("stats|" + env.STATS_PASSWORD)).slice(0, 32);
 }
 
-function loginPage(msg) {
+function loginPage(msg, next) {
   return page("로그인", `<div class="card" style="max-width:420px;margin:40px auto"><h1>방문 통계</h1><p class="muted">관리자 비밀번호를 넣어 주세요.</p>
 ${msg ? `<p style="color:#b42318">${esc(msg)}</p>` : ""}
-<form method="post" action="/stats/login"><input type="password" name="pw" placeholder="비밀번호" autofocus style="width:100%;margin-bottom:10px"><button style="width:100%">들어가기</button></form></div>`);
+<form method="post" action="/stats/login"><input type="hidden" name="next" value="${esc(next || "/stats")}"><input type="password" name="pw" placeholder="비밀번호" autofocus style="width:100%;margin-bottom:10px"><button style="width:100%">들어가기</button></form></div>`);
 }
 
 function setupPage(env) {
@@ -235,6 +236,10 @@ const PAGE_INFO = {
   "/info/privacy": ["개인정보처리방침", "개인정보·쿠키·광고에 관한 안내"],
   "/info/terms": ["이용약관", "이용약관과 면책 안내"],
   "/404": ["없는 페이지(404)", "주소가 틀렸거나 없어진 페이지에 들어온 경우"],
+  "/partner/": ["프리미엄 파트너 목록", "상담을 연결해 드리는 프리미엄 파트너 봉안당·수목장 목록과 사은품·상담 신청"],
+  "/partner": ["프리미엄 파트너 목록", "상담을 연결해 드리는 프리미엄 파트너 봉안당·수목장 목록과 사은품·상담 신청"],
+  "/partner/thanks": ["상담 신청 완료", "상담 신청을 마친 사람이 보는 완료 화면"],
+  "/partner/error": ["상담 신청 오류", "신청서를 보내지 못한 경우"],
   "/bongan/near": ["가까운 봉안당 찾기", "사는 곳을 고르면 가까운 봉안당을 거리순으로 보여 주는 기능 (서울·인천·부산 근교 목록 포함)"],
   "/bongan/cost": ["봉안당 총비용 계산기", "사용료·관리비·연장비를 더해 몇 년 모시면 모두 얼마인지 비교하는 계산기"],
   "/bongan/holiday": ["명절 성묘 안내", "설·추석 날짜, 붐비지 않게 다녀오는 법, 대형 봉안당 연락처"],
@@ -267,6 +272,7 @@ function pageInfo(path, title) {
   m = p.match(/^\/funeral\/([a-z]+)$/);
   if (m && SIDO_SLUG[m[1]]) return [`${SIDO_SLUG[m[1]]} 장례식장·화장장`, `${SIDO_SLUG[m[1]]} 장례식장의 빈소 사용료·전화번호와 화장장 화장료를 모은 페이지`];
   const tt = title ? String(title).replace(/\s*\|\s*봉안당 길잡이$/, "") : "";
+  if (/^\/partner\/[a-z0-9-]+$/.test(p)) return [tt ? tt.replace(/\s*분양가·위치·상담.*$/, "") + " (프리미엄 파트너 상담 페이지)" : "프리미엄 파트너 상담 페이지", "프리미엄 파트너의 분양가·오시는 길·사은품 안내와 상담 신청서가 있는 페이지"];
   if (/^\/place\//.test(p)) return [tt ? tt.replace(/\s*참배시간·가격·위치·주차.*$/, "") + " (시설 상세)" : "봉안당 시설 상세 페이지", "봉안당 한 곳의 가격·위치·주차·참배 시간 안내 페이지"];
   if (/^\/area\//.test(p)) return [tt ? tt.replace(/\s*가격·위치·참배시간.*$/, "") : "시군구 봉안당 목록", "시군구 하나의 봉안당·납골당을 모아 보여 주는 페이지"];
   if (title) return [tt.slice(0, 40), ""];
@@ -274,6 +280,7 @@ function pageInfo(path, title) {
 }
 function pageName(path, title) { return pageInfo(path, title)[0]; }
 const PURPOSE = [
+  ["partner", "프리미엄 파트너·상담 신청", p => /^\/partner(\/|$)/.test(p)],
   ["price", "봉안당 가격 비교·추천·계산기", p => /^\/bongan\/(price|cost|compare-|recommend)/.test(p)],
   ["ranking", "봉안당 순위 보기", p => p === "/bongan/ranking"],
   ["place", "봉안당 한 곳 자세히 보기", p => /^\/place\//.test(p)],
@@ -352,7 +359,7 @@ async function statsPage(request, env) {
   const flowAgg = {};
   for (const r of flowsRaw) { const f = normPath(r.f), p = normPath(r.p); if (f === p) continue; const k = f + ">" + p; flowAgg[k] = (flowAgg[k] || { f, p, n: 0 }); flowAgg[k].n += r.n; }
   const flows = Object.values(flowAgg).sort((a, b) => b.n - a.n).slice(0, 15);
-  const EV_LABEL = { tel: "전화 걸기", map: "지도 보기", home: "시설 홈페이지", ext: "바깥 사이트", copy: "부고 문자 복사", print: "지방·축문 인쇄", sms: "문자로 보내기" };
+  const EV_LABEL = { lead: "상담 신청 완료", banner: "센터 배너 클릭(프리미엄 파트너)", tel: "전화 걸기", map: "지도 보기", home: "시설 홈페이지", ext: "바깥 사이트", copy: "복사(부고 문자·회원코드·주소)", print: "지방·축문 인쇄", sms: "문자로 보내기" };
   const evTotal = {}; for (const r of evs) evTotal[r.ev] = (evTotal[r.ev] || 0) + r.n;
   const telClicks = evTotal.tel || 0;
 
@@ -448,8 +455,17 @@ async function statsPage(request, env) {
   const time = ts => new Date(ts + 9 * 3600e3).toISOString().slice(5, 16).replace("T", " ");
   const barRows = (list, unit, total) => list.length ? `<div class="hbars">` + list.map(r => `<div class="hb"><span class="hb-l">${esc(r.l)}</span><span class="hb-t"><i style="width:${Math.max(2, pct(r.n, total))}%"></i></span><span class="hb-v">${num(r.n)}${unit} <small>${pct(r.n, total)}%</small></span></div>`).join("") + `</div>` : `<p class="muted small">아직 기록이 없습니다.</p>`;
 
+  const L = await leadSummary(env, from);
+  const leadCard = `<section class="card leadsum"><h2>상담 신청 현황 <a class="more" href="/stats/leads">상담 신청 관리 →</a></h2>
+<div class="kpi"><div><span>기간 상담 신청</span><strong>${num(L.n)}건</strong><em>제휴 페이지 본 사람 ${num(L.pvTotal)}명${L.pvTotal ? " · 신청 전환율 " + pct(L.n, L.pvTotal) + "%" : ""}</em></div>
+<div><span>아직 연락 안 한 신청 (신규)</span><strong class="${L.open ? "bad" : ""}">${num(L.open)}건</strong><em>전체 기간 기준</em></div>
+<div><span>기간 계약</span><strong>${num(L.won)}건</strong><em>계약 금액 합계 ${num(L.amount)}원 · 사은품 보낼 차례 ${num(L.giftsDue)}건</em></div></div>
+<div class="grid"><div>${rows(L.byP, [["시설", r => esc(r.p)], ["신청", r => num(r.n) + "건", 1], ["계약", r => num(r.w) + "건", 1]])}</div>
+<div>${rows(L.bySrc, [["어디서 와서 신청했나", r => esc(r.s)], ["신청", r => num(r.n) + "건", 1]])}
+${L.recent.length ? `<p class="small muted" style="margin-top:12px">최근 신청: ${L.recent.map(r => `#${r.id} ${esc(r.name)}(${esc(r.partner_name || "미정")}, ${esc(r.status)})`).join(" · ")}</p>` : ""}</div></div></section>`;
   const body = `<h1>방문 통계</h1><p class="muted small">한국 시간 기준 · ${from} ~ ${kstDay(now)} · 검색엔진 로봇은 빼고 셉니다. 같은 사람은 하루에 한 명으로 셉니다.</p>
-<nav class="tabs">${tabs}</nav>
+<nav class="tabs">${tabs}<a href="/stats/leads" style="margin-left:auto;background:#b08a3e;border-color:#b08a3e;color:#fff">상담 신청 관리${L.open ? " (신규 " + L.open + ")" : ""}</a></nav>
+${leadCard}
 <section class="kpi"><div><span>오늘 방문자</span><strong>${num(today.uv)}명</strong></div><div><span>기간 방문자</span><strong>${num(uv)}명</strong>${prev.uv ? `<em>앞 기간 ${num(prev.uv)}명</em>` : ""}</div>
 <div><span>방문 횟수</span><strong>${num(tot.visits)}회</strong></div><div><span>바로 나간 비율 (이탈률)</span><strong>${bounceRate}%</strong><em>한 페이지만 보고 나감</em></div><div><span>전화 걸기 클릭</span><strong>${num(telClicks)}회</strong><em>지도 보기 ${num(evTotal.map || 0)}회</em></div><div><span>본 페이지 수</span><strong>${num(tot.pv)}회</strong><em>1회 방문당 ${perVisit.toFixed(1)}페이지</em></div></section>
 <section class="card analysis"><h2>한눈에 보는 분석</h2><ul>${A.map(a => `<li>${a}</li>`).join("")}</ul>
@@ -507,6 +523,257 @@ var t=decodeURI(u.toString()),o=document.getElementById("lm-out");o.hidden=false
   return page("방문 통계", body);
 }
 
+// ---------------------------------------------------------------- 상담 신청 (제휴 시설)
+// 설정 (Cloudflare Pages → 설정 → 변수 및 비밀) — 둘 중 하나만 해도 되고, 아무것도 안 해도 신청은 통계 페이지에 저장됨
+//   카카오톡 알림 : KAKAO_REST_KEY (카카오 디벨로퍼스 앱의 REST API 키), 필요하면 KAKAO_CLIENT_SECRET
+//                   → 통계 페이지 → 상담 신청 → '카카오톡 연결' 단추를 한 번 눌러 로그인
+//   이메일 알림    : RESEND_API_KEY (resend.com, shinnamho@naver.com 으로 가입), 받는 주소 LEAD_EMAIL(기본 shinnamho@naver.com)
+const LEAD_STATUS = ["신규", "상담 중", "업체 전달", "방문 예약", "계약 완료", "사은품 지급", "종료(미계약)"];
+const LEAD_FIELDS = ["partner", "partner_name", "name", "phone", "deceased", "crematorium", "funeral_hall", "visit_date", "contact_way", "budget", "memo", "page", "src"];
+const LEAD_MAX = { name: 30, phone: 20, deceased: 30, crematorium: 60, funeral_hall: 60, visit_date: 10, contact_way: 10, budget: 30, memo: 1000, page: 200, src: 120, partner: 40, partner_name: 80 };
+
+let leadReady = false;
+async function ensureLeads(db) {
+  if (leadReady) return;
+  await db.prepare(`CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, day TEXT, partner TEXT, partner_name TEXT,
+    name TEXT, phone TEXT, deceased TEXT, crematorium TEXT, funeral_hall TEXT, visit_date TEXT, contact_way TEXT, budget TEXT, memo TEXT,
+    page TEXT, src TEXT, iph TEXT, agree TEXT, status TEXT DEFAULT '신규', visit_at TEXT DEFAULT '', amount INTEGER DEFAULT 0, gift TEXT DEFAULT '',
+    admin_memo TEXT DEFAULT '', notified TEXT DEFAULT '', updated INTEGER)`).run();
+  await db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)").run();
+  leadReady = true;
+}
+async function getSetting(db, k) { const r = await db.prepare("SELECT v FROM settings WHERE k=?").bind(k).first(); return r ? r.v : ""; }
+async function setSetting(db, k, v) { await db.prepare("INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(k, String(v)).run(); }
+
+async function partnerConfig(env, origin) {
+  try { const r = await env.ASSETS.fetch(new Request(origin + "/assets/partner.json")); if (r.ok) return await r.json(); } catch (e) {}
+  return { member_code: "", gifts: [], partners: [] };
+}
+function giftFor(cfg, amount) {
+  if (!amount) return "";
+  const g = (cfg.gifts || []).find(x => amount >= (x.min || 0) && (x.max == null || amount < x.max));
+  return g ? g.label : "";
+}
+
+async function createLead(request, env, ctx) {
+  const url = new URL(request.url);
+  const isJson = (request.headers.get("content-type") || "").includes("application/json");
+  const fail = (msg, code = 400) => isJson ? Response.json({ ok: false, error: msg }, { status: code }) : Response.redirect(url.origin + "/partner/error", 303);
+  if (!env.DB) return fail("지금은 신청을 받을 수 없습니다. shinnamho@naver.com 으로 연락해 주세요.", 503);
+  let d = {};
+  try { d = isJson ? await request.json() : Object.fromEntries(await request.formData()); } catch (e) { return fail("신청 내용을 읽지 못했습니다."); }
+  if (d.website) return isJson ? Response.json({ ok: true }) : Response.redirect(url.origin + "/partner/thanks", 303); // 스팸 로봇
+  const v = {};
+  for (const k of LEAD_FIELDS) v[k] = String(d[k] == null ? "" : d[k]).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, LEAD_MAX[k] || 100);
+  v.memo = String(d.memo || "").trim().slice(0, 1000);
+  const digits = v.phone.replace(/[^0-9]/g, "");
+  if (!v.name) return fail("성함을 적어 주세요.");
+  if (digits.length < 9 || digits.length > 12) return fail("연락처를 정확히 적어 주세요.");
+  if (!d.agree_privacy || !d.agree_third) return fail("필수 동의 두 가지에 체크해 주세요.");
+  if (v.visit_date && !/^\d{4}-\d{2}-\d{2}$/.test(v.visit_date)) v.visit_date = "";
+  await ensureLeads(env.DB);
+  const now = Date.now(), day = kstDay(now);
+  const iph = (await sha(`${day}|${request.headers.get("cf-connecting-ip") || ""}|lead|${env.STATS_PASSWORD || ""}`)).slice(0, 16);
+  const recent = await env.DB.prepare("SELECT COUNT(*) n FROM leads WHERE iph=? AND ts>?").bind(iph, now - 3600e3).first();
+  if (recent && recent.n >= 5) return fail("짧은 시간에 신청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.", 429);
+  const cfg = await partnerConfig(env, url.origin);
+  if (v.partner && !v.partner_name) { const p = (cfg.partners || []).find(x => x.slug === v.partner); if (p) v.partner_name = p.name; }
+  const res = await env.DB.prepare(`INSERT INTO leads (ts, day, partner, partner_name, name, phone, deceased, crematorium, funeral_hall, visit_date, contact_way, budget, memo, page, src, iph, agree, updated)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(now, day, v.partner, v.partner_name, v.name, v.phone, v.deceased, v.crematorium, v.funeral_hall, v.visit_date,
+    v.contact_way, v.budget, v.memo, v.page, v.src, iph, `개인정보 수집·이용, 제3자 제공 동의 ${new Date(now + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ")}`, now).run();
+  const id = res.meta && res.meta.last_row_id;
+  ctx.waitUntil(notifyLead(env, url.origin, { id, ...v }).catch(() => {}));
+  return isJson ? Response.json({ ok: true }) : Response.redirect(url.origin + "/partner/thanks", 303);
+}
+
+function leadText(l, short) {
+  const t = [`[봉안당 길잡이] 새 상담 신청${l.id ? " #" + l.id : ""}`, `시설: ${l.partner_name || "미정(추천 요청)"}`, `신청자: ${l.name} / ${l.phone}`];
+  if (l.contact_way) t.push(`연락 방법: ${l.contact_way}`);
+  if (l.deceased) t.push(`고인: ${l.deceased}`);
+  if (l.funeral_hall) t.push(`장례식장: ${l.funeral_hall}`);
+  if (l.crematorium) t.push(`화장: ${l.crematorium}`);
+  if (l.visit_date) t.push(`희망 방문일: ${l.visit_date}`);
+  if (l.budget) t.push(`예산: ${l.budget}`);
+  if (l.memo) t.push(`문의: ${l.memo}`);
+  const s = t.join("\n");
+  return short ? (s.length > 190 ? s.slice(0, 187) + "…" : s) : s;
+}
+
+async function kakaoToken(env) {
+  const db = env.DB;
+  const access = await getSetting(db, "kakao_access"), exp = Number(await getSetting(db, "kakao_exp") || 0);
+  if (access && exp > Date.now() + 60e3) return access;
+  const refresh = await getSetting(db, "kakao_refresh");
+  if (!refresh) throw new Error("카카오톡 연결이 필요합니다");
+  const body = new URLSearchParams({ grant_type: "refresh_token", client_id: env.KAKAO_REST_KEY, refresh_token: refresh });
+  if (env.KAKAO_CLIENT_SECRET) body.set("client_secret", env.KAKAO_CLIENT_SECRET);
+  const r = await fetch("https://kauth.kakao.com/oauth/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded;charset=utf-8" }, body });
+  const j = await r.json();
+  if (!j.access_token) throw new Error("카카오 토큰 갱신 실패: " + (j.error_description || j.error || r.status));
+  await saveKakao(db, j);
+  return j.access_token;
+}
+async function saveKakao(db, j) {
+  await setSetting(db, "kakao_access", j.access_token);
+  await setSetting(db, "kakao_exp", Date.now() + (j.expires_in || 21599) * 1000);
+  if (j.refresh_token) {
+    await setSetting(db, "kakao_refresh", j.refresh_token);
+    await setSetting(db, "kakao_refresh_exp", Date.now() + (j.refresh_token_expires_in || 5184000) * 1000);
+  }
+}
+async function kakaoSend(env, origin, text) {
+  const token = await kakaoToken(env);
+  const tpl = { object_type: "text", text, link: { web_url: origin + "/stats/leads", mobile_web_url: origin + "/stats/leads" }, button_title: "신청 보기" };
+  const r = await fetch("https://kapi.kakao.com/v2/api/talk/memo/default/send", {
+    method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/x-www-form-urlencoded;charset=utf-8" },
+    body: new URLSearchParams({ template_object: JSON.stringify(tpl) }) });
+  const j = await r.json().catch(() => ({}));
+  if (j.result_code !== 0) throw new Error("카카오톡 보내기 실패: " + (j.msg || r.status));
+}
+async function emailSend(env, origin, l) {
+  const to = env.LEAD_EMAIL || "shinnamho@naver.com";
+  const html = `<div style="font:16px/1.7 sans-serif"><h2 style="margin:0 0 12px">새 상담 신청${l.id ? " #" + l.id : ""}</h2>` +
+    leadText(l, false).split("\n").slice(1).map(x => `<div>${esc(x)}</div>`).join("") +
+    `<p style="margin-top:16px"><a href="${origin}/stats/leads">통계 페이지에서 보기</a> · 전화: <a href="tel:${esc(l.phone.replace(/[^0-9]/g, ""))}">${esc(l.phone)}</a></p></div>`;
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST", headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" },
+    body: JSON.stringify({ from: env.RESEND_FROM || "봉안당 길잡이 <onboarding@resend.dev>", to: [to], subject: `[상담 신청] ${l.partner_name || "시설 미정"} · ${l.name}`, html, text: leadText(l, false) }) });
+  if (!r.ok) throw new Error("이메일 보내기 실패: " + r.status + " " + (await r.text()).slice(0, 120));
+}
+async function notifyLead(env, origin, l) {
+  const out = [];
+  if (env.KAKAO_REST_KEY) { try { await kakaoSend(env, origin, leadText(l, true)); out.push("카톡 ✔"); } catch (e) { out.push("카톡 ✖ " + e.message); } }
+  if (env.RESEND_API_KEY) { try { await emailSend(env, origin, l); out.push("메일 ✔"); } catch (e) { out.push("메일 ✖ " + e.message); } }
+  if (!out.length) out.push("알림 설정 없음");
+  if (l.id) await env.DB.prepare("UPDATE leads SET notified=? WHERE id=?").bind(out.join(" · ").slice(0, 300), l.id).run();
+  return out;
+}
+
+async function kakaoState(env) { return (await sha("kakao|" + env.STATS_PASSWORD)).slice(0, 24); }
+async function kakaoCallback(request, env, url) {
+  if (url.searchParams.get("state") !== await kakaoState(env)) return page("카카오 연결", `<div class="card"><h1>연결하지 못했습니다</h1><p>잘못된 요청입니다. 통계 페이지에서 다시 눌러 주세요.</p></div>`);
+  const code = url.searchParams.get("code");
+  if (!code) return page("카카오 연결", `<div class="card"><h1>연결하지 못했습니다</h1><p>${esc(url.searchParams.get("error_description") || "동의가 취소되었습니다.")}</p><p><a href="/stats/leads">돌아가기</a></p></div>`);
+  const body = new URLSearchParams({ grant_type: "authorization_code", client_id: env.KAKAO_REST_KEY, redirect_uri: url.origin + "/stats/kakao/callback", code });
+  if (env.KAKAO_CLIENT_SECRET) body.set("client_secret", env.KAKAO_CLIENT_SECRET);
+  const r = await fetch("https://kauth.kakao.com/oauth/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded;charset=utf-8" }, body });
+  const j = await r.json();
+  if (!j.access_token) return page("카카오 연결", `<div class="card"><h1>연결하지 못했습니다</h1><p>${esc(j.error_description || j.error || r.status)}</p><p><a href="/stats/leads">돌아가기</a></p></div>`);
+  await ensureLeads(env.DB);
+  await saveKakao(env.DB, j);
+  try { await kakaoSend(env, url.origin, "[봉안당 길잡이] 카카오톡 알림이 연결되었습니다. 앞으로 상담 신청이 들어오면 이 대화방으로 알려 드립니다."); } catch (e) {}
+  return Response.redirect(url.origin + "/stats/leads?msg=kakao", 302);
+}
+
+async function leadsAdmin(request, env, url) {
+  await ensureLeads(env.DB);
+  const db = env.DB, origin = url.origin;
+  const cfg = await partnerConfig(env, origin);
+  if (url.pathname === "/stats/kakao") {
+    if (!env.KAKAO_REST_KEY) return Response.redirect(origin + "/stats/leads?msg=nokey", 302);
+    const q = new URLSearchParams({ client_id: env.KAKAO_REST_KEY, redirect_uri: origin + "/stats/kakao/callback", response_type: "code", scope: "talk_message", state: await kakaoState(env) });
+    return Response.redirect("https://kauth.kakao.com/oauth/authorize?" + q, 302);
+  }
+  if (url.pathname === "/stats/leads/test" && request.method === "POST") {
+    const out = await notifyLead(env, origin, { name: "테스트", phone: "010-0000-0000", partner_name: "알림 테스트", memo: "알림이 잘 오는지 확인하는 테스트입니다." });
+    return Response.redirect(origin + "/stats/leads?msg=" + encodeURIComponent(out.join(" · ")), 302);
+  }
+  if (url.pathname === "/stats/leads/update" && request.method === "POST") {
+    const f = await request.formData(), id = parseInt(f.get("id"), 10);
+    if (f.get("del") === "1") await db.prepare("DELETE FROM leads WHERE id=?").bind(id).run();
+    else {
+      const amount = parseInt(String(f.get("amount") || "").replace(/[^0-9]/g, ""), 10) || 0;
+      const status = LEAD_STATUS.includes(f.get("status")) ? f.get("status") : "신규";
+      const gift = String(f.get("gift") || "").trim() || giftFor(cfg, amount);
+      await db.prepare("UPDATE leads SET status=?, visit_at=?, amount=?, gift=?, admin_memo=?, updated=? WHERE id=?")
+        .bind(status, String(f.get("visit_at") || "").slice(0, 16), amount, gift.slice(0, 60), String(f.get("admin_memo") || "").slice(0, 1000), Date.now(), id).run();
+    }
+    return Response.redirect(origin + "/stats/leads" + (f.get("back") ? "?" + String(f.get("back")).replace(/^\?/, "") : ""), 302);
+  }
+  // 보유 기간이 지난 신청은 지움 (종료·사은품 지급 후 1년)
+  await db.prepare("DELETE FROM leads WHERE status IN ('종료(미계약)','사은품 지급') AND updated < ?").bind(Date.now() - 365 * 86400e3).run();
+  if (url.pathname === "/stats/leads.csv") {
+    const all = (await db.prepare("SELECT * FROM leads ORDER BY id DESC").all()).results || [];
+    const cols = [["id", "번호"], ["ts", "접수"], ["status", "상태"], ["partner_name", "시설"], ["name", "신청자"], ["phone", "연락처"], ["deceased", "고인"], ["funeral_hall", "장례식장"], ["crematorium", "화장 장소"],
+      ["visit_date", "희망 방문일"], ["visit_at", "방문 예약"], ["contact_way", "연락 방법"], ["budget", "예산"], ["amount", "계약 금액"], ["gift", "사은품"], ["memo", "문의"], ["admin_memo", "관리 메모"], ["src", "유입"], ["page", "신청 페이지"]];
+    const cell = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+    const csv = "﻿" + cols.map(c => c[1]).join(",") + "\n" + all.map(r => cols.map(([k]) => cell(k === "ts" ? new Date(r.ts + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ") : r[k])).join(",")).join("\n");
+    return new Response(csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="leads-${kstDay(Date.now())}.csv"`, "cache-control": "no-store" } });
+  }
+  const st = url.searchParams.get("s") || "";
+  const list = (await (st ? db.prepare("SELECT * FROM leads WHERE status=? ORDER BY id DESC LIMIT 300").bind(st) : db.prepare("SELECT * FROM leads ORDER BY id DESC LIMIT 300")).all()).results || [];
+  const counts = Object.fromEntries(((await db.prepare("SELECT status s, COUNT(*) n FROM leads GROUP BY status").all()).results || []).map(r => [r.s, r.n]));
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const tabs = [["", `전체 ${total}`]].concat(LEAD_STATUS.map(s => [s, `${s} ${counts[s] || 0}`])).map(([s, l]) => `<a class="${s === st ? "on" : ""}" href="/stats/leads${s ? "?s=" + encodeURIComponent(s) : ""}">${esc(l)}</a>`).join("");
+  const kakaoOn = !!(env.KAKAO_REST_KEY && await getSetting(db, "kakao_refresh"));
+  const rexp = Number(await getSetting(db, "kakao_refresh_exp") || 0);
+  const msg = url.searchParams.get("msg");
+  const msgText = msg === "kakao" ? "카카오톡 알림이 연결되었습니다." : msg === "nokey" ? "먼저 Cloudflare에 KAKAO_REST_KEY 를 넣어 주세요. (아래 설정 방법 참고)" : msg;
+  const time = ts => new Date(ts + 9 * 3600e3).toISOString().slice(5, 16).replace("T", " ");
+  const giftOpts = (cfg.gifts || []).map(g => g.label);
+  const back = st ? "s=" + encodeURIComponent(st) : "";
+  const handoff = l => [`[봉안당 길잡이 고객 안내]`, `성함: ${l.name}`, `연락처: ${l.phone}`, l.deceased ? `고인: ${l.deceased}` : "", l.visit_at || l.visit_date ? `방문 예정: ${l.visit_at || l.visit_date}` : "",
+    l.budget ? `예산: ${l.budget}` : "", cfg.member_code ? `회원코드: ${cfg.member_code}` : ""].filter(Boolean).join("\n");
+  const cards = list.map(l => `<form class="lead" method="post" action="/stats/leads/update"><input type="hidden" name="id" value="${l.id}"><input type="hidden" name="back" value="${esc(back)}">
+<div class="lh"><b>#${l.id} ${esc(l.name)}</b> <a class="tel" href="tel:${esc(String(l.phone).replace(/[^0-9]/g, ""))}">${esc(l.phone)}</a> <span class="tag">${esc(l.status)}</span>
+<span class="muted small">${time(l.ts)} 접수 · ${esc(l.contact_way || "")}</span></div>
+<div class="lg"><div><span>관심 시설</span><b>${esc(l.partner_name || "미정(추천 요청)")}</b></div><div><span>고인</span>${esc(l.deceased || "-")}</div><div><span>장례식장</span>${esc(l.funeral_hall || "-")}</div>
+<div><span>화장 장소</span>${esc(l.crematorium || "-")}</div><div><span>희망 방문일</span>${esc(l.visit_date || "-")}</div><div><span>예산</span>${esc(l.budget || "-")}</div></div>
+${l.memo ? `<p class="lm">${esc(l.memo)}</p>` : ""}
+<div class="le"><label>상태<select name="status">${LEAD_STATUS.map(s => `<option${s === l.status ? " selected" : ""}>${s}</option>`).join("")}</select></label>
+<label>방문 예약 일시<input type="datetime-local" name="visit_at" value="${esc(l.visit_at || "")}"></label>
+<label>계약 금액(원)<input name="amount" inputmode="numeric" value="${l.amount || ""}" placeholder="예: 6500000"></label>
+<label>사은품<select name="gift"><option value="">계약 금액으로 자동</option>${giftOpts.map(g => `<option${g === l.gift ? " selected" : ""}>${esc(g)}</option>`).join("")}</select></label>
+<label class="w">관리 메모<input name="admin_memo" value="${esc(l.admin_memo || "")}" placeholder="통화 내용, 업체 담당자 등"></label></div>
+<div class="la"><button>저장</button><button type="button" class="ghost" data-copy="${esc(handoff(l))}">업체 전달용 문구 복사</button>
+${l.gift ? `<span class="gift">사은품: <b>${esc(l.gift)}</b></span>` : ""}<span class="muted small">유입: ${esc(l.src || "-")} · 신청 페이지: ${esc(pageInfo(l.page)[0])} · 알림: ${esc(l.notified || "-")}</span>
+<button name="del" value="1" class="del" onclick="return confirm('이 신청을 지울까요? 되돌릴 수 없습니다.')">삭제</button></div></form>`).join("");
+  const setup = `<section class="card"><h2>알림 설정 (새 신청이 오면 바로 알려 받기)</h2>
+<p><b>카카오톡</b> ${kakaoOn ? `<span class="tag">연결됨</span> <span class="muted small">${rexp ? "재연결 필요일 " + kstDay(rexp) : ""}</span>` : `<span class="tag referral">연결 안 됨</span>`}
+${env.KAKAO_REST_KEY ? `<a class="btn" href="/stats/kakao">${kakaoOn ? "다시 연결" : "카카오톡 연결하기"}</a>` : ""}
+ &nbsp; <b>이메일</b> ${env.RESEND_API_KEY ? `<span class="tag">사용 중 → ${esc(env.LEAD_EMAIL || "shinnamho@naver.com")}</span>` : `<span class="tag referral">설정 안 됨</span>`}</p>
+<form method="post" action="/stats/leads/test" style="display:inline"><button>알림 테스트 보내기</button></form>
+<details><summary>설정 방법 보기</summary><ol class="small">
+<li><b>카카오톡 (sinnamho@nate.com 계정으로 받기)</b>: <a href="https://developers.kakao.com" target="_blank">developers.kakao.com</a>에 그 카카오 계정으로 로그인 → 내 애플리케이션 → 앱 만들기.
+ → [앱 설정 → 플랫폼 → Web] 사이트 도메인에 <code>${esc(origin)}</code> 등록 → [카카오 로그인] 켜기, Redirect URI에 <code>${esc(origin)}/stats/kakao/callback</code> 등록
+ → [동의항목] '카카오톡 메시지 전송' 사용(선택 동의) → [앱 키]의 REST API 키를 복사해 Cloudflare Pages → 설정 → 변수 및 비밀에 <b>KAKAO_REST_KEY</b>로 저장(클라이언트 시크릿을 켰다면 KAKAO_CLIENT_SECRET도) → 다시 배포 → 이 페이지에서 '카카오톡 연결하기'.
+ 카카오톡 '나와의 채팅'으로 알림이 옵니다. 두 달에 한 번쯤 재연결이 필요할 수 있으며, 날짜가 위에 표시됩니다.</li>
+<li><b>이메일</b>: <a href="https://resend.com" target="_blank">resend.com</a>에 shinnamho@naver.com 으로 가입 → API Keys에서 키 만들기 → Cloudflare에 <b>RESEND_API_KEY</b>로 저장 → 다시 배포. (다른 주소로 받으려면 도메인 인증 뒤 LEAD_EMAIL, RESEND_FROM 설정)</li>
+<li>알림이 안 와도 신청은 이 페이지에 모두 저장됩니다.</li></ol></details></section>`;
+  const body = `<h1>상담 신청 관리</h1><p class="muted small">제휴 시설 상담 신청 목록입니다. 상태를 바꾸고 저장하면 통계 첫 화면의 상담 현황에 반영됩니다. 종료·사은품 지급 후 1년이 지난 신청은 자동으로 지워집니다.</p>
+${msgText ? `<p class="note">${esc(msgText)}</p>` : ""}
+<nav class="tabs"><a href="/stats">← 방문 통계</a>${tabs}<a href="/stats/leads.csv">엑셀(CSV) 받기</a></nav>
+${cards || `<div class="card"><p class="muted">아직 상담 신청이 없습니다.</p></div>`}
+${setup}
+<style>.lead{background:#fff;border:1px solid var(--line);border-left:6px solid var(--gold);border-radius:12px;padding:16px 18px;margin-bottom:14px}.lh{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}.lh b{font-size:19px}.tel{font-weight:700;font-size:18px}
+.lg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 14px;font-size:15px}.lg span{display:block;font-size:12px;color:var(--ink2)}.lm{background:#f6f4ee;border-radius:8px;padding:8px 12px;margin:10px 0 0;white-space:pre-wrap}
+.le{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 12px;margin-top:12px}.le label{display:flex;flex-direction:column;font-size:13px;color:var(--ink2);gap:2px}.le .w{grid-column:1/-1}.le input,.le select{font:inherit;font-size:15px;padding:8px 10px;border:2px solid var(--line);border-radius:8px;min-width:0}
+.la{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}.la .ghost{background:#fff;color:var(--acc)}.la .del{margin-left:auto;background:#fff;color:#b42318;border-color:#f0c9c4}.gift{background:#fbf3d8;padding:4px 10px;border-radius:6px}
+a.btn{display:inline-block;padding:8px 14px;border-radius:8px;background:var(--acc);color:#fff;text-decoration:none;font-weight:700;margin-left:6px}
+@media(max-width:800px){.lg{grid-template-columns:1fr 1fr}.le{grid-template-columns:1fr 1fr}}</style>
+<script>document.addEventListener("click",function(e){var b=e.target.closest("[data-copy]");if(!b)return;var t=b.getAttribute("data-copy");try{navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="복사됨";setTimeout(function(){b.textContent=o},1500)})}catch(x){prompt("복사하세요",t)}});</script>`;
+  return page("상담 신청 관리", body);
+}
+
+// 통계 첫 화면에 넣는 상담 현황 요약
+async function leadSummary(env, from) {
+  await ensureLeads(env.DB);
+  const db = env.DB;
+  const one = (sql, ...b) => db.prepare(sql).bind(...b).first();
+  const all = (sql, ...b) => db.prepare(sql).bind(...b).all().then(r => r.results || []);
+  const [n, open, won, gifts] = await Promise.all([
+    one("SELECT COUNT(*) n FROM leads WHERE day>=?", from), one("SELECT COUNT(*) n FROM leads WHERE status='신규'"),
+    one("SELECT COUNT(*) n, SUM(amount) a FROM leads WHERE day>=? AND status IN ('계약 완료','사은품 지급')", from),
+    one("SELECT COUNT(*) n FROM leads WHERE status='계약 완료'")]);
+  const byP = await all("SELECT COALESCE(NULLIF(partner_name,''),'미정(추천 요청)') p, COUNT(*) n, SUM(CASE WHEN status IN ('계약 완료','사은품 지급') THEN 1 ELSE 0 END) w FROM leads WHERE day>=? GROUP BY p ORDER BY n DESC LIMIT 15", from);
+  const bySrc = await all("SELECT COALESCE(NULLIF(src,''),'직접·알 수 없음') s, COUNT(*) n FROM leads WHERE day>=? GROUP BY s ORDER BY n DESC LIMIT 8", from);
+  const pv = await all("SELECT path p, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND path LIKE '/partner%' GROUP BY path", from);
+  const views = {}; for (const r of pv) { const k = normPath(r.p); views[k] = (views[k] || 0) + r.u; }
+  const pvTotal = Object.values(views).reduce((a, b) => a + b, 0);
+  const recent = await all("SELECT id, ts, name, partner_name, status FROM leads ORDER BY id DESC LIMIT 5");
+  return { n: n ? n.n : 0, open: open ? open.n : 0, won: won ? won.n : 0, amount: won ? won.a || 0 : 0, giftsDue: gifts ? gifts.n : 0, byP, bySrc, pvTotal, recent };
+}
+
 function cookieOf(request, name) {
   const m = (request.headers.get("cookie") || "").match(new RegExp("(?:^|; )" + name + "=([^;]+)"));
   return m ? m[1] : "";
@@ -517,13 +784,15 @@ async function stats(request, env, url) {
   if (url.pathname === "/stats/logout") {
     return new Response(null, { status: 302, headers: { location: "/stats", "set-cookie": "st=; Path=/stats; Max-Age=0; HttpOnly; Secure; SameSite=Strict" } });
   }
+  if (url.pathname === "/stats/kakao/callback") return kakaoCallback(request, env, url);
   const token = await authToken(env);
   if (url.pathname === "/stats/login" && request.method === "POST") {
     const form = await request.formData();
     if (String(form.get("pw") || "") !== env.STATS_PASSWORD) return loginPage("비밀번호가 맞지 않습니다.");
-    return new Response(null, { status: 302, headers: { location: "/stats", "set-cookie": `st=${token}; Path=/stats; Max-Age=2592000; HttpOnly; Secure; SameSite=Strict` } });
+    return new Response(null, { status: 302, headers: { location: String(form.get("next") || "/stats").startsWith("/stats") ? String(form.get("next") || "/stats") : "/stats", "set-cookie": `st=${token}; Path=/stats; Max-Age=2592000; HttpOnly; Secure; SameSite=Strict` } });
   }
-  if (cookieOf(request, "st") !== token) return loginPage("");
+  if (cookieOf(request, "st") !== token) return loginPage("", url.pathname + url.search);
+  if (url.pathname.startsWith("/stats/leads") || url.pathname === "/stats/kakao") return leadsAdmin(request, env, url);
   return statsPage(request, env);
 }
 
@@ -546,6 +815,9 @@ for(const c of await self.clients.matchAll({type:"window"}))c.navigate(c.url);})
     if (moved !== p && (request.method === "GET" || request.method === "HEAD")) return Response.redirect(`${url.origin}${moved}${url.search}`, 301);
     if (p === "/api/hit" && request.method === "POST") {
       try { return await recordHit(request, env); } catch (e) { return new Response(null, { status: 204 }); }
+    }
+    if (p === "/api/lead" && request.method === "POST") {
+      try { return await createLead(request, env, ctx); } catch (e) { return Response.json({ ok: false, error: "잠시 문제가 생겼습니다. 다시 시도해 주세요." }, { status: 500 }); }
     }
     if (p === "/stats" || p.startsWith("/stats/")) {
       try { return await stats(request, env, url); } catch (e) { return page("오류", `<div class="card"><h1>잠시 문제가 생겼습니다</h1><p class="muted">${esc(e.message)}</p></div>`); }

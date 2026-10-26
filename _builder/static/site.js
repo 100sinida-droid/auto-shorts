@@ -931,3 +931,100 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
     }
   }
 })();
+
+/* 제휴 시설 상담 신청 · 복사 단추 · 종류 거르기 */
+(function () {
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-copy]");
+    if (!b) return;
+    var t = b.getAttribute("data-copy"), old = b.textContent;
+    var done = function () { b.textContent = "복사됨"; setTimeout(function () { b.textContent = old; }, 1500); };
+    try { navigator.clipboard.writeText(t).then(done, function () { prompt("아래 내용을 길게 눌러 복사하세요", t); }); } catch (er) { prompt("아래 내용을 길게 눌러 복사하세요", t); }
+    if (window.__track) window.__track("copy", t);
+  });
+  var pf = document.querySelector(".p-filter");
+  if (pf) pf.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var k = b.getAttribute("data-pf");
+    [].forEach.call(pf.querySelectorAll("button"), function (x) { x.classList.toggle("on", x === b); });
+    [].forEach.call(document.querySelectorAll(".p-sec"), function (sec) {
+      var shown = 0;
+      [].forEach.call(sec.querySelectorAll(".p-card"), function (c) { var on = !k || (c.getAttribute("data-kind") || "").indexOf(k) >= 0; c.hidden = !on; if (on) shown++; });
+      sec.hidden = !shown;
+    });
+  });
+  var src = "";
+  try {
+    var qs = new URLSearchParams(location.search);
+    src = qs.get("utm_source") || qs.get("ref") || "";
+    if (src) sessionStorage.setItem("lead_src", src + (qs.get("utm_campaign") ? " / " + qs.get("utm_campaign") : ""));
+    else if (document.referrer && document.referrer.indexOf(location.host) < 0 && !sessionStorage.getItem("lead_src")) sessionStorage.setItem("lead_src", document.referrer.split("/")[2] || "");
+    src = sessionStorage.getItem("lead_src") || "";
+    var want = qs.get("p");
+  } catch (er) {}
+  [].forEach.call(document.querySelectorAll("form[data-lead]"), function (f) {
+    var F = function (n) { return f.elements.namedItem(n); };
+    F("page").value = location.pathname;
+    if (want && F("partner")) { for (var i = 0; i < F("partner").options.length; i++) if (F("partner").options[i].value === want) F("partner").selectedIndex = i; }
+    var msg = f.querySelector(".lf-msg"), btn = f.querySelector(".lf-submit");
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      [].forEach.call(f.querySelectorAll(".bad"), function (x) { x.classList.remove("bad"); });
+      var err = "", digits = (F("phone").value || "").replace(/[^0-9]/g, "");
+      if (!F("name").value.trim()) { err = "성함을 적어 주세요."; F("name").classList.add("bad"); }
+      else if (digits.length < 9 || digits.length > 12) { err = "연락처를 정확히 적어 주세요. (예: 010-1234-5678)"; F("phone").classList.add("bad"); }
+      else if (!F("agree_privacy").checked || !F("agree_third").checked) err = "필수 동의 두 가지에 체크해 주세요.";
+      if (err) { msg.textContent = err; msg.className = "lf-msg err"; return; }
+      var data = {}; [].forEach.call(f.elements, function (el) {
+        if (!el.name) return;
+        if (el.type === "radio") { if (el.checked) data[el.name] = el.value; }
+        else if (el.type === "checkbox") data[el.name] = el.checked ? "1" : "";
+        else data[el.name] = el.value;
+      });
+      if (F("partner") && F("partner").selectedIndex > 0) data.partner_name = F("partner").options[F("partner").selectedIndex].text;
+      data.src = src;
+      btn.disabled = true; msg.className = "lf-msg"; msg.textContent = "보내는 중입니다…";
+      fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+        .then(function (res) { return res.json().catch(function () { return { ok: false }; }); })
+        .then(function (j) {
+          if (!j.ok) throw new Error(j.error || "");
+          var done = f.nextElementSibling;
+          f.hidden = true; if (done && done.classList.contains("lf-done")) { done.hidden = false; done.scrollIntoView({ behavior: "smooth", block: "center" }); }
+          if (window.__track) window.__track("lead", data.partner_name || "상담 신청");
+        })
+        .catch(function (er) {
+          btn.disabled = false; msg.className = "lf-msg err";
+          msg.textContent = (er && er.message) || "지금 신청을 보내지 못했습니다. 잠시 뒤 다시 시도하시거나 shinnamho@naver.com 으로 연락해 주세요.";
+        });
+    });
+  });
+})();
+
+/* 센터 배너 (프리미엄 파트너) 자동 넘김 */
+(function () {
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  [].forEach.call(document.querySelectorAll(".center-banner"), function (cb) {
+    var tr = cb.querySelector("[data-cb]"); if (!tr) return;
+    var step = function (dir) {
+      var s = tr.querySelector(".cb-slide"); if (!s) return;
+      var w = s.getBoundingClientRect().width + 14, max = tr.scrollWidth - tr.clientWidth - 4;
+      if (dir > 0 && tr.scrollLeft >= max) tr.scrollLeft = 0; else if (dir < 0 && tr.scrollLeft <= 0) tr.scrollLeft = max; else tr.scrollLeft += dir * w;
+    };
+    cb.querySelector(".cb-nav.prev").onclick = function () { step(-1); };
+    cb.querySelector(".cb-nav.next").onclick = function () { step(1); };
+    var hold = false, t = null;
+    ["mouseenter", "touchstart", "focusin"].forEach(function (e) { cb.addEventListener(e, function () { hold = true; }, { passive: true }); });
+    ["mouseleave", "focusout"].forEach(function (e) { cb.addEventListener(e, function () { hold = false; }); });
+    cb.addEventListener("touchend", function () { setTimeout(function () { hold = false; }, 6000); }, { passive: true });
+    if (!reduce && "IntersectionObserver" in window) {
+      new IntersectionObserver(function (en) {
+        if (en[0].isIntersecting) { if (!t) t = setInterval(function () { if (!hold && !document.hidden) step(1); }, 4500); }
+        else { clearInterval(t); t = null; }
+      }, { threshold: .3 }).observe(cb);
+    }
+    cb.addEventListener("click", function (e) {
+      var a = e.target.closest("a"); if (!a || !window.__track) return;
+      window.__track("banner", a.getAttribute("data-name") || a.textContent.trim().slice(0, 40));
+    });
+  });
+})();
