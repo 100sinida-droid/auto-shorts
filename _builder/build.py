@@ -1100,6 +1100,17 @@ EMBLEM = ('<svg class="emblem" width="48" height="48" viewBox="0 0 48 48" aria-h
           '<path d="M21 38v-7h6v7" fill="none" stroke="#d8b46a" stroke-width="2.6" stroke-linejoin="round"/></svg>')
 
 
+def quick_fab(r, path):
+    if not PARTNERS:
+        return ""
+    href = "#consult" if path.startswith("partner/") and path not in ("partner/thanks.html", "partner/error.html") else f"{r}partner/index.html#consult"
+    kakao = (CONFIG.get("partner") or {}).get("kakao_channel_url")
+    mobile = "" if path.startswith("partner/") else f'<a class="qf-mobile" href="{href}">{icon("gift")}무료 상담</a>'
+    return (f'<nav class="quick-fab" aria-label="빠른 상담"><a class="qf-main" href="{href}">{icon("gift")}<span>무료<br>상담 신청</span></a>'
+            + (f'<a class="qf-sub" href="{E(kakao)}" target="_blank" rel="noopener"><span>카카오톡<br>상담</span></a>' if kakao else "")
+            + f'<a class="qf-sub" href="{r}partner/index.html"><span>추천<br>추모공원</span></a><a class="qf-top" href="#top" aria-label="맨 위로">▲</a></nav>{mobile}')
+
+
 def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, noindex=False, hero=None):
     r = rel(depth)
     if PARTNERS and not noindex and not path.startswith("partner/") and path != "index.html" and "cb-track" not in body:
@@ -1181,7 +1192,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 {adsense_head()}
 {ld_html}
 </head>
-<body>
+<body id="top">
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 {SPRITE}
 <div class="topbar"><div class="wrap topbar-in"><span class="tb-msg">공공데이터로 만든 전국 봉안당·장례식장·화장장 안내 서비스</span>
@@ -1211,6 +1222,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
   </div>
   <div class="wrap f-bottom"><span>© {TODAY[:4]} {E(SITE)}</span><span>데이터 갱신일 {TODAY}</span><span>{art.MAP_CREDIT}</span></div>
 </footer>
+{quick_fab(r, path)}
 <script src="{r}static/site.js?v={ASSET_VER}" defer></script>
 </body>
 </html>
@@ -2743,68 +2755,42 @@ def page_index(out, facs, groups):
     nf = sum(1 for x in FUNERAL if x["kind"] == "장례식장")
     nc = sum(1 for x in FUNERAL if x["kind"] == "화장시설")
     n_price = sum(1 for f in facs if f.get("price_min"))
-    services = [
-        ("bongan", "region/index.html", "봉안당 찾기", f"전국 봉안시설 {st['n']:,}곳을 시도·시군구별로 찾아보세요."),
-        ("funeral", "funeral/index.html", "장례식장 찾기", f"전국 장례식장 {nf:,}곳의 빈소 사용료와 전화번호." if nf else "지역별 장례식장 안내."),
-        ("crematorium", "funeral/index.html#crematorium", "화장장 찾기", f"전국 화장시설 {nc}곳의 관내·관외 화장료." if nc else "지역별 화장시설 안내."),
-        ("price", "feature/price.html", "봉안당 가격 비교", f"가격 정보가 있는 {n_price:,}곳을 업체·종류·지역별로 비교."),
-        ("recommend", "pages/recommend.html", "예산으로 추천받기", "가진 예산과 원하는 지역을 넣으면 맞는 곳을 골라 드립니다."),
-        ("ranking", "pages/ranking.html", "봉안당 순위", "편의시설·주차·가격·안치기간으로 매긴 기준별 TOP 20."),
-    ]
-    svc = "".join(f'<a class="svc-card" href="{u}"><span class="svc-thumb">{art.art(k, "", "art")}</span><span class="svc-body"><strong>{E(t)}</strong>'
-                  f'<span>{E(d)}</span><span class="svc-go">바로가기 ›</span></span></a>' for k, u, t, d in services)
+    hero_photo = art.photo_for("home-hero")
+    bg = f'<img class="lh-bg" src="{hero_photo}" alt="" fetchpriority="high">' if hero_photo else '<span class="lh-bg lh-css" aria-hidden="true"></span>'
+    hero = f"""<section class="lux-hero">{bg}<span class="lh-shade" aria-hidden="true"></span>
+<div class="wrap lh-in">
+  <p class="lh-eye">MEMORIAL GUIDE</p>
+  <h1 class="lh-title">소중한 분을 모실 곳,<br>품격 있게 찾아 드립니다</h1>
+  <p class="lh-lead">전국 봉안당의 가격과 위치를 한눈에 비교하고, 엄선한 추천 추모공원은 상담부터 방문 예약까지 함께합니다.</p>
+  <div class="lh-cta"><a class="lux-btn gold" href="partner/index.html#consult">{icon("gift")}무료 상담 신청</a><a class="lux-btn line" href="partner/index.html">추천 추모공원 보기</a></div>
+  <form class="lh-search" action="pages/search.html" method="get" role="search"><label class="sr-only" for="q">지역이나 시설 이름</label>
+    {icon("search")}<input id="q" name="q" type="search" placeholder="지역이나 시설 이름으로 찾기 (예: 파주, 추모공원)" autocomplete="off"><button type="submit">찾기</button></form>
+</div>
+<div class="wrap lh-stats"><div><strong>{st['n']:,}</strong><span>전국 봉안시설</span></div><div><strong>{nf:,}</strong><span>장례식장</span></div><div><strong>{nc}</strong><span>화장시설</span></div><div><strong>{len(PARTNERS)}</strong><span>추천 추모공원</span></div></div>
+</section>"""
+    services = [("bongan", "region/index.html", "봉안당 찾기", f"전국 {st['n']:,}곳을 지역·공설/사설·편의시설로"),
+                ("funeral", "funeral/index.html", "장례식장 · 화장장", f"장례식장 {nf:,}곳과 화장시설 {nc}곳의 비용·연락처"),
+                ("won", "feature/price.html", "가격 비교", f"가격이 공개된 {n_price:,}곳을 종류·지역별로"),
+                ("recommend", "pages/recommend.html", "예산으로 추천", "예산과 지역을 넣으면 맞는 곳을 골라 드립니다")]
+    svc = "".join(f'<a class="ed-card" href="{u}"><span class="ed-no">0{i}</span>{icon(ic, "ed-ic")}<strong>{E(tt)}</strong><span>{E(d)}</span><span class="ed-go">자세히 보기</span></a>'
+                  for i, (ic, u, tt, d) in enumerate(services, 1))
     counts = {s: len(v) for s, v in groups.items()}
     kmap = art.map_svg({s: region_url(s) for s in groups}, counts, "봉안당 지역 선택 지도")
-    rcards = "".join(f'<a class="region-card" href="{region_url(s)}">{art.region_thumb(s)}<span class="rc-txt"><strong>{E(SIDO_SHORT.get(s, s))}</strong><span>봉안시설 {len(v)}곳</span></span></a>'
-                     for s, v in groups.items())
-    feats = "".join(f'<a class="feature-card" href="{feature_url(slug)}">{icon(FEAT_IC.get(slug, "info"), "lg")}<strong>{E(t)}</strong><span>{sum(1 for f in facs if f[k] is True):,}곳</span></a>' for slug, k, t, _ in FEATURES)
-    hero = f"""<section class="hero">{art.art("home", "", "hero-art", "언덕 위 추모관과 소나무가 있는 새벽 풍경", "xMaxYMid")}
-<div class="wrap hero-in">
-  <p class="hero-eyebrow">전국 봉안당 · 장례식장 · 화장장 안내</p>
-  <h1>소중한 분을 모실 곳,<br>차분하게 함께 찾아 드립니다</h1>
-  <p class="hero-lead">공공데이터로 정리한 전국 봉안시설 {st['n']:,}곳, 장례식장 {nf:,}곳, 화장시설 {nc}곳의 위치와 비용, 연락처를 한곳에서 확인하세요.</p>
-  <form class="hero-search" action="pages/search.html" method="get" role="search">
-    <label class="sr-only" for="q">시설명이나 지역 검색</label>
-    {icon("search")}<input id="q" name="q" type="search" placeholder="시설 이름이나 동네 이름 (예: 김포, 추모공원)" autocomplete="off">
-    <button type="submit">찾기</button>
-  </form>
-  <p class="hero-quick"><span>많이 찾는 곳</span><a href="region/gyeonggi.html">경기</a><a href="region/seoul.html">서울</a><a href="region/incheon.html">인천</a><a href="funeral/index.html">장례식장</a><a href="pages/recommend.html">예산 추천</a></p>
-  {f'<a class="hero-gift" href="partner/index.html">{icon("gift")}<span>봉안당 길잡이가 엄선한 추천 추모공원 무료 상담 · 계약하시면 감사의 커피 한 잔 대접해 드립니다</span><b>›</b></a>' if PARTNERS else ""}
-</div></section>"""
+    rlinks = "".join(f'<a href="{region_url(s)}"><span>{E(SIDO_SHORT.get(s, s))}</span><b>{len(v)}</b></a>' for s, v in groups.items())
     body = f"""
 {center_banner("", "index.html")}
-<section class="block"><div class="block-head"><div><p class="eyebrow">SERVICE</p><h2>무엇을 도와드릴까요?</h2></div></div>
-<div class="svc-grid">{svc}</div></section>
-<section class="block"><div class="block-head"><div><p class="eyebrow">HELPER</p><h2>장례 도우미</h2></div><a class="more-link" href="tools/index.html">전체 보기 ›</a></div>
-<div class="helper-wrap"><div>{tool_cards(0)}</div>
-<aside class="popular"><p class="pop-eyebrow">주요 서비스</p><h3>가장 많이 찾는 메뉴</h3><ol>
-<li><a href="tools/jibang.html">지방 쓰는 법</a></li><li><a href="tools/bugo.html">부고 문자 만들기</a></li><li><a href="tools/49jae.html">49재·삼우제 날짜</a></li>
-<li><a href="tools/chukmun.html">축문 쓰기</a></li><li><a href="funeral/index.html">장례식장 비용</a></li><li><a href="feature/price.html">봉안당 가격 비교</a></li></ol>
-<a class="ext-link" href="https://www.15774129.go.kr" target="_blank" rel="noopener"><strong>e하늘 장사정보시스템</strong><span>화장 예약 ↗</span></a>
-<a class="ext-link" href="https://www.gov.kr" target="_blank" rel="noopener"><strong>정부24</strong><span>사망신고·안심상속 ↗</span></a></aside></div></section>
-{ad_slot("main_top", 0)}
-<section class="stat-band bleed"><div class="wrap sb-in">
-  <div><strong>{st['n']:,}<small>곳</small></strong><span>전국 봉안시설</span></div>
-  <div><strong>{nf:,}<small>곳</small></strong><span>장례식장</span></div>
-  <div><strong>{nc}<small>곳</small></strong><span>화장시설</span></div>
-  <div><strong>{n_price:,}<small>곳</small></strong><span>봉안당 가격 정보</span></div>
-</div></section>
-<section class="block"><div class="block-head"><div><p class="eyebrow">REGION</p><h2>지역에서 봉안당 찾기</h2></div><a class="more-link" href="region/index.html">지역별 전체 보기 ›</a></div>
-<div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">지도에서 사시는 곳을 눌러 주세요. 색이 진할수록 시설이 많습니다.</p></div><div class="region-grid compact">{rcards}</div></div></section>
-<a class="rank-banner" href="pages/ranking.html"><span class="rb-art">{art.art("ranking", "", "art")}</span><span class="rb-txt"><span class="rank-banner-eyebrow">{icon("trophy")} 봉안당 랭킹</span><strong>전국 봉안당 순위 TOP 20</strong><span>종합 점수 · 주차장 넓은 곳 · 가장 저렴한 곳 · 오래 모실 수 있는 곳</span><span class="btn gold">순위 보러 가기</span></span></a>
-{ad_slot("main_middle", 0)}
-<section class="block"><div class="block-head"><div><p class="eyebrow">FIND</p><h2>조건으로 봉안당 찾기</h2></div></div><div class="feature-grid">
-  <a class="feature-card" href="type/public.html">{icon("public", "lg")}<strong>공설 봉안당</strong><span>{st['pub']:,}곳</span></a>
-  <a class="feature-card" href="type/private.html">{icon("private", "lg")}<strong>사설 봉안당</strong><span>{st['pri']:,}곳</span></a>
-  {feats}
-  <a class="feature-card" href="compare/regions.html">{icon("compare", "lg")}<strong>지역별 가격 비교</strong><span>시도별 중간 가격</span></a>
-  <a class="feature-card" href="feature/long-period.html">{icon("clock", "lg")}<strong>최대 안치기간 비교</strong><span>기간별 보기</span></a>
-</div></section>
-{keyword_links()}
+<section class="ed-sec"><div class="ed-head"><p class="ed-eye">SERVICE</p><h2>필요한 정보를 차분하게</h2><p>처음 겪는 일이라도 헤매지 않도록, 꼭 필요한 것만 모았습니다.</p></div>
+<div class="ed-grid">{svc}</div></section>
+<section class="ed-sec gift-sec"><div class="ed-head"><p class="ed-eye">BENEFIT</p><h2>상담하고 계약하시면 감사 선물을 드립니다</h2></div>{gift_box("")}</section>
+<section class="ed-sec"><div class="ed-head"><p class="ed-eye">REGION</p><h2>지역에서 찾기</h2><p>지도에서 사시는 곳을 누르면 그 지역 봉안당을 모두 볼 수 있습니다.</p></div>
+<div class="ed-map"><div class="map-box">{kmap}</div><nav class="ed-regions" aria-label="시도 목록">{rlinks}</nav></div></section>
+<section class="ed-sec"><div class="ed-head"><p class="ed-eye">HELPER</p><h2>장례 도우미</h2><p>지방·축문 쓰기, 49재 날짜, 부고 문자, 장례 후 할 일까지.</p></div>{tool_cards(0)}</section>
 {guide_links(0, ["procedure-after-cremation", "how-to-choose", "cost-structure", "public-vs-private", "ehaneul-guide", "contract-checklist"], "처음이라면 먼저 읽어 보세요")}
-{ad_slot("main_bottom", 0)}
+<section class="ed-close"><p class="ed-eye">CONSULTING</p><h2>어디에 모셔야 할지 막막하시다면</h2><p>지역과 예산만 말씀해 주세요. 남은 자리와 분양가를 정리해 알려 드리고 방문 예약까지 도와 드립니다.</p>
+<a class="lux-btn gold big" href="partner/index.html#consult">{icon("gift")}무료 상담 신청</a></section>
+{keyword_links()}
 <section class="card note"><h2>이 사이트의 정보에 대해</h2><p>봉안시설 정보는 보건복지부가 공공데이터포털에 공개한 「전국 봉안시설 현황」을, 장례식장·화장시설 정보는 한국장례문화진흥원 자료를 바탕으로 합니다. 이용 요금, 남은 안치 기수, 신청 자격은 수시로 바뀌므로 최종 결정 전에는 꼭 시설에 직접 확인하세요.</p></section>"""
-    write(out, "index.html", layout("index.html", SITE, f"전국 봉안당·납골당 {st['n']:,}곳과 장례식장·화장장을 지역, 공설·사설, 가격, 편의시설로 찾아보세요.", body, hero=hero,
+    write(out, "index.html", layout("index.html", SITE, f"전국 봉안당·납골당 {st['n']:,}곳과 장례식장·화장장을 지역, 공설·사설, 가격, 편의시설로 찾아보세요. 엄선한 추천 추모공원 무료 상담.", body, hero=hero,
                                     jsonld={"@context": "https://schema.org", "@type": "WebSite", "name": SITE, "url": SITE_URL + "/",
                                             "potentialAction": {"@type": "SearchAction", "target": SITE_URL + "/pages/search.html?q={q}", "query-input": "required name=q"}}))
 
@@ -3124,8 +3110,10 @@ def partner_badge():
 def partner_thumb(p, r, cls="pt-img"):
     if p["images"]:
         return f'<img class="{cls}" src="{r}partner/img/{E(p["images"][0])}" alt="{E(p["name"])} 전경" loading="lazy">'
-    ph = "ph-tree.svg" if p["kind"].startswith("수목장") else "ph-bongan.svg"
-    return f'<img class="{cls} ph" src="{r}partner/img/{ph}" alt="" loading="lazy">'
+    tone = int(hashlib.sha1(p["slug"].encode()).hexdigest(), 16) % 8
+    en = "NATURAL BURIAL" if p["kind"].startswith("수목장") else "MEMORIAL PARK"
+    return (f'<span class="{cls} ph-card tone-{tone}" aria-hidden="true"><span class="ph-frame"></span><span class="ph-mono">{E(p["name"][:1])}</span>'
+            f'<span class="ph-en">{en}</span><span class="ph-nm">{E(p["name"])}</span></span>')
 
 
 def _rel_partners(path):
@@ -3155,9 +3143,10 @@ def center_banner(r, path=""):
         slides.append(f'<a class="cb-slide" href="{r}{p["url"]}" data-name="{E(p["name"])}">{partner_thumb(p, r, "cb-img")}'
                       f'<span class="cb-flag">PREMIUM</span><span class="cb-cap"><span class="cb-region">{E(SIDO_SHORT.get(p["sido"], p["sido"]))} {E(p["sigungu"])} · {E(p["kind"])}</span>'
                       f'<strong>{E(p["name"])}</strong><span class="cb-price">{E(price)}</span><span class="cb-go">상담·감사 선물 안내 ›</span></span></a>')
+    slides.append(f'<a class="cb-slide cb-ask" href="{r}partner/index.html#consult">{icon("gift")}<strong>어디가 좋을지<br>모르시겠다면</strong><span>지역과 예산만 말씀해 주시면<br>맞는 곳을 골라 드립니다</span><span class="cb-ask-btn">무료 상담 신청 ›</span></a>')
     return f"""<section class="center-banner" aria-label="봉안당 길잡이 추천 추모공원">
   <div class="cb-head"><div><p class="cb-eyebrow">PREMIUM · 봉안당 길잡이 엄선</p><h2>봉안당 길잡이 추천 추모공원</h2>
-  <p class="cb-sub">무료 상담 · 남은 자리와 분양가 안내 · 방문 예약 대행{f' · 계약하시면 감사 선물 최대 <b>{E(top)}</b>' if top else ''}</p></div>
+  <p class="cb-sub">무료 상담 · 남은 자리와 분양가 안내 · 방문 예약 대행{f' · 계약하시면 <b>스타벅스·신세계상품권</b> 감사 선물을 꼭 드립니다' if top else ''}</p></div>
   <div class="cb-actions"><a class="cb-btn main" href="{r}partner/index.html#consult">{icon("gift")}무료 상담 신청</a><a class="cb-btn" href="{r}partner/index.html">전체 {len(PARTNERS)}곳 보기</a></div></div>
   <div class="cb-wrap"><button type="button" class="cb-nav prev" aria-label="이전">‹</button><div class="cb-track" data-cb>{"".join(slides)}</div><button type="button" class="cb-nav next" aria-label="다음">›</button></div>
   <p class="cb-note">봉안당 길잡이가 엄선해 추천하는 프리미엄 추모공원입니다.</p>
@@ -3208,11 +3197,11 @@ def gift_box(r, compact=False):
     if not gifts:
         return ""
     tiers = "".join(
-        f'<li class="gt gt-{E(g.get("type", "gift"))}"><span class="gt-amt">계약 {E(gift_range(g))}</span>'
+        f'<li class="gt gt-{E(g.get("type", "gift"))}">'
         f'<strong class="gt-val">{E(g["value"])}</strong><span class="gt-name">{E(g["name"])}</span></li>' for g in gifts)
     if compact:
         return (f'<a class="gift-strip" href="{r}partner/index.html">{icon("gift")}<span><strong>{E(PARTNER_CFG.get("gift_title", ""))}</strong>'
-                f'<span>계약 금액에 따라 ' + " · ".join(f'{E(g["name"].replace("모바일 ", ""))} {E(g["value"])}' for g in gifts) + '</span></span><span class="gs-go">자세히 ›</span></a>')
+                f'<span>' + " · ".join(f'{E(g["name"].replace("모바일 ", "").replace(" 기프티콘", ""))} {E(g["value"])}' for g in gifts) + ' 중 하나를 꼭 드립니다</span></span><span class="gs-go">자세히 ›</span></a>')
     steps = [("상담 신청", "아래 양식에 성함과 연락처만 남겨 주세요"), ("1차 상담", "전화나 카카오톡으로 원하시는 조건을 여쭙니다"),
              ("방문 예약", "시설에 연락해 방문 날짜를 잡아 드립니다"), ("계약", f"계약할 때 회원코드 {MEMBER_CODE}를 알려 주세요"),
              ("감사 선물 발송", "계약이 확인되면 휴대폰으로 보내 드립니다")]
@@ -3358,8 +3347,8 @@ def page_partner(out, p):
                 f'<a class="btn" href="https://map.kakao.com/?q={q if p["address"] else qn}" target="_blank" rel="noopener" data-ev="map">카카오맵 길찾기</a></div>'
                 f'{way}{crem_html}</section>')
     faq = [("상담 비용이 드나요?", "아니요. 상담과 방문 예약은 모두 무료입니다."),
-           ("감사 선물은 어떻게 받나요?", f"상담을 신청해 1차 상담을 받으신 뒤 {p['name']}와 계약하실 때 회원코드 {MEMBER_CODE}를 알려 주세요. 계약이 확인되면 계약 금액에 따라 "
-            + ", ".join(f'{g["name"]} {g["value"]}({gift_range(g)})' for g in PARTNER_CFG.get("gifts", [])) + " 중 하나를 휴대폰으로 보내 드립니다."),
+           ("감사 선물은 어떻게 받나요?", f"상담을 신청해 1차 상담을 받으신 뒤 {p['name']}와 계약하실 때 회원코드 {MEMBER_CODE}를 알려 주세요. 계약이 확인되면 "
+            + ", ".join(f'{g["name"]} {g["value"]}' for g in PARTNER_CFG.get("gifts", [])) + " 가운데 하나를 꼭 휴대폰으로 보내 드립니다."),
            ("방문 날짜는 어떻게 정하나요?", "상담 때 편하신 날짜를 여쭙고 시설에 연락해 방문 예약을 잡아 드립니다. 장례 중이라 급하시면 신청서에 적어 주세요."),
            (f"{p['name']} 분양가는 얼마인가요?", "안치단 위치와 개인단·부부단에 따라 다릅니다. 상담을 신청하시면 지금 남은 자리와 가격을 정리해 알려 드립니다.")]
     faq_html = "".join(f"<details><summary>{E(a)}</summary><p>{E(b)}</p></details>" for a, b in faq)
@@ -3427,7 +3416,7 @@ def page_partner_index(out):
     write(out, "partner/index.html", layout("partner/index.html", "엄선 추천 추모공원 상담·감사 선물 안내", f"봉안당 길잡이가 엄선한 추천 봉안당·수목장 {len(PARTNERS)}곳의 분양가와 위치를 안내하고 방문 예약을 도와 드립니다. 상담 후 계약하면 감사 선물을 드립니다.",
                                             body, crumbs=[("추천 추모공원", None)], depth=depth))
     done = f"""<header class="page-head"><h1>상담 신청이 접수되었습니다</h1><p class="lead">남겨 주신 연락처로 확인하는 대로 연락드리겠습니다.</p></header>
-<section class="card"><p>시설과 계약하실 때 회원코드 <strong>{E(MEMBER_CODE)}</strong>를 꼭 알려 주세요. 계약 금액에 따라 감사 선물을 보내 드립니다.</p>
+<section class="card"><p>시설과 계약하실 때 회원코드 <strong>{E(MEMBER_CODE)}</strong>를 꼭 알려 주세요. 계약이 확인되면 감사 선물을 보내 드립니다.</p>
 <div class="actions"><a class="btn primary" href="{r}partner/index.html">추천 추모공원 다시 보기</a><a class="btn" href="{r}index.html">처음 화면</a></div></section>"""
     write(out, "partner/thanks.html", layout("partner/thanks.html", "상담 신청 완료", "상담 신청이 접수되었습니다.", done, depth=depth, noindex=True))
     err = f"""<header class="page-head"><h1>신청을 보내지 못했습니다</h1><p class="lead">성함과 연락처, 필수 동의 항목을 확인한 뒤 다시 신청해 주세요.</p></header>

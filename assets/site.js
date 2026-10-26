@@ -1028,3 +1028,10 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
     });
   });
 })();
+
+/* 휴대폰 '무료 상담' 단추: 조금 내려야 나타남 */
+(function () {
+  var b = document.querySelector(".qf-mobile"); if (!b) return;
+  var on = function () { b.classList.toggle("show", window.scrollY > 500); };
+  window.addEventListener("scroll", on, { passive: true }); on();
+})();
