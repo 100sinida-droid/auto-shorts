@@ -3091,12 +3091,75 @@ def load_partners(facs):
              "points": [x.strip() for x in g("특징").split(";") if x.strip()],
              "images": [n for n in imgs if n.lower().startswith(slug + "-") or n.lower().startswith(slug + ".")][:4]}
         p["url"] = f"partner/{slug}.html"
+        p["price_tables"] = load_partner_prices(slug)
+        if p["price_tables"] and p["price_tables"]["min"] and not p["price_text"]:
+            p["price_text"] = [f'{p["price_tables"]["min"]:,}만 원부터']
         PARTNERS.append(p)
         for f in facs_m:
             f["partner"] = slug
             PARTNER_BY_FAC[f["id"]] = p
     PARTNERS.sort(key=lambda p: (p["order"], p["name"]))
     return PARTNERS
+
+
+def load_partner_prices(slug):
+    """partners/prices/<코드>.csv : 관, 관리비(1위·1년), 구분, 열, 가격(만원), 출처, 확인일"""
+    path = PARTNER_DIR / "prices" / f"{slug}.csv"
+    if not path.exists():
+        return None
+    halls = OrderedDict()
+    src, day = "", ""
+    for row in read_csv_any(path):
+        g = lambda k: (row.get(k) or "").strip()
+        hall = g("관")
+        if not hall:
+            continue
+        h = halls.setdefault(hall, {"name": hall, "group": g("묶음"), "mgmt": g("관리비(1위·1년)") or g("관리비"), "cols": [], "rows": OrderedDict(), "img": "", "note": ""})
+        if g("비고") and not h["note"]:
+            h["note"] = g("비고")
+        if g("사진") and not h["img"] and (PARTNER_DIR / "halls" / g("사진")).exists():
+            h["img"] = g("사진")
+        col, rn, price = g("열"), g("구분"), g("가격(만원)") or g("가격")
+        if col and col not in h["cols"]:
+            h["cols"].append(col)
+        h["rows"].setdefault(rn, {})[col] = price
+        src, day = g("출처") or src, g("확인일") or day
+    nums = []
+    for h in halls.values():
+        for r in h["rows"].values():
+            for v in r.values():
+                nums += [int(x.replace(",", "")) for x in re.findall(r"\d[\d,]*", v or "")]
+    return {"halls": list(halls.values()), "source": src, "date": day, "min": min(nums) if nums else None, "max": max(nums) if nums else None}
+
+
+def price_tables_html(pt, r=""):
+    def cell(v):
+        v = v or "–"
+        if "~" in v:
+            a, z = [x.strip() for x in v.split("~", 1)]
+            return f'<span class="pt-rng"><span>{E(a)}</span><span>~ {E(z)}</span></span>'
+        return E(v)
+
+    def table(h, show_img=True):
+        img = f'<img class="pt-img" src="{r}partner/img/{E(h["img"])}" alt="{E(h["name"])}" loading="lazy">' if h["img"] and show_img else ""
+        head = "".join(f"<th>{E(c)}</th>" for c in h["cols"])
+        body = "".join(f'<tr><th scope=row>{E(rn)}</th>' + "".join(f'<td>{cell(rr.get(c, ""))}</td>' for c in h["cols"]) + "</tr>" for rn, rr in h["rows"].items())
+        return (f'<div class="pt-hall{" has-img" if img else ""}">{img}<div class="pt-h"><strong>{E(h["name"])}</strong>' + (f'<span>관리비 1위 {E(h["mgmt"])}/1년</span>' if h["mgmt"] else "") + '</div>'
+                f'<div class="table-wrap"><table class="list pt-table"><thead><tr><th>안치단</th>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+                + (f'<p class="pt-note">※ {E(h["note"])}</p>' if h["note"] else "") + '</div>')
+
+    out, groups = [], OrderedDict()
+    for h in pt["halls"]:
+        groups.setdefault(h["group"] or h["name"], []).append(h)
+    for gname, hs in groups.items():
+        if len(hs) == 1 and (not hs[0]["group"] or hs[0]["group"] == hs[0]["name"]):
+            out.append(table(hs[0]))
+            continue
+        gimg = next((h["img"] for h in hs if h["img"]), "")
+        img = f'<img class="pt-img" src="{r}partner/img/{E(gimg)}" alt="{E(gname)}" loading="lazy">' if gimg else ""
+        out.append(f'<div class="pt-group">{img}<h3 class="pt-gh">{E(gname)}</h3><div class="pt-sub">' + "".join(table(h, False) for h in hs) + "</div></div>")
+    note = "단위: 만 원 · " + (f'{E(pt["source"])} 기준' if pt["source"] else "") + (f', {E(pt["date"])} 확인' if pt["date"] else "")
+    return '<div class="pt-wrap">' + "".join(out) + f'</div><p class="muted small">{note}. 남은 자리와 정확한 가격은 상담 때 다시 확인해 드립니다.</p>'
 
 
 def partner_of(f):
@@ -3290,7 +3353,9 @@ def page_partner(out, p):
         price_rows = '<ul class="p-prices">' + "".join(f"<li>{E(x)}</li>" for x in p["price_text"]) + "</ul>"
     if p["mgmt_text"]:
         price_rows += f'<p class="small"><b>관리비</b> {E(p["mgmt_text"])}</p>'
-    if fac and fac.get("prices"):
+    if p.get("price_tables"):
+        price_rows = (f'<p class="pt-from">{E(p["price_text"][0]) if p["price_text"] else ""}</p>' if p["price_text"] else "") + price_tables_html(p["price_tables"], r) + (f'<p class="small"><b>관리비</b> {E(p["mgmt_text"])}</p>' if p["mgmt_text"] else "")
+    elif fac and fac.get("prices"):
         prow = "".join(f'<tr><td>{E(it["category"] or "–")}</td><td>{E(it["item"] or "–")}</td><td class="num">{fmt_won(it["price"])}</td></tr>' for it in fac["prices"][:20])
         dates = sorted({it["date"] for it in fac["prices"] if it["date"]})
         price_rows += (f'<h3>공개된 가격 정보</h3><div class="table-wrap"><table class="list price"><thead><tr><th>구분</th><th>항목</th><th class="num">금액</th></tr></thead><tbody>{prow}</tbody></table></div>'
@@ -3350,7 +3415,10 @@ def page_partner(out, p):
            ("감사 선물은 어떻게 받나요?", f"상담을 신청해 1차 상담을 받으신 뒤 {p['name']}와 계약하실 때 회원코드 {MEMBER_CODE}를 알려 주세요. 계약이 확인되면 "
             + ", ".join(f'{g["name"]} {g["value"]}' for g in PARTNER_CFG.get("gifts", [])) + " 가운데 하나를 꼭 휴대폰으로 보내 드립니다."),
            ("방문 날짜는 어떻게 정하나요?", "상담 때 편하신 날짜를 여쭙고 시설에 연락해 방문 예약을 잡아 드립니다. 장례 중이라 급하시면 신청서에 적어 주세요."),
-           (f"{p['name']} 분양가는 얼마인가요?", "안치단 위치와 개인단·부부단에 따라 다릅니다. 상담을 신청하시면 지금 남은 자리와 가격을 정리해 알려 드립니다.")]
+           (f"{p['name']} 분양가는 얼마인가요?", (f"관과 안치단 높이에 따라 {p['price_tables']['min']:,}만 원부터 {p['price_tables']['max']:,}만 원까지입니다({', '.join(dict.fromkeys(h['group'] or h['name'] for h in p['price_tables']['halls']))}). "
+            + (("관리비는 1위 기준 1년에 " + ", ".join(sorted({h['mgmt'] for h in p['price_tables']['halls'] if h['mgmt']}, key=lambda x: int(re.sub(r'[^0-9]', '', x) or 0))) + "입니다. ") if any(h['mgmt'] for h in p['price_tables']['halls']) else "관리비는 상담 때 안내해 드립니다. ")
+            + "상담을 신청하시면 남은 자리와 함께 다시 확인해 드립니다.")
+            if p.get("price_tables") and p["price_tables"]["min"] else "안치단 위치와 개인단·부부단에 따라 다릅니다. 상담을 신청하시면 지금 남은 자리와 가격을 정리해 알려 드립니다.")]
     faq_html = "".join(f"<details><summary>{E(a)}</summary><p>{E(b)}</p></details>" for a, b in faq)
     hero_img = partner_thumb(p, r, "ph-img")
     others = sorted([x for x in PARTNERS if x["slug"] != p["slug"]], key=lambda x: (x["sigungu"] != p["sigungu"], x["sido"] != p["sido"], x["order"]))[:4]
@@ -3435,12 +3503,15 @@ def write_partner_config(out):
 def copy_partner_images(out):
     src = PARTNER_DIR / "images"
     names = {n for p in PARTNERS for n in p["images"]}
+    halls = {h["img"] for p in PARTNERS if p.get("price_tables") for h in p["price_tables"]["halls"] if h["img"]}
     dst = out / "partner" / "img"
     dst.mkdir(parents=True, exist_ok=True)
     for fn, key in (("ph-bongan.svg", "bongan"), ("ph-tree.svg", "home")):
         (dst / fn).write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" preserveAspectRatio="xMidYMid slice">' + art.SCENES[key]() + "</svg>", encoding="utf-8")
     for n in names:
         shutil.copy2(src / n, dst / n)
+    for n in halls:
+        shutil.copy2(PARTNER_DIR / "halls" / n, dst / n)
 
 
 def partner_home_block():
@@ -3458,7 +3529,8 @@ def partner_fac_cta(f, r):
     if not p:
         return ""
     return (f'<a class="partner-cta" href="{r}{p["url"]}">{icon("gift")}<span><strong>봉안당 길잡이가 엄선한 추천 추모공원입니다</strong>'
-            f'<span>상담을 신청하시면 남은 자리·분양가 안내와 방문 예약을 도와 드리고, 계약하시면 감사 선물을 드립니다.</span></span><span class="btn primary">상담·감사 선물 안내</span></a>')
+            + (f'<span>최신 분양가 {p["price_text"][0]} · 관별 가격표를 추천 추모공원 페이지에서 보실 수 있습니다.</span>' if p.get("price_tables") and p["price_text"] else "")
+            + f'<span>상담을 신청하시면 남은 자리·분양가 안내와 방문 예약을 도와 드리고, 계약하시면 감사 선물을 드립니다.</span></span><span class="btn primary">상담·감사 선물 안내</span></a>')
 
 
 GENERATED_DIRS = ["facility", "region", "type", "feature", "guides", "pages", "static", "data", "compare", "funeral", "tools", "bongan", "info", "assets", "place", "area", "partner"]
