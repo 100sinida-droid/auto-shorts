@@ -1042,3 +1042,47 @@ img, svg, video, table { max-width: 100%; }
 .area-notice b { color: #8a4b2a; }
 .area-notice.dark { background: rgba(240,207,134,.12); border-color: rgba(240,207,134,.35); color: #e8dfc8; }
 .area-notice.dark b { color: #f0cf86; }
+/* 로고 이미지 */
+.brand .emblem { width: auto; height: 48px; flex: none; }
+.brand .bn { display: block; line-height: 0; }
+.brand .wordmark { display: block; height: 26px; width: auto; }
+.brand .bs { margin-top: 4px; }
+.site-footer .brand.light .wordmark, .site-footer .brand.light .emblem { filter: brightness(1.45) saturate(1.1); }
+@media (max-width: 600px) {
+  .brand .emblem { width: auto; height: 42px; }
+  .brand .wordmark { height: 23px; }
+}
+/* 장례식장 상세·장례비용 계산기 */
+.fn-acts { flex-wrap: wrap; }
+.fn-est { margin: 14px 0 4px; padding: 14px 16px; border-radius: 12px; background: #fbf6ec; border: 1px solid #ecd9b4; display: flex; flex-direction: column; gap: 4px; }
+.fn-est span { font-size: .9rem; color: #6b4a1f; font-weight: 600; }
+.fn-est strong { font-size: 1.5rem; color: #8a4b2a; }
+.fn-est small { color: var(--ink-2); line-height: 1.5; }
+.helper-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 10px; }
+.helper-links a { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: var(--ink); background: var(--surface); }
+.helper-links a span { font-size: .85rem; color: var(--ink-2); }
+.fn-head h3 a { color: inherit; }
+.fc-total { margin: 8px 0 12px; padding: 16px; border-radius: 14px; background: #1f4d3f; color: #fff; display: flex; flex-direction: column; gap: 4px; }
+.fc-total span { font-size: .9rem; opacity: .85; }
+.fc-total strong { font-size: 1.7rem; color: #f0cf86; }
+.fc-table th small { display: block; font-weight: 400; }
+.tool-form h3.wide { grid-column: 1 / -1; margin: 10px 0 0; font-size: 1.02rem; }
+.tool-form label.chk { flex-direction: row; align-items: center; gap: 8px; }
+.notice.warn { padding: 10px 12px; border-radius: 10px; background: #fdecea; color: #8a1f1f; }
+/* 탭·차례상 그림 */
+.tabs { display: flex; gap: 6px; margin: 0 0 12px; overflow-x: auto; }
+.tabs button { flex: 1 0 auto; padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; }
+.tabs button.on { background: #1f4d3f; color: #fff; border-color: #1f4d3f; }
+.jt { margin: 12px auto 14px; max-width: 520px; padding: 14px 10px; border-radius: 14px; background: #6b3f22; display: flex; flex-direction: column; gap: 8px; box-shadow: inset 0 0 0 3px #8a5530; }
+.jt-row { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.jt-c { flex: 1 1 0; min-width: 0; max-width: 120px; padding: 10px 4px; border-radius: 50px; background: #fff8ec; color: #4a2e15; font-size: .85rem; font-weight: 600; text-align: center; word-break: keep-all; }
+.jt-c.main { background: #f0cf86; }
+.jt-c.fr { background: #f6d5c8; }
+.checklist { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 6px; }
+.checklist label { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+@media print { .tabs, .site-header, .site-footer, .sticky-cta, .center-banner { display: none !important; } .tab-panel[hidden] { display: block !important; } }
+table.info.fc-table th { width: 60% !important; white-space: normal; }
+.fc-table td.num { text-align: right; white-space: nowrap; font-weight: 700; }
+table.info.fn-price th { width: 55% !important; }
+.fn-price td.num { text-align: right; white-space: nowrap; }
+.tool-form label.chk input { width: 20px; height: 20px; flex: none; }

@@ -1035,3 +1035,109 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
   var on = function () { b.classList.toggle("show", window.scrollY > 500); };
   window.addEventListener("scroll", on, { passive: true }); on();
 })();
+
+// ---------------- 부고 문자: 장례식장 페이지에서 넘어오면 빈소 미리 채우기 ----------------
+(function () {
+  var h = document.getElementById("bg-hall"); if (!h) return;
+  try {
+    var q = new URLSearchParams(location.search).get("hall");
+    if (q && !h.value) { h.value = q; setTimeout(function () { h.dispatchEvent(new Event("input")); }, 600); }
+  } catch (e) {}
+})();
+
+// ---------------- 장례비용 계산기 ----------------
+(function () {
+  var form = document.getElementById("fc-form"); if (!form) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var num = function (id) { var v = parseFloat(String($(id).value || "").replace(/[^0-9.]/g, "")); return isNaN(v) ? 0 : v; };
+  var won = function (n) { n = Math.round(n); return n >= 10000 ? (Math.round(n / 1000) / 10).toLocaleString() + "만 원" : n.toLocaleString() + "원"; };
+  var DATA = [], BY = {};
+  function med(a) { a = a.filter(function (v) { return v > 0; }).sort(function (x, y) { return x - y; }); return a.length ? a[Math.floor(a.length / 2)] : 0; }
+  function fillHalls(sido, keep) {
+    var list = DATA.filter(function (x) { return x.k === "f" && x.s === sido; });
+    var html = '<option value="">아직 못 정함 (' + (sido ? "지역 중간값" : "지역을 고르세요") + ")</option>", g = "";
+    list.forEach(function (x) {
+      if (x.g !== g) { if (g) html += "</optgroup>"; g = x.g; html += '<optgroup label="' + esc(g) + '">'; }
+      html += '<option value="' + x.i + '">' + esc(x.n) + (x.p[0] ? "" : " (가격 정보 없음)") + "</option>";
+    });
+    if (g) html += "</optgroup>";
+    $("fc-hall").innerHTML = html;
+    if (keep) $("fc-hall").value = keep;
+    var cre = DATA.filter(function (x) { return x.k === "c"; });
+    cre.sort(function (a, b) { return (a.s === sido ? 0 : 1) - (b.s === sido ? 0 : 1) || a.s.localeCompare(b.s); });
+    var ch = '<option value="">화장하지 않음 / 모름</option>', cs = "";
+    cre.forEach(function (x) {
+      var lab = x.s === sido ? "이 지역 화장장" : x.s;
+      if (lab !== cs) { if (cs) ch += "</optgroup>"; cs = lab; ch += '<optgroup label="' + esc(lab) + '">'; }
+      ch += '<option value="' + x.i + '">' + esc(x.n) + "</option>";
+    });
+    $("fc-cre").innerHTML = ch + "</optgroup>";
+  }
+  function regionPrices(sido) {
+    var l = DATA.filter(function (x) { return x.k === "f" && x.s === sido; });
+    return [0, 1, 2, 3, 4, 5].map(function (i) { return med(l.map(function (x) { return x.p[i]; })); });
+  }
+  function calc() {
+    var sido = $("fc-sido").value, hall = BY[$("fc-hall").value], p, label;
+    if (hall) { p = hall.p; label = hall.n; }
+    else if (sido) { p = regionPrices(sido); label = sido + " 장례식장 중간값"; }
+    else { $("fc-out").innerHTML = '<p class="muted">지역이나 장례식장을 고르면 계산이 시작됩니다.</p>'; return; }
+    var big = $("fc-room").value === "max" && p[1] > 0;
+    var lines = [], miss = [];
+    var room = big ? p[1] : p[0];
+    if (room) lines.push(["빈소 사용료", room * num("fc-roomdays"), won(room) + " × " + num("fc-roomdays") + "일" + (big ? " (가장 큰 빈소)" : " (가장 작은 빈소)")]); else miss.push("빈소 사용료");
+    if (p[2]) lines.push(["안치료", p[2] * num("fc-anchidays"), won(p[2]) + " × " + num("fc-anchidays") + "일"]); else miss.push("안치료");
+    if ($("fc-goods").checked) {
+      [["염습", 3], ["관 (가장 저렴한 것)", 4], ["수의 (가장 저렴한 것)", 5]].forEach(function (t) { if (p[t[1]]) lines.push([t[0], p[t[1]], ""]); else miss.push(t[0]); });
+    }
+    var guests = num("fc-guests"), meal = num("fc-meal");
+    if (guests && meal) lines.push(["조문객 음식·음료", guests * meal, guests.toLocaleString() + "명 × " + won(meal)]);
+    else miss.push("조문객 음식값 (조문객 수와 1인당 금액을 넣으세요)");
+    var cre = BY[$("fc-cre").value];
+    if (cre) {
+      var fee = $("fc-in").value === "in" ? cre.ci : cre.co;
+      if (fee) lines.push(["화장료 (" + ($("fc-in").value === "in" ? "관내" : "관외") + ")", fee, cre.n]); else miss.push("화장료 (" + cre.n + " 가격 정보 없음)");
+    }
+    [["상조 상품", "fc-sangjo"], ["장지 (봉안당·수목장)", "fc-place"], ["기타 부대비용", "fc-etc"]].forEach(function (t) { var v = num(t[1]); if (v) lines.push([t[0], v, ""]); });
+    var total = lines.reduce(function (s, l) { return s + l[1]; }, 0);
+    var rows = lines.map(function (l) { return "<tr><th scope=row>" + esc(l[0]) + (l[2] ? '<small class="muted">' + esc(l[2]) + "</small>" : "") + '</th><td class="num">' + won(l[1]) + "</td></tr>"; }).join("");
+    var text = "[장례비용 계산] " + label + "\n" + lines.map(function (l) { return "- " + l[0] + ": " + won(l[1]); }).join("\n") + "\n합계: 약 " + won(total) + "\n(봉안당 길잡이 장례비용 계산기, 공공데이터 2023-06 기준)";
+    $("fc-out").innerHTML = '<div class="fc-total"><span>' + esc(label) + ' 기준 예상 장례비용</span><strong>약 ' + won(total) + "</strong></div>" +
+      '<table class="info fc-table">' + rows + "</table>" +
+      (miss.length ? '<p class="small muted">빠진 항목: ' + esc(miss.join(", ")) + "</p>" : "") +
+      '<div class="actions"><button type="button" class="btn" id="fc-copy">계산 결과 복사</button>' +
+      "</div>";
+    var b = $("fc-copy");
+    b.onclick = function () {
+      var done = function () { b.textContent = "복사했습니다"; setTimeout(function () { b.textContent = "계산 결과 복사"; }, 1800); };
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {}); else done();
+    };
+    try { var u = new URL(location.href); if (hall) u.searchParams.set("fh", hall.i); else u.searchParams.delete("fh"); history.replaceState(null, "", u); } catch (e) {}
+  }
+  $("fc-days").addEventListener("change", function () { var d = +this.value; $("fc-roomdays").value = d - 1; $("fc-anchidays").value = d; calc(); });
+  $("fc-sido").addEventListener("change", function () { fillHalls(this.value); calc(); });
+  Array.prototype.forEach.call(form.querySelectorAll("input, select"), function (e) {
+    if (e.id === "fc-sido" || e.id === "fc-days") return;
+    e.addEventListener("input", calc); e.addEventListener("change", calc);
+  });
+  fetch("../assets/funeral.json").then(function (r) { return r.json(); }).then(function (d) {
+    DATA = d; d.forEach(function (x) { BY[x.i] = x; });
+    var want = ""; try { want = new URLSearchParams(location.search).get("fh") || ""; } catch (e) {}
+    var h = BY[want];
+    if (h) { $("fc-sido").value = h.s; fillHalls(h.s, h.i); }
+    calc();
+  }).catch(function () { $("fc-out").innerHTML = '<p class="muted">가격 자료를 불러오지 못했습니다. 새로 고침해 주세요.</p>'; });
+})();
+
+// ---------------- 탭 (차례상 등) ----------------
+(function () {
+  [].forEach.call(document.querySelectorAll("[data-tabs]"), function (t) {
+    var bs = t.querySelectorAll("[data-tab]");
+    [].forEach.call(bs, function (b) {
+      b.addEventListener("click", function () {
+        [].forEach.call(bs, function (x) { x.classList.toggle("on", x === b); var p = document.getElementById(x.getAttribute("data-tab")); if (p) p.hidden = x !== b; });
+      });
+    });
+  });
+})();

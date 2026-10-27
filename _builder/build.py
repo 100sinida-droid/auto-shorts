@@ -1174,14 +1174,16 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 {f'<meta property="og:url" content="{E(canonical)}">' if URL_READY else ''}
 <meta property="og:site_name" content="{E(SITE)}">
 <meta property="og:locale" content="ko_KR">
-<meta property="og:image" content="{SITE_URL}/assets/og.png">
+<meta property="og:image" content="{SITE_URL}/assets/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="alternate" type="application/rss+xml" title="{E(SITE)}" href="{SITE_URL}/assets/rss.xml">
 <meta name="theme-color" content="#1f4d3f">
 {robots}
-<link rel="icon" href="{FAVICON}" type="image/svg+xml">
+<link rel="icon" href="{r}assets/img/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="{r}assets/img/favicon-64.png" sizes="64x64" type="image/png">
+<link rel="apple-touch-icon" href="{r}assets/img/apple-touch-icon.png">
 <script>try{{var s=localStorage.getItem("fs");if(s)document.documentElement.setAttribute("data-fs",s)}}catch(e){{}}try{{if(navigator.serviceWorker)navigator.serviceWorker.getRegistrations().then(function(a){{a.forEach(function(r){{r.unregister()}});if(a.length&&window.caches)caches.keys().then(function(k){{k.forEach(function(n){{caches.delete(n)}})}})}})}}catch(e){{}}</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1199,7 +1201,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 <div class="tb-right"><a class="tb-consult" href="{r}partner/index.html#consult">{icon("gift")}무료 상담<span class="tbc-long"> 신청</span></a><a class="tb-search" href="{r}pages/search.html">{icon("search")}검색</a><div class="fs-ctl" role="group" aria-label="글자 크기"><span class="fs-label">글자 크기</span><button type="button" data-fs="" aria-label="글자 보통">가</button><button type="button" data-fs="lg" aria-label="글자 크게">가</button><button type="button" data-fs="xl" aria-label="글자 아주 크게">가</button></div></div></div></div>
 <header class="site-header">
   <div class="wrap header-in">
-    <a class="brand" href="{r}index.html">{EMBLEM}<span class="brand-txt"><span class="bn">{E(SITE)}</span><span class="bs">봉안당 · 장례식장 · 화장장 안내</span></span></a>
+    <a class="brand" href="{r}index.html"><img class="emblem" src="{r}assets/img/logo-emblem.webp" width="56" height="48" alt="" decoding="async"><span class="brand-txt"><span class="bn"><img class="wordmark" src="{r}assets/img/logo-word.webp" width="166" height="26" alt="{E(SITE)}" decoding="async"></span><span class="bs">봉안당 · 장례식장 · 화장장 안내</span></span></a>
     <nav class="main-nav" aria-label="주 메뉴">{nav_html}</nav>
   </div>
 </header>
@@ -1214,7 +1216,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 </div></section>
 <footer class="site-footer">
   <div class="wrap footer-grid">
-    <div class="f-brand"><a class="brand light" href="{r}index.html">{EMBLEM}<span class="brand-txt"><span class="bn">{E(SITE)}</span><span class="bs">봉안당 · 장례식장 · 화장장 안내</span></span></a>
+    <div class="f-brand"><a class="brand light" href="{r}index.html"><img class="emblem" src="{r}assets/img/logo-emblem.webp" width="56" height="48" alt="" decoding="async"><span class="brand-txt"><span class="bn"><img class="wordmark" src="{r}assets/img/logo-word.webp" width="166" height="26" alt="{E(SITE)}" decoding="async"></span><span class="bs">봉안당 · 장례식장 · 화장장 안내</span></span></a>
       <p>보건복지부 「전국 봉안시설 현황」(공공데이터포털)과 한국장례문화진흥원 장사시설 현황·가격정보를 바탕으로 만든 안내 사이트입니다. 이용 요금·잔여 기수·운영 여부는 바뀔 수 있으니 방문이나 계약 전에 반드시 해당 시설에 확인하세요.</p></div>
     <div><p class="f-h">서비스</p><ul>{foot_services}</ul></div>
     <div><p class="f-h">안내</p><ul>{foot_info}</ul></div>
@@ -2228,7 +2230,7 @@ def load_funeral():
                 "furnace": _num(r.get("화장로")), "pubpri": (r.get("공사설") or "").strip(), "optype": (r.get("운영종류") or "").strip(),
                 "closed": "휴업" in name or "폐업" in name,
                 "amen": [lbl for col, lbl in (("주차장", "주차장"), ("식당", "식당"), ("매점", "매점"), ("유족대기실", "유족대기실"), ("장애인편의시설", "장애인 편의")) if yes_no(r.get(col)) is True],
-                "price": {k: _num(pr.get(k)) for k, _ in FUNERAL_PRICE_COLS},
+                "price": {k: _num(pr.get(k)) for k, _ in FUNERAL_PRICE_COLS}, "room_max": _num(pr.get("빈소1일최고")),
                 "cre_in": _num(pr.get("화장료관내")), "cre_out": _num(pr.get("화장료관외")),
             })
     items.sort(key=lambda x: (list(SIDO).index(x["sido"]) if x["sido"] in SIDO else 99, x["sigungu"], x["name"]))
@@ -2239,7 +2241,7 @@ FN_AMEN_KEY = {"주차장": "parking_lot", "식당": "restaurant", "매점": "st
 
 
 def funeral_url(x):
-    return f"funeral/{sido_slug(x['sido'])}.html#x-{x['id']}"
+    return f"funeral/{sido_slug(x['sido'])}/{x['id']}.html"
 
 
 def _fn_badges(x):
@@ -2277,11 +2279,11 @@ def funeral_card(x, depth):
         prices = [(lbl, x["price"][k]) for k, lbl in FUNERAL_PRICE_COLS if x["price"].get(k)]
     price_html = ("<ul class=\"price-chips\">" + "".join(f"<li><span>{E(l)}</span><strong>{fmt_won(v)}{'~' if '최저' in l or l in ('빈소 1일', '관', '수의') else ''}</strong></li>" for l, v in prices) + "</ul>") if prices else ""
     amen = "".join(f'<span class="chip">{E(a)}</span>' for a in x["amen"])
-    return (f'<article class="fn-card" id="x-{x["id"]}"><div class="fn-head"><h3>{E(x["name"])}</h3>{_fn_badges(x)}</div>'
+    return (f'<article class="fn-card" id="x-{x["id"]}"><div class="fn-head"><h3><a href="{r}{funeral_url(x)}">{E(x["name"])}</a></h3>{_fn_badges(x)}</div>'
             f'<p class="fn-addr">{E(x["address"])}</p>'
             + (f'<p class="fn-facts">{" · ".join(facts)}</p>' if facts else "")
             + price_html + (f'<div class="fn-amen">{amen}</div>' if amen else "")
-            + f'<div class="actions">{tel}<a class="btn big" href="https://map.naver.com/p/search/{q}" target="_blank" rel="noopener">지도 보기</a></div></article>')
+            + f'<div class="actions">{tel}<a class="btn big" href="https://map.naver.com/p/search/{q}" target="_blank" rel="noopener">지도 보기</a><a class="btn big" href="{r}{funeral_url(x)}">비용·주차 자세히</a></div></article>')
 
 
 def tel_link(t):
@@ -2323,6 +2325,7 @@ def page_funeral(out, items):
             lead += f" 빈소 하루 사용료(가장 작은 방 기준)는 중간값이 {fmt_won(room)}입니다."
         body = f"""<header class="page-head with-thumb">{art.region_thumb(sido)}<div><h1>{E(sido)} 장례식장·화장장</h1><p class="lead">{E(lead)}</p>
 <p class="small">시군구를 누르면 바로 이동합니다.</p><nav class="rank-nav">{'<a class="chip-link" href="#crematorium">화장시설</a>' if scr else ''}{toc}</nav></div></header>
+<section class="card fc-cta"><h2>{icon("won")}장례비용, 모두 얼마나 들까요?</h2><p>장례식장을 고르면 빈소·안치료·염습·관·수의 가격이 자동으로 들어가고, 조문객 음식값과 화장료·장지까지 더해 계산합니다.</p><div class="actions"><a class="btn primary big" href="{r}tools/funeral-cost.html">장례비용 계산기</a><a class="btn big" href="{r}tools/bugo.html">부고 문자 만들기</a></div></section>
 {cre_html}{sgg_html}{src}
 {guide_links(depth, ["procedure-after-cremation", "ehaneul-guide", "public-vs-private"], "장례를 치르실 때 함께 보세요")}"""
         path = f"funeral/{sido_slug(sido)}.html"
@@ -2342,6 +2345,7 @@ def page_funeral(out, items):
     body = f"""<header class="page-head"><h1>전국 장례식장·화장장 찾기</h1>
 <p class="lead">전국 장례식장 {len(fh):,}곳과 화장시설 {len(cr)}곳의 위치, 전화번호, 빈소 사용료와 화장료를 지역별로 정리했습니다. 사시는 곳을 눌러 주세요.</p></header>
 <section class="block"><div class="block-head"><h2>지역을 고르세요</h2></div><div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">지도에서 지역을 누르면 그 지역 장례식장·화장장 목록으로 갑니다.</p></div><div class="region-grid compact">{cards}</div></div></section>
+<section class="card fc-cta"><h2>{icon("won")}장례비용, 모두 얼마나 들까요?</h2><p>장례식장을 고르면 빈소·안치료·염습·관·수의 가격이 자동으로 들어가고, 조문객 음식값과 화장료·장지까지 더해 계산합니다.</p><div class="actions"><a class="btn primary big" href="{r}tools/funeral-cost.html">장례비용 계산기</a><a class="btn big" href="{r}tools/bugo.html">부고 문자 만들기</a></div></section>
 <section class="card"><h2>장례식장 비용, 이 정도가 보통입니다</h2><div class="stats">{stat}</div>
 <p class="small">각 장례식장의 가장 저렴한 상품을 모아 중간값을 구했습니다. 실제 비용은 빈소 크기, 조문객 수, 장례 기간에 따라 크게 달라집니다.</p></section>
 <section class="card" id="crematorium"><h2>전국 화장시설 {len(cr)}곳</h2>
@@ -2355,14 +2359,290 @@ def page_funeral(out, items):
 
 
 # ---------------------------------------------------------------------------
+# 장례식장·화장장 한 곳씩 상세 페이지 (funeral/<시도>/<id>.html) + 장례비용 계산기용 데이터
+# ---------------------------------------------------------------------------
+FN_SRC_NOTE = "출처: 한국장례문화진흥원 전국 장사시설 현황·가격정보 (2023-06-01 기준). 가격과 운영 여부는 바뀔 수 있으니 이용 전 꼭 전화로 확인하세요."
+
+
+def _fn_geo(x):
+    return GEO_CACHE.get("fn-" + x["id"])
+
+
+def _near_by(g, cands, key, n):
+    if not g:
+        return []
+    out = []
+    for c in cands:
+        cg = key(c)
+        if cg:
+            out.append((_hav(g["la"], g["lo"], cg["la"], cg["lo"]), c))
+    out.sort(key=lambda t: t[0])
+    return out[:n]
+
+
+def funeral_3day(x):
+    """3일장 기본 비용 예시: 빈소(가장 작은 방) 2일 + 안치료 3일 + 염습 + 관 + 수의. 값이 하나라도 없으면 None."""
+    p = x["price"]
+    need = [p.get("빈소1일최저"), p.get("안치료1일"), p.get("염습"), p.get("관최저"), p.get("수의최저")]
+    if not all(need):
+        return None
+    return p["빈소1일최저"] * 2 + p["안치료1일"] * 3 + p["염습"] + p["관최저"] + p["수의최저"]
+
+
+def page_funeral_detail(out, x, items):
+    depth = 2
+    r = rel(depth)
+    path = funeral_url(x)
+    is_cre = x["kind"] == "화장시설"
+    short = SIDO_SHORT.get(x["sido"], x["sido"])
+    g = _fn_geo(x)
+    qmap = urllib.parse.quote(x["address"] or x["name"])
+    tel = re.sub(r"[^0-9+]", "", x["tel"] or "")
+    acts = (f'<a class="btn primary big" href="tel:{E(tel)}">{icon("phone")}전화 {E(x["tel"])}</a>' if tel else "")
+    acts += f'<a class="btn big" href="https://map.naver.com/p/search/{qmap}" target="_blank" rel="noopener">{icon("map")}네이버 지도</a>'
+    acts += f'<a class="btn big" href="https://map.kakao.com/?q={qmap}" target="_blank" rel="noopener">{icon("map")}카카오맵</a>'
+    if x["closed"]:
+        notice = '<p class="notice warn">공공데이터에 휴업 또는 폐업으로 표시된 곳입니다. 가시기 전에 꼭 운영 여부를 확인하세요.</p>'
+    else:
+        notice = ""
+    # 기본 정보
+    rows = [("주소", E(x["address"]) or "정보 없음"), ("전화", tel_link(x["tel"]))]
+    if x["pubpri"] or x["optype"]:
+        rows.append(("운영", E(" · ".join(v for v in (x["pubpri"], x["optype"]) if v))))
+    if is_cre:
+        if x["furnace"]:
+            rows.append(("화장로", f'{x["furnace"]}기'))
+    else:
+        if x["rooms"]:
+            rows.append(("빈소", f'{x["rooms"]}실'))
+        if x["morgue"]:
+            rows.append(("안치 가능", f'{x["morgue"]}구'))
+    rows.append(("주차", f'{x["parking"]:,}대' if x["parking"] else ("주차장 있음" if "주차장" in x["amen"] else "정보 없음")))
+    if x["amen"]:
+        rows.append(("편의시설", " · ".join(E(a) for a in x["amen"])))
+    info = "".join(f"<tr><th scope=row>{k}</th><td>{v}</td></tr>" for k, v in rows)
+    info_html = f'<section class="card"><h2>{icon("info")}기본 정보</h2><table class="info">{info}</table></section>'
+    # 가격
+    faq = []
+    if is_cre:
+        prow = ""
+        if x["cre_in"]:
+            prow += f'<tr><th scope=row>관내 (고인 주소지가 이 지역)</th><td class="num">{fmt_won(x["cre_in"])}</td></tr>'
+        if x["cre_out"]:
+            prow += f'<tr><th scope=row>관외 (다른 지역 주민)</th><td class="num">{fmt_won(x["cre_out"])}</td></tr>'
+        price_html = (f'<section class="card"><h2>{icon("won")}화장 비용 (대인 1구)</h2>'
+                      + (f'<table class="info">{prow}</table>' if prow else '<p>공공데이터에 화장료가 아직 등록되어 있지 않습니다. 전화로 확인하세요.</p>')
+                      + '<p class="small">화장료는 고인의 주민등록 주소지가 그 지역이면(관내) 저렴하고, 다른 지역이면(관외) 몇 배 비쌉니다. '
+                        f'화장 예약은 장례식장을 통해 <a href="https://www.15774129.go.kr" target="_blank" rel="noopener">e하늘 장사정보시스템</a>에서 합니다. '
+                        f'<a href="{r}guides/ehaneul-guide.html">e하늘 화장 예약 방법</a></p></section>')
+        if x["cre_in"] or x["cre_out"]:
+            faq.append((f"{x['name']} 화장 비용은 얼마인가요?",
+                        "공공데이터 기준 대인 1구 " + ", ".join(t for t in (f"관내 {fmt_won(x['cre_in'])}" if x["cre_in"] else "", f"관외 {fmt_won(x['cre_out'])}" if x["cre_out"] else "") if t)
+                        + "입니다. 고인의 주소지가 이 지역이면 관내 요금이 적용됩니다."))
+    else:
+        p = x["price"]
+        prow = ""
+        if p.get("빈소1일최저"):
+            hi = x.get("room_max")
+            prow += f'<tr><th scope=row>빈소 사용료 (하루)</th><td class="num">{fmt_won(p["빈소1일최저"])}' + (f' ~ {fmt_won(hi)}' if hi and hi > p["빈소1일최저"] else "~") + "</td></tr>"
+        for k, lbl in (("안치료1일", "안치료 (하루)"), ("염습", "염습"), ("관최저", "관 (가장 저렴한 것)"), ("수의최저", "수의 (가장 저렴한 것)")):
+            if p.get(k):
+                prow += f'<tr><th scope=row>{lbl}</th><td class="num">{fmt_won(p[k])}{"~" if "최저" in k else ""}</td></tr>'
+        three = funeral_3day(x)
+        ex = ""
+        if three:
+            ex = (f'<div class="fn-est"><span>3일장 기본 비용 예시</span><strong>약 {fmt_won(three)}</strong>'
+                  f'<small>가장 작은 빈소 2일 + 안치료 3일 + 염습 + 가장 저렴한 관·수의. 음식·접객비, 장례지도사·인력, 제단 꽃, 상복, 운구차, 화장료, 장지 비용은 빠져 있습니다.</small></div>')
+        price_html = (f'<section class="card"><h2>{icon("won")}장례식장 비용</h2>'
+                      + (f'<table class="info fn-price">{prow}</table>' if prow else '<p>공공데이터에 가격이 아직 등록되어 있지 않습니다. 전화로 확인하세요.</p>')
+                      + ex
+                      + f'<div class="actions"><a class="btn primary big" href="{r}tools/funeral-cost.html?fh={x["id"]}">{icon("won")}이 장례식장으로 장례비용 계산하기</a></div></section>')
+        if p.get("빈소1일최저"):
+            faq.append((f"{x['name']} 빈소 사용료는 얼마인가요?", f"공공데이터 기준 가장 작은 빈소의 하루 사용료는 {fmt_won(p['빈소1일최저'])}" + (f", 가장 큰 빈소는 {fmt_won(x['room_max'])}" if x.get("room_max") and x["room_max"] > p["빈소1일최저"] else "") + "입니다. 음식값과 장례용품은 따로 듭니다."))
+        if three:
+            faq.append((f"{x['name']}에서 3일장을 치르면 얼마나 드나요?", f"가장 작은 빈소 2일, 안치료 3일, 염습, 가장 저렴한 관과 수의만 더하면 약 {fmt_won(three)}입니다. 실제로는 조문객 음식값, 인력, 화장료, 장지 비용이 더해집니다."))
+    if x["parking"]:
+        faq.append((f"{x['name']} 주차는 되나요?", f"공공데이터 기준 {x['parking']:,}대까지 주차할 수 있습니다. 발인 날이나 조문객이 많은 저녁에는 붐빌 수 있습니다."))
+    if x["tel"]:
+        faq.append((f"{x['name']} 전화번호와 주소는요?", f"전화 {x['tel']}, 주소는 {x['address']}입니다."))
+    # 가까운 화장장
+    crems = [c for c in items if c["kind"] == "화장시설" and c["id"] != x["id"] and not c["closed"]]
+    nc = _near_by(g, crems, _fn_geo, 3)
+    cre_html = ""
+    if nc and not is_cre:
+        li = "".join(f'<li><a href="{r}{funeral_url(c)}">{E(c["name"])}</a> <span class="muted small">약 {max(1, round(d))}km(직선)'
+                     + (f' · 관내 {fmt_won(c["cre_in"])}' if c["cre_in"] else "") + (f' · 관외 {fmt_won(c["cre_out"])}' if c["cre_out"] else "") + "</span></li>" for d, c in nc)
+        cre_html = (f'<section class="card"><h2>{icon("crematorium")}가까운 화장장</h2><ul class="link-list">{li}</ul>'
+                    '<p class="small muted">거리는 시군구 중심 사이의 직선거리로 어림한 값입니다. 화장장 예약은 장례식장에서 도와줍니다.</p></section>')
+    # 가까운 봉안당
+    nb = _near_by(g, [f for f in ALL_FACS], lambda f: GEO_CACHE.get(f["id"]), 6)
+    bong_html = ""
+    if nb:
+        li = "".join(f'<li><a href="{r}{facility_url(f)}">{E(f["name"])}</a> {kind_badge(f["kind"])} <span class="muted small">약 {max(1, round(d))}km · {E(f["sigungu"])}</span></li>' for d, f in nb)
+        bong_html = (f'<section class="card"><h2>{icon("bongan")}화장 뒤 모실 가까운 봉안당</h2><ul class="link-list">{li}</ul>'
+                     f'<p class="small"><a href="{r}{region_url(x["sido"])}">{E(short)} 봉안당 전체 보기</a> · <a href="{r}feature/price.html">봉안당 가격 비교</a></p></section>')
+    # 같은 시군구 다른 곳
+    same = [c for c in items if c["sido"] == x["sido"] and c["sigungu"] == x["sigungu"] and c["kind"] == x["kind"] and c["id"] != x["id"]][:10]
+    same_html = ""
+    if same:
+        li = "".join(f'<li><a href="{r}{funeral_url(c)}">{E(c["name"])}</a>'
+                     + (f' <span class="muted small">빈소 {fmt_won(c["price"]["빈소1일최저"])}~</span>' if c["price"].get("빈소1일최저") else "") + "</li>" for c in same)
+        same_html = f'<section class="card"><h2>{E(x["sigungu"])}의 다른 {"화장장" if is_cre else "장례식장"}</h2><ul class="link-list">{li}</ul><p class="small"><a href="{r}funeral/{sido_slug(x["sido"])}.html">{E(short)} 장례식장·화장장 전체</a></p></section>'
+    # 장례 도우미 바로가기
+    hall_q = urllib.parse.quote(x["name"])
+    helper = (f'<section class="card"><h2>{icon("guide")}장례를 치르실 때 바로 쓰는 도구</h2><div class="helper-links">'
+              + (f'<a href="{r}tools/bugo.html?hall={hall_q}"><strong>부고 문자 만들기</strong><span>빈소에 {E(x["name"])}이 미리 들어갑니다</span></a>' if not is_cre else "")
+              + f'<a href="{r}tools/funeral-cost.html' + ("" if is_cre else f'?fh={x["id"]}') + '"><strong>장례비용 계산기</strong><span>빈소·음식·화장·장지까지 모두 얼마인지</span></a>'
+              + f'<a href="{r}tools/49jae.html"><strong>삼우제·49재 날짜</strong><span>별세일만 넣으면 바로 계산</span></a>'
+              + f'<a href="{r}tools/after-death.html"><strong>장례 후 할 일</strong><span>사망신고·상속 기한 체크리스트</span></a></div></section>')
+    kind_word = "화장장" if is_cre else "장례식장"
+    lead = (f"{x['name']}은(는) {short} {x['sigungu']}에 있는 {'화장시설' if is_cre else '장례식장'}입니다. "
+            + ("전화번호, 주차, 화장 비용과 가는 길을 정리했습니다." if is_cre else "빈소 사용료, 안치료, 주차, 전화번호와 가는 길을 정리했습니다."))
+    body = f"""<header class="page-head"><p class="eyebrow">{E(short)} {E(x["sigungu"])} · {kind_word}</p><h1>{E(x["name"])}</h1>
+<p class="lead">{E(lead)}</p>{notice}<div class="actions fn-acts">{acts}</div></header>
+{price_html}{info_html}{cre_html}{bong_html}{helper}{same_html}
+<p class="muted small">{FN_SRC_NOTE} 정보가 바뀌었으면 <a href="{r}pages/contact.html">알려 주세요</a>.</p>"""
+    if is_cre:
+        title = f"{x['name']} 화장 비용·예약·오시는 길 ({short} {x['sigungu']})"
+        desc = f"{x['name']} 화장료(관내·관외), 화장로 수, 주차, 전화번호, 주소와 가까운 봉안당을 한눈에 확인하세요."
+        kw = [x["name"], f"{x['name']} 화장 비용", f"{x['name']} 예약", f"{x['sigungu']} 화장장", "화장 비용", "화장장 예약"]
+    else:
+        title = f"{x['name']} 비용·주차·오시는 길 ({short} {x['sigungu']})"
+        desc = (f"{x['name']} 빈소 사용료" + (f" 하루 {fmt_won(x['price']['빈소1일최저'])}부터" if x["price"].get("빈소1일최저") else "")
+                + ", 안치료·염습·관·수의 가격, 주차" + (f" {x['parking']:,}대" if x["parking"] else "") + ", 전화번호와 가는 길, 3일장 예상 비용을 확인하세요.")
+        kw = [x["name"], f"{x['name']} 비용", f"{x['name']} 주차", f"{x['name']} 위치", f"{x['sigungu']} 장례식장", "장례식장 비용", "3일장 비용"]
+    SEO_OVERRIDE[path] = {"title": title, "desc": desc, "kw": kw, "faq": faq}
+    ld = {"@context": "https://schema.org", "@type": "LocalBusiness", "name": x["name"], "url": f"{SITE_URL}/{path}",
+          "address": {"@type": "PostalAddress", "streetAddress": x["address"], "addressRegion": x["sido"], "addressLocality": x["sigungu"], "addressCountry": "KR"}}
+    if x["tel"]:
+        ld["telephone"] = x["tel"]
+    write(out, path, layout(path, title, desc, body,
+                            crumbs=[("장례식장·화장장", "funeral/index.html"), (short, f"funeral/{sido_slug(x['sido'])}.html"), (x["name"], None)],
+                            jsonld=ld, depth=depth, noindex=x["closed"]))
+
+
+def write_funeral_json(out, items):
+    data = []
+    for x in items:
+        if x["closed"]:
+            continue
+        p = x["price"]
+        data.append({"i": x["id"], "n": x["name"], "s": x["sido"], "g": x["sigungu"], "k": "c" if x["kind"] == "화장시설" else "f",
+                     "p": [p.get("빈소1일최저") or 0, x.get("room_max") or 0, p.get("안치료1일") or 0, p.get("염습") or 0, p.get("관최저") or 0, p.get("수의최저") or 0],
+                     "ci": x["cre_in"] or 0, "co": x["cre_out"] or 0})
+    (out / "assets").mkdir(parents=True, exist_ok=True)
+    (out / "assets" / "funeral.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
+def page_funeral_cost(out):
+    depth = 1
+    r = rel(depth)
+    sidos = [s for s in SIDO if any(x["sido"] == s for x in FUNERAL)]
+    sopt = "".join(f'<option value="{E(s)}">{E(SIDO_SHORT.get(s, s))}</option>' for s in sidos)
+    body = f"""<header class="page-head"><h1>장례비용 계산기</h1>
+<p class="lead">장례식장을 고르면 공공데이터에 등록된 빈소 사용료·안치료·염습·관·수의 가격이 자동으로 들어갑니다. 조문객 수와 화장장, 장지까지 넣으면 장례를 치르는 데 모두 얼마가 드는지 한 번에 계산합니다.</p></header>
+<section class="card"><h2>1. 장례식장</h2>
+<form class="tool-form" id="fc-form" onsubmit="return false">
+<label>지역<select id="fc-sido"><option value="">지역을 고르세요</option>{sopt}</select></label>
+<label>장례식장<select id="fc-hall"><option value="">먼저 지역을 고르세요</option></select></label>
+<p class="wide small muted" id="fc-hallnote">장례식장을 아직 정하지 못했으면 지역만 고르세요. 그 지역 장례식장 가격의 중간값으로 계산합니다.</p>
+<label>장례 기간<select id="fc-days"><option value="2">2일장</option><option value="3" selected>3일장</option><option value="4">4일장</option></select></label>
+<label>빈소 크기<select id="fc-room"><option value="min">가장 작은 빈소</option><option value="max">가장 큰 빈소</option></select></label>
+<label>빈소 쓰는 날수<input id="fc-roomdays" type="number" min="0" step="0.5" value="2"></label>
+<label>안치료 날수<input id="fc-anchidays" type="number" min="0" step="1" value="3"></label>
+<label class="chk wide"><input type="checkbox" id="fc-goods" checked> 염습·관·수의를 장례식장에서 준비 (상조에 포함되면 끄세요)</label>
+<h3 class="wide">2. 조문객 음식·접객</h3>
+<label>조문객 수 (명)<input id="fc-guests" type="number" min="0" step="10" placeholder="예: 150"></label>
+<label>1인당 음식·음료값 (원)<input id="fc-meal" type="number" min="0" step="1000" placeholder="장례식장에 물어본 금액"></label>
+<h3 class="wide">3. 화장</h3>
+<label>화장장<select id="fc-cre"><option value="">화장하지 않음 / 모름</option></select></label>
+<label>고인 주소지<select id="fc-in"><option value="in">화장장과 같은 지역 (관내)</option><option value="out">다른 지역 (관외)</option></select></label>
+<h3 class="wide">4. 그 밖의 비용</h3>
+<label>상조 상품 금액 (원)<input id="fc-sangjo" type="number" min="0" step="10000" placeholder="가입한 상조가 없으면 비워 두세요"></label>
+<label>장지 비용 (원)<input id="fc-place" type="number" min="0" step="10000" placeholder="봉안당·수목장 사용료"></label>
+<label class="wide">기타 (장례지도사·도우미, 제단 꽃, 상복, 운구차 등, 원)<input id="fc-etc" type="number" min="0" step="10000" placeholder="장례식장 견적서의 금액"></label>
+</form>
+<div id="fc-out" class="tool-out" aria-live="polite"></div></section>
+<section class="card"><h2>장례비용, 이렇게 줄일 수 있습니다</h2><ul class="tips">
+<li><strong>빈소 크기</strong>: 빈소는 크기에 따라 하루 사용료가 몇 배 차이 납니다. 예상 조문객 수에 맞는 방을 고르세요.</li>
+<li><strong>음식값</strong>: 장례비용에서 가장 큰 몫을 차지하는 경우가 많습니다. 1인당 단가와 남은 음식 반품 여부를 미리 물어보세요.</li>
+<li><strong>관내 화장장</strong>: 고인 주소지의 화장장을 쓰면 화장료가 크게 줄어듭니다. 공설 장례식장은 사용료가 낮은 곳이 많습니다.</li>
+<li><strong>상조와 겹치는 항목</strong>: 상조에 염습·관·수의·인력이 들어 있으면 장례식장 물품과 겹치지 않게 확인하세요.</li>
+<li><strong>장지</strong>: 공설 봉안당은 사설보다 훨씬 저렴하지만 주소지 자격이 필요합니다. <a href="{r}feature/price.html">봉안당 가격 비교</a>와 <a href="{r}pages/recommend.html">예산으로 봉안당 추천</a>에서 확인하세요.</li></ul></section>
+<p class="muted small">{FN_SRC_NOTE} 음식값·인력비는 공공데이터에 없어 직접 넣어야 합니다. 계산 결과는 참고용입니다.</p>
+{tool_cards(depth, skip="fcost")}"""
+    faq = [("장례비용은 보통 얼마나 드나요?", "빈소 사용료, 안치료, 염습·관·수의 같은 장례식장 비용에 조문객 음식값, 인력·꽃·상복 같은 부대비용, 화장료, 장지 비용이 더해집니다. 조문객 수와 장지에 따라 크게 달라지니 계산기에 직접 넣어 보세요."),
+           ("3일장 빈소는 며칠 치를 내나요?", "빈소 사용료는 보통 시간이나 일 단위로 받고, 3일장이면 이틀 남짓 씁니다. 장례식장마다 계산 방식이 달라 계약 전에 확인하세요."),
+           ("화장료는 왜 지역마다 다른가요?", "공설 화장장은 고인의 주소지가 그 지역이면 관내 요금, 아니면 관외 요금을 받습니다. 관외 요금이 몇 배 비쌉니다.")]
+    SEO_OVERRIDE["tools/funeral-cost.html"] = {"title": "장례비용 계산기 · 장례식장 비용·3일장 비용 한 번에 계산",
+                                               "desc": "전국 장례식장 1,100여 곳의 빈소 사용료·안치료·염습·관·수의 가격을 불러와 3일장 장례비용을 계산합니다. 음식값·화장료·장지 비용까지 합계를 확인하세요.",
+                                               "kw": ["장례비용", "장례식장 비용", "3일장 비용", "장례비용 계산기", "빈소 비용", "화장 비용"], "faq": faq}
+    write(out, "tools/funeral-cost.html", layout("tools/funeral-cost.html", "장례비용 계산기", "장례비용 계산기", body,
+                                                 crumbs=[("장례 도우미", "tools/index.html"), ("장례비용 계산기", None)], depth=depth))
+
+
+def page_jesasang(out):
+    depth = 1
+    r = rel(depth)
+
+    def table(rows):
+        return '<div class="jt">' + "".join('<div class="jt-row">' + "".join(f'<span class="jt-c{" " + c if c else ""}">{E(t)}</span>' for t, c in row) + "</div>" for row in rows) + "</div>"
+
+    chuseok = table([[("송편", "main"), ("술(잔)", "")], [("나물", ""), ("구이(적)", ""), ("김치", "")], [("과일", "fr"), ("과일", "fr"), ("과일", "fr"), ("과일", "fr")]])
+    seol = table([[("떡국", "main"), ("술(잔)", "")], [("나물", ""), ("구이(적)", ""), ("김치", "")], [("과일", "fr"), ("과일", "fr"), ("과일", "fr"), ("과일", "fr")]])
+    trad = table([[("밥·국 (반갱)", "main"), ("술잔", "")], [("생선", ""), ("적·전", ""), ("고기", "")], [("탕", ""), ("탕", ""), ("탕", "")],
+                  [("포", ""), ("나물", ""), ("간장", ""), ("김치", ""), ("식혜", "")], [("대추", "fr"), ("밤", "fr"), ("배", "fr"), ("감", "fr"), ("과일·과자", "fr")]])
+    body = f"""<header class="page-head"><h1>차례상·제사상 차리는 법</h1>
+<p class="lead">설과 추석 차례상은 성균관이 내놓은 간소화 표준안대로 9가지 안팎이면 충분합니다. 표준안 상차림 그림과 장보기 목록, 기제사 때 흔히 쓰는 전통 진설 순서를 함께 정리했습니다.</p></header>
+<div class="tabs" role="tablist" data-tabs>
+<button type="button" role="tab" class="on" data-tab="js-chuseok">추석 차례상</button><button type="button" role="tab" data-tab="js-seol">설 차례상</button><button type="button" role="tab" data-tab="js-trad">기제사 전통 진설</button></div>
+<section class="card tab-panel" id="js-chuseok"><h2>추석 차례상 (성균관 표준안)</h2>
+<p>성균관 의례정립위원회가 2022년 9월 발표한 표준안입니다. <strong>송편, 나물, 구이(적), 김치, 과일 4가지, 술</strong>까지 9가지가 기본이고, 여유가 있으면 육류·생선·떡을 더 올려도 됩니다.</p>
+<p class="small muted">위쪽이 지방(또는 사진)을 모시는 쪽입니다.</p>{chuseok}
+<ul class="tips"><li>기름에 부치거나 튀긴 <strong>전은 올리지 않아도 됩니다.</strong></li><li>과일은 종류와 놓는 자리를 자유롭게 정하면 됩니다.</li><li>지방 대신 고인의 사진을 놓고 지내도 됩니다.</li><li>차례와 성묘 가운데 무엇을 먼저 할지는 가족이 의논해 정하면 됩니다.</li></ul></section>
+<section class="card tab-panel" id="js-seol" hidden><h2>설 차례상 (성균관 표준안)</h2>
+<p>추석과 차림은 같고, 송편 대신 <strong>떡국</strong>을 올립니다. 떡국, 나물, 구이(적), 김치, 과일 4가지, 술 정도면 충분하다는 것이 성균관의 설명입니다.</p>{seol}
+<ul class="tips"><li>떡국은 밥과 국을 대신하므로 따로 밥·국을 올리지 않아도 됩니다.</li><li>음식 가짓수보다 함께 모여 조상을 기리는 마음이 중요하다는 것이 표준안의 취지입니다.</li></ul></section>
+<section class="card tab-panel" id="js-trad" hidden><h2>기제사 전통 진설 (집안에 따라 다름)</h2>
+<p>돌아가신 날 지내는 기제사는 집안마다 상차림이 다릅니다. 아래는 흔히 쓰는 5열 배치이고, 집안 어른이 쓰시는 방식이 있으면 그것을 따르세요.</p>{trad}
+<table class="info"><tr><th scope=row>1열</th><td>밥(메)과 국(갱), 술잔. 밥은 서쪽(보는 사람의 왼쪽), 국은 동쪽</td></tr>
+<tr><th scope=row>2열</th><td>생선, 적·전, 고기 (어동육서: 생선은 동쪽, 고기는 서쪽)</td></tr>
+<tr><th scope=row>3열</th><td>탕 (육탕·소탕·어탕 등)</td></tr>
+<tr><th scope=row>4열</th><td>포, 나물, 간장, 김치, 식혜 (좌포우혜: 포는 왼쪽, 식혜는 오른쪽)</td></tr>
+<tr><th scope=row>5열</th><td>과일과 과자 (조율이시·홍동백서: 대추·밤·배·감 순, 붉은 과일은 동쪽·흰 과일은 서쪽)</td></tr></table>
+<p class="small muted">홍동백서·조율이시 같은 원칙은 옛 예법서에 근거가 없다고 성균관이 밝힌 바 있습니다. 반드시 지켜야 하는 규칙이라기보다 많은 집안이 따르는 관습으로 보시면 됩니다.</p></section>
+<section class="card"><h2>장보기 목록 (표준안 기준)</h2><ul class="checklist">
+<li><label><input type="checkbox"> 송편(추석) 또는 떡국 재료(설)</label></li><li><label><input type="checkbox"> 나물 (3가지 정도면 충분)</label></li>
+<li><label><input type="checkbox"> 구이(적)용 고기나 생선</label></li><li><label><input type="checkbox"> 김치</label></li>
+<li><label><input type="checkbox"> 과일 4가지</label></li><li><label><input type="checkbox"> 술 (제주)</label></li>
+<li><label><input type="checkbox"> 지방(또는 사진)과 향·초</label></li></ul>
+<div class="actions"><a class="btn primary big" href="{r}tools/jibang.html">{icon("brush")}지방 바로 쓰기</a><button type="button" class="btn big" onclick="window.print()">이 페이지 인쇄</button></div></section>
+<section class="card"><h2>봉안당·산소로 성묘 가실 때</h2><p>봉안당은 음식물 반입을 막거나 정해진 곳에서만 차례를 지내게 하는 곳이 많습니다. 명절 전후에는 주차도 붐비니 미리 시설에 확인하세요.</p>
+<p><a href="{r}feature/holiday.html">명절 성묘 안내</a> · <a href="{r}guides/visiting-etiquette.html">봉안당 참배 예절</a> · <a href="{r}tools/chukmun.html">축문 쓰기</a></p></section>
+<p class="muted small">출처: 성균관 의례정립위원회 「차례상 표준안」(2022년 9월 추석, 2023년 1월 설 안내) 보도 내용. 기제사 진설은 일반적으로 알려진 관습을 정리한 것입니다.</p>
+{tool_cards(depth, skip="jesa")}"""
+    faq = [("추석 차례상에는 무엇을 올리나요?", "성균관 표준안은 송편, 나물, 구이(적), 김치, 과일 4가지, 술까지 9가지를 기본으로 하고, 여유가 있으면 육류·생선·떡을 더할 수 있다고 안내합니다."),
+           ("설 차례상은 추석과 무엇이 다른가요?", "송편 대신 떡국을 올립니다. 나머지 나물, 구이, 김치, 과일, 술은 같습니다."),
+           ("차례상에 전을 꼭 올려야 하나요?", "성균관 표준안은 기름에 부친 전을 올리지 않아도 된다고 안내합니다."),
+           ("홍동백서, 조율이시는 꼭 지켜야 하나요?", "성균관은 이런 원칙이 옛 예법서에 근거가 없다고 밝혔습니다. 집안의 관습을 따르거나 편하게 놓으면 됩니다.")]
+    SEO_OVERRIDE["tools/jesasang.html"] = {"title": "차례상 차리는 법 · 추석·설 차례상 표준안과 제사상 진설도",
+                                           "desc": "성균관 차례상 표준안(9가지)으로 추석·설 차례상 차리는 법을 그림으로 정리했습니다. 기제사 전통 진설 순서, 홍동백서·조율이시 뜻, 장보기 목록까지.",
+                                           "kw": ["차례상 차리는 법", "제사상 차리는 법", "추석 차례상", "설 차례상", "차례상 간소화", "성균관 차례상", "홍동백서", "제사상 진설도"], "faq": faq}
+    write(out, "tools/jesasang.html", layout("tools/jesasang.html", "차례상·제사상 차리는 법", "차례상 차리는 법", body,
+                                             crumbs=[("장례 도우미", "tools/index.html"), ("차례상·제사상", None)], depth=depth))
+
+
+# ---------------------------------------------------------------------------
 # 장례 도우미 (tools/): 지방·명정, 축문, 49재 계산, 부고 문자, 나이·부의금
 # 계산과 문구 만들기는 모두 브라우저(static/site.js)에서 처리한다.
 # ---------------------------------------------------------------------------
 TOOLS = [
+    ("fcost", "tools/funeral-cost.html", "장례비용 계산기", "장례식장을 고르면 빈소·안치·염습 가격이 자동으로, 3일장 총비용 계산", "won"),
     ("after", "tools/after-death.html", "장례 후 할 일 체크리스트", "사망신고·상속·세금까지 할 일과 마감 날짜를 순서대로", "info"),
     ("near", "feature/near.html", "가까운 봉안당 찾기", "우리 집에서 가까운 봉안당을 거리순으로", "map"),
     ("cost", "feature/cost.html", "봉안당 총비용 계산기", "관리비·연장비까지 더해 몇 년에 모두 얼마인지 비교", "won"),
     ("holiday", "feature/holiday.html", "명절 성묘 안내", "설·추석 날짜, 붐비지 않게 다녀오는 법, 대형 봉안당 연락처", "bongan"),
+    ("jesa", "tools/jesasang.html", "차례상·제사상 차리는 법", "성균관 표준안 9가지 상차림 그림과 장보기 목록, 기제사 진설", "guide"),
     ("jibang", "tools/jibang.html", "지방 쓰기", "아버지·어머니·조부모 지방을 한자와 한글로 바로 만들어 인쇄", "brush"),
     ("myeongjeong", "tools/jibang.html#myeongjeong", "명정 쓰기", "관 위에 덮는 붉은 천의 글씨(명정) 문구 만들기", "brush"),
     ("chukmun", "tools/chukmun.html", "축문 쓰기", "제사 날짜만 넣으면 기제사 축문을 음력 간지까지 자동 완성", "guide"),
@@ -3119,7 +3399,7 @@ def load_partner_prices(slug):
             h["rowname"] = g("행이름")
         if g("비고") and not h["note"]:
             h["note"] = g("비고")
-        if g("사진") and not h["img"] and (PARTNER_DIR / "halls" / g("사진")).exists():
+        if g("사진") and not h["img"] and ((PARTNER_DIR / "halls" / g("사진")).exists() or (PARTNER_DIR / "images" / g("사진")).exists()):
             h["img"] = g("사진")
         col, rn, price = g("열"), g("구분"), g("가격(만원)") or g("가격")
         if col and col not in h["cols"]:
@@ -3528,7 +3808,8 @@ def copy_partner_images(out):
     for n in names:
         shutil.copy2(src / n, dst / n)
     for n in halls:
-        shutil.copy2(PARTNER_DIR / "halls" / n, dst / n)
+        hp = PARTNER_DIR / "halls" / n
+        shutil.copy2(hp if hp.exists() else src / n, dst / n)
 
 
 def partner_home_block():
@@ -3566,6 +3847,7 @@ def build_site(facs):
         if (out / name).is_file():
             (out / name).unlink()
     shutil.copytree(ROOT / "static", out / "assets")
+    shutil.copy2(ROOT / "static" / "img" / "favicon.ico", out / "favicon.ico")
     load_guides()
     PAGES_WRITTEN.clear()
 
@@ -3604,6 +3886,11 @@ def build_site(facs):
     page_period(out, facs)
     page_price(out, facs, groups)
     page_funeral(out, FUNERAL)
+    for x in FUNERAL:
+        page_funeral_detail(out, x, FUNERAL)
+    write_funeral_json(out, FUNERAL)
+    page_funeral_cost(out)
+    page_jesasang(out)
     page_tools(out)
     page_after_death(out)
     page_near(out, facs)

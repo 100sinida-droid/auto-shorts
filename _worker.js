@@ -202,7 +202,7 @@ function migratePath(p) {
     [/^\/region\//, "/bongan/"], [/^\/type\/(public|private)/, "/bongan/$1"], [/^\/feature\//, "/bongan/"],
     [/^\/compare\/(facilities|types|regions)/, "/bongan/compare-$1"], [/^\/pages\/(ranking|recommend)/, "/bongan/$1"],
     [/^\/pages\/sitemap(\.html)?$/, "/"], [/^\/pages\//, "/info/"], [/^\/static\//, "/assets/"], [/^\/data\/search\.json$/, "/assets/search.json"],
-    [/^\/og\.png$/, "/assets/og.png"], [/^\/rss\.xml$/, "/assets/rss.xml"],
+    [/^\/og\.(png|jpg)$/, "/assets/og.jpg"], [/^\/rss\.xml$/, "/assets/rss.xml"],
   ];
   for (const [re, to] of m) if (re.test(p)) return p.replace(re, to);
   return p;
