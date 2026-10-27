@@ -530,8 +530,8 @@ var t=decodeURI(u.toString()),o=document.getElementById("lm-out");o.hidden=false
 //                   → 통계 페이지 → 상담 신청 → '카카오톡 연결' 단추를 한 번 눌러 로그인
 //   이메일 알림    : RESEND_API_KEY (resend.com, shinnamho@naver.com 으로 가입), 받는 주소 LEAD_EMAIL(기본 shinnamho@naver.com)
 const LEAD_STATUS = ["신규", "상담 중", "업체 전달", "방문 예약", "계약 완료", "사은품 지급", "종료(미계약)"];
-const LEAD_FIELDS = ["partner", "partner_name", "name", "phone", "deceased", "crematorium", "funeral_hall", "visit_date", "contact_way", "budget", "memo", "page", "src"];
-const LEAD_MAX = { name: 30, phone: 20, deceased: 30, crematorium: 60, funeral_hall: 60, visit_date: 10, contact_way: 10, budget: 30, memo: 1000, page: 200, src: 120, partner: 40, partner_name: 80 };
+const LEAD_FIELDS = ["partner", "partner_name", "name", "phone", "deceased", "crematorium", "funeral_hall", "visit_date", "contact_way", "budget", "memo", "page", "src", "avoid_time"];
+const LEAD_MAX = { name: 30, phone: 20, deceased: 30, crematorium: 60, funeral_hall: 60, visit_date: 10, contact_way: 10, budget: 30, memo: 1000, page: 200, src: 120, avoid_time: 40, partner: 40, partner_name: 80 };
 
 let leadReady = false;
 async function ensureLeads(db) {
@@ -540,6 +540,7 @@ async function ensureLeads(db) {
     name TEXT, phone TEXT, deceased TEXT, crematorium TEXT, funeral_hall TEXT, visit_date TEXT, contact_way TEXT, budget TEXT, memo TEXT,
     page TEXT, src TEXT, iph TEXT, agree TEXT, status TEXT DEFAULT '신규', visit_at TEXT DEFAULT '', amount INTEGER DEFAULT 0, gift TEXT DEFAULT '',
     admin_memo TEXT DEFAULT '', notified TEXT DEFAULT '', updated INTEGER)`).run();
+  try { await db.prepare("ALTER TABLE leads ADD COLUMN avoid_time TEXT DEFAULT ''").run(); } catch (e) { /* 이미 있음 */ }
   await db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)").run();
   leadReady = true;
 }
@@ -566,6 +567,9 @@ async function createLead(request, env, ctx) {
   if (d.website) return isJson ? Response.json({ ok: true }) : Response.redirect(url.origin + "/partner/thanks", 303); // 스팸 로봇
   const v = {};
   for (const k of LEAD_FIELDS) v[k] = String(d[k] == null ? "" : d[k]).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, LEAD_MAX[k] || 100);
+  const hh = x => { const n = parseInt(x, 10); return n >= 0 && n <= 24 ? (n === 24 ? "밤 12시" : (n < 12 ? "오전 " : "오후 ") + ((n % 12) || 12) + "시") : ""; };
+  const af = hh(d.avoid_from), at = hh(d.avoid_to);
+  if (!v.avoid_time && (af || at)) v.avoid_time = `${af || "?"} ~ ${at || "?"}`;
   v.memo = String(d.memo || "").trim().slice(0, 1000);
   const digits = v.phone.replace(/[^0-9]/g, "");
   if (!v.name) return fail("성함을 적어 주세요.");
@@ -579,9 +583,9 @@ async function createLead(request, env, ctx) {
   if (recent && recent.n >= 5) return fail("짧은 시간에 신청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.", 429);
   const cfg = await partnerConfig(env, url.origin);
   if (v.partner && !v.partner_name) { const p = (cfg.partners || []).find(x => x.slug === v.partner); if (p) v.partner_name = p.name; }
-  const res = await env.DB.prepare(`INSERT INTO leads (ts, day, partner, partner_name, name, phone, deceased, crematorium, funeral_hall, visit_date, contact_way, budget, memo, page, src, iph, agree, updated)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(now, day, v.partner, v.partner_name, v.name, v.phone, v.deceased, v.crematorium, v.funeral_hall, v.visit_date,
-    v.contact_way, v.budget, v.memo, v.page, v.src, iph, `개인정보 수집·이용, 제3자 제공 동의 ${new Date(now + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ")}`, now).run();
+  const res = await env.DB.prepare(`INSERT INTO leads (ts, day, partner, partner_name, name, phone, deceased, crematorium, funeral_hall, visit_date, contact_way, budget, memo, page, src, iph, agree, updated, avoid_time)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(now, day, v.partner, v.partner_name, v.name, v.phone, v.deceased, v.crematorium, v.funeral_hall, v.visit_date,
+    v.contact_way, v.budget, v.memo, v.page, v.src, iph, `개인정보 수집·이용, 제3자 제공 동의 ${new Date(now + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ")}`, now, v.avoid_time).run();
   const id = res.meta && res.meta.last_row_id;
   ctx.waitUntil(notifyLead(env, url.origin, { id, ...v }).catch(() => {}));
   return isJson ? Response.json({ ok: true }) : Response.redirect(url.origin + "/partner/thanks", 303);
@@ -590,6 +594,7 @@ async function createLead(request, env, ctx) {
 function leadText(l, short) {
   const t = [`[봉안당 길잡이] 새 상담 신청${l.id ? " #" + l.id : ""}`, `시설: ${l.partner_name || "미정(추천 요청)"}`, `신청자: ${l.name} / ${l.phone}`];
   if (l.contact_way) t.push(`연락 방법: ${l.contact_way}`);
+  if (l.avoid_time) t.push(`피할 시간: ${l.avoid_time}`);
   if (l.deceased) t.push(`고인: ${l.deceased}`);
   if (l.funeral_hall) t.push(`장례식장: ${l.funeral_hall}`);
   if (l.crematorium) t.push(`화장: ${l.crematorium}`);
@@ -696,7 +701,7 @@ async function leadsAdmin(request, env, url) {
   if (url.pathname === "/stats/leads.csv") {
     const all = (await db.prepare("SELECT * FROM leads ORDER BY id DESC").all()).results || [];
     const cols = [["id", "번호"], ["ts", "접수"], ["status", "상태"], ["partner_name", "시설"], ["name", "신청자"], ["phone", "연락처"], ["deceased", "고인"], ["funeral_hall", "장례식장"], ["crematorium", "화장 장소"],
-      ["visit_date", "희망 방문일"], ["visit_at", "방문 예약"], ["contact_way", "연락 방법"], ["budget", "예산"], ["amount", "계약 금액"], ["gift", "사은품"], ["memo", "문의"], ["admin_memo", "관리 메모"], ["src", "유입"], ["page", "신청 페이지"]];
+      ["visit_date", "희망 방문일"], ["visit_at", "방문 예약"], ["contact_way", "연락 방법"], ["avoid_time", "피할 시간"], ["budget", "예산"], ["amount", "계약 금액"], ["gift", "사은품"], ["memo", "문의"], ["admin_memo", "관리 메모"], ["src", "유입"], ["page", "신청 페이지"]];
     const cell = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
     const csv = "﻿" + cols.map(c => c[1]).join(",") + "\n" + all.map(r => cols.map(([k]) => cell(k === "ts" ? new Date(r.ts + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ") : r[k])).join(",")).join("\n");
     return new Response(csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="leads-${kstDay(Date.now())}.csv"`, "cache-control": "no-store" } });
@@ -717,7 +722,7 @@ async function leadsAdmin(request, env, url) {
     l.budget ? `예산: ${l.budget}` : "", cfg.member_code ? `회원코드: ${cfg.member_code}` : ""].filter(Boolean).join("\n");
   const cards = list.map(l => `<form class="lead" method="post" action="/stats/leads/update"><input type="hidden" name="id" value="${l.id}"><input type="hidden" name="back" value="${esc(back)}">
 <div class="lh"><b>#${l.id} ${esc(l.name)}</b> <a class="tel" href="tel:${esc(String(l.phone).replace(/[^0-9]/g, ""))}">${esc(l.phone)}</a> <span class="tag">${esc(l.status)}</span>
-<span class="muted small">${time(l.ts)} 접수 · ${esc(l.contact_way || "")}</span></div>
+<span class="muted small">${time(l.ts)} 접수 · ${esc(l.contact_way || "")}</span>${l.avoid_time ? ` <span class="tag avoid">피할 시간 ${esc(l.avoid_time)}</span>` : ""}</div>
 <div class="lg"><div><span>관심 시설</span><b>${esc(l.partner_name || "미정(추천 요청)")}</b></div><div><span>고인</span>${esc(l.deceased || "-")}</div><div><span>장례식장</span>${esc(l.funeral_hall || "-")}</div>
 <div><span>화장 장소</span>${esc(l.crematorium || "-")}</div><div><span>희망 방문일</span>${esc(l.visit_date || "-")}</div><div><span>예산</span>${esc(l.budget || "-")}</div></div>
 ${l.memo ? `<p class="lm">${esc(l.memo)}</p>` : ""}

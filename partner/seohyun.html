@@ -30,7 +30,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap">
-<link rel="stylesheet" href="../assets/style.css?v=26d3df7d">
+<link rel="stylesheet" href="../assets/style.css?v=a9aaeef1">
 <meta name="google-adsense-account" content="ca-pub-7938956361770773">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7875289894722650" crossorigin="anonymous"></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7938956361770773" crossorigin="anonymous"></script>
@@ -79,6 +79,7 @@
 <section class="card consult" id="consult"><h2><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-phone"/></svg>서현추모공원 상담 신청</h2>
 <p>성함과 연락처만 남겨 주시면 확인하는 대로 연락드립니다. 상담과 방문 예약은 무료입니다.</p>
 <p class="area-notice"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-map"/></svg><span>현재 <b>수도권(서울·경기·인천)</b>에서만 상담 서비스를 하고 있습니다.</span></p>
+<div class="lf-assure"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-clock"/></svg><div><strong>주말·공휴일에도 당일이나 다음 날 꼭 연락드립니다.</strong><p>문의를 남겨 주시면 담당자가 확인하는 대로 연락드립니다. 카카오톡이나 문자로 답변받기를 원하시면 저녁이나 이른 아침처럼 일과 시간이 아닐 때에도 바로 답을 드립니다.</p></div></div>
 <form class="lead-form" id="lead" method="post" action="/api/lead" data-lead novalidate>
   <input type="hidden" name="page" value="">
   <div class="hp" aria-hidden="true"><label>홈페이지<input name="website" tabindex="-1" autocomplete="off"></label></div>
@@ -100,11 +101,15 @@
         <label><input type="radio" name="contact_way" value="전화" checked>전화</label>
         <label><input type="radio" name="contact_way" value="카카오톡">카카오톡</label>
         <label><input type="radio" name="contact_way" value="문자">문자</label></div>
+      <div class="lf-avoid wide"><span>연락을 피했으면 하는 시간</span>
+        <div class="lf-avoid-row"><select name="avoid_from" aria-label="피할 시간 시작"><option value="">상관없음</option><option value="6">오전 6시</option><option value="7">오전 7시</option><option value="8">오전 8시</option><option value="9">오전 9시</option><option value="10">오전 10시</option><option value="11">오전 11시</option><option value="12">오후 12시</option><option value="13">오후 1시</option><option value="14">오후 2시</option><option value="15">오후 3시</option><option value="16">오후 4시</option><option value="17">오후 5시</option><option value="18">오후 6시</option><option value="19">오후 7시</option><option value="20">오후 8시</option><option value="21">오후 9시</option><option value="22">오후 10시</option><option value="23">오후 11시</option></select><span>부터</span>
+        <select name="avoid_to" aria-label="피할 시간 끝"><option value="">상관없음</option><option value="6">오전 6시</option><option value="7">오전 7시</option><option value="8">오전 8시</option><option value="9">오전 9시</option><option value="10">오전 10시</option><option value="11">오전 11시</option><option value="12">오후 12시</option><option value="13">오후 1시</option><option value="14">오후 2시</option><option value="15">오후 3시</option><option value="16">오후 4시</option><option value="17">오후 5시</option><option value="18">오후 6시</option><option value="19">오후 7시</option><option value="20">오후 8시</option><option value="21">오후 9시</option><option value="22">오후 10시</option><option value="23">오후 11시</option><option value="24">밤 12시</option></select><span>까지</span></div>
+        <small class="lf-hint">예: 근무 중이라 오전 9시부터 오후 6시까지는 전화가 어렵다면 그 시간을 골라 주세요. 그 시간은 피해서 연락드립니다.</small></div>
       <label class="wide">궁금한 점<textarea name="memo" rows="3" maxlength="1000" placeholder="예: 부부단 가격이 궁금해요, 주말 방문 가능한가요?"></textarea></label>
     </div></fieldset>
   <div class="lf-consent">
     <label><input type="checkbox" name="agree_privacy" value="1" required> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
-    <details><summary>내용 보기</summary><p>받는 항목: 성함, 연락처(필수) · 고인 성함, 화장 장소, 장례식장, 희망 방문일, 예산, 문의 내용(선택)<br>목적: 봉안시설 상담, 방문 예약, 계약 확인 후 감사 선물 발송<br>보유 기간: 상담 종료 후 1년(삭제를 요청하시면 바로 지웁니다)<br>동의하지 않으실 수 있으며, 이 경우 상담 신청을 받을 수 없습니다.</p></details>
+    <details><summary>내용 보기</summary><p>받는 항목: 성함, 연락처(필수) · 고인 성함, 화장 장소, 장례식장, 희망 방문일, 예산, 연락 방법·피할 시간, 문의 내용(선택)<br>목적: 봉안시설 상담, 방문 예약, 계약 확인 후 감사 선물 발송<br>보유 기간: 상담 종료 후 1년(삭제를 요청하시면 바로 지웁니다)<br>동의하지 않으실 수 있으며, 이 경우 상담 신청을 받을 수 없습니다.</p></details>
     <label><input type="checkbox" name="agree_third" value="1" required> <span><b>[필수]</b> 개인정보 제3자 제공에 동의합니다.</span></label>
     <details><summary>내용 보기</summary><p>제공받는 곳: 서현추모공원<br>제공 항목: 성함, 연락처, 고인 성함, 희망 방문일<br>목적: 방문 예약과 상담·계약 진행<br>보유 기간: 상담·계약 종료 시까지(시설의 개인정보 처리 기준에 따름)<br>동의하지 않으실 수 있으며, 이 경우 시설 방문 예약을 도와 드릴 수 없습니다.</p></details>
     <p class="small muted"><a href="../info/privacy.html" target="_blank">개인정보처리방침</a></p>
@@ -139,6 +144,6 @@
   <div class="wrap f-bottom"><span>© 2026 봉안당 길잡이</span><span>데이터 갱신일 2026-10-27</span><span>지도: <a href="https://github.com/VictorCazanave/svg-maps" target="_blank" rel="noopener">svg-maps</a> (CC BY 4.0, 단순화)</span></div>
 </footer>
 <nav class="quick-fab" aria-label="빠른 상담"><a class="qf-main" href="#consult"><svg class="ic " aria-hidden="true" focusable="false"><use href="#i-gift"/></svg><span>무료<br>상담 신청</span></a><a class="qf-sub" href="index.html"><span>추천<br>추모공원</span></a><a class="qf-top" href="#top" aria-label="맨 위로">▲</a></nav>
-<script src="../assets/site.js?v=26d3df7d" defer></script>
+<script src="../assets/site.js?v=a9aaeef1" defer></script>
 </body>
 </html>

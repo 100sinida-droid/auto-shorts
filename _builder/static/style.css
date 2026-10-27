@@ -1086,3 +1086,19 @@ table.info.fc-table th { width: 60% !important; white-space: normal; }
 table.info.fn-price th { width: 55% !important; }
 .fn-price td.num { text-align: right; white-space: nowrap; }
 .tool-form label.chk input { width: 20px; height: 20px; flex: none; }
+
+/* 상담 안심 문구·피할 시간 */
+.lf-assure { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 14px; padding: 14px; border-radius: 12px; background: #eef5f1; border: 1px solid #c9ddd2; color: #1f4d3f; text-align: left; }
+.lf-assure .ic { flex: none; width: 22px; height: 22px; margin-top: 2px; }
+.lf-assure strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+.lf-assure p { margin: 0; font-size: .92rem; line-height: 1.55; color: #33584b; }
+.lf-avoid { display: flex; flex-direction: column; gap: 6px; }
+.lf-avoid > span { font-weight: 600; font-size: .92rem; }
+.lf-avoid-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lf-avoid-row select { flex: 1 1 110px; min-width: 0; }
+.lf-avoid-row span { font-size: .92rem; color: var(--ink-2); }
+.lf-avoid-row { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto; gap: 6px; align-items: center; }
+.lf-avoid-row select { width: 100%; padding: 10px 22px 10px 8px !important; font-size: .95rem; background-position: right 6px center; }
+.lf-avoid-row { grid-template-columns: minmax(0,1fr) auto; row-gap: 8px; }
+@media (min-width: 640px) { .lf-avoid-row { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto; } }
+.lf-avoid-row select { padding: 10px 28px 10px 12px !important; font-size: 1rem; }
