@@ -1441,7 +1441,7 @@ def summary_sentence(place, st):
     return f"<p class=\"lead\">{E(s)}</p>"
 
 
-GUIDE_ART = {"procedure-after-cremation": "funeral", "ehaneul-guide": "crematorium", "cost-structure": "price", "contract-checklist": "recommend",
+GUIDE_ART = {"what-is-bongandang": "price", "procedure-after-cremation": "funeral", "ehaneul-guide": "crematorium", "cost-structure": "price", "contract-checklist": "recommend",
              "public-vs-private": "bongan", "how-to-choose": "search", "enshrinement-period": "guide", "natural-burial": "home",
              "bongandang-vs-napgoldang": "home", "pre-planning": "recommend", "reburial": "home", "visiting-etiquette": "guide",
              "accessibility-visit": "info"}
@@ -2745,7 +2745,7 @@ def keyword_links():
              ("주차 되는 납골당", "feature/parking.html"), ("장례식장 비용", "funeral/index.html"), ("서울 장례식장", "funeral/seoul.html"),
              ("경기도 장례식장", "funeral/gyeonggi.html"), ("화장장 비용", "funeral/index.html#crematorium"), ("화장 예약 방법", "guides/ehaneul-guide.html"),
              ("장례 절차", "guides/procedure-after-cremation.html"), ("봉안당 고르는 법", "guides/how-to-choose.html"), ("수목장·자연장", "guides/natural-burial.html"),
-             ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html")]
+             ("봉안당이란", "guides/what-is-bongandang.html"), ("납골당 단별 가격", "guides/what-is-bongandang.html"), ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html")]
     return ('<section class="block"><div class="block-head"><div><p class="eyebrow">KEYWORD</p><h2>많이 찾는 정보</h2></div></div><nav class="kw-links" aria-label="많이 찾는 정보">'
             + "".join(f'<a href="{u}">{E(t)}</a>' for t, u in links) + "</nav></section>")
 
@@ -2785,7 +2785,7 @@ def page_index(out, facs, groups):
 <section class="ed-sec"><div class="ed-head"><p class="ed-eye">REGION</p><h2>지역에서 찾기</h2><p>지도에서 사시는 곳을 누르면 그 지역 봉안당을 모두 볼 수 있습니다.</p></div>
 <div class="ed-map"><div class="map-box">{kmap}</div><nav class="ed-regions" aria-label="시도 목록">{rlinks}</nav></div></section>
 <section class="ed-sec"><div class="ed-head"><p class="ed-eye">HELPER</p><h2>장례 도우미</h2><p>지방·축문 쓰기, 49재 날짜, 부고 문자, 장례 후 할 일까지.</p></div>{tool_cards(0)}</section>
-{guide_links(0, ["procedure-after-cremation", "how-to-choose", "cost-structure", "public-vs-private", "ehaneul-guide", "contract-checklist"], "처음이라면 먼저 읽어 보세요")}
+{guide_links(0, ["what-is-bongandang", "procedure-after-cremation", "how-to-choose", "cost-structure", "public-vs-private", "ehaneul-guide", "contract-checklist"], "처음이라면 먼저 읽어 보세요")}
 <section class="ed-close"><p class="ed-eye">CONSULTING</p><h2>어디에 모셔야 할지 막막하시다면</h2><p>지역과 예산만 말씀해 주세요. 남은 자리와 분양가를 정리해 알려 드리고 방문 예약까지 도와 드립니다.</p>
 <a class="lux-btn gold big" href="partner/index.html#consult">{icon("gift")}무료 상담 신청</a></section>
 {keyword_links()}
@@ -3087,9 +3087,9 @@ def load_partners(facs):
              "address": g("주소") or (main["address"] if main else ""), "tel": g("전화") or (main["tel"] if main else ""),
              "homepage": clean_url(g("홈페이지")) or (main["homepage"] if main else ""),
              "intro": g("한줄소개"), "price_text": [x.strip() for x in g("분양가").split(";") if x.strip()],
-             "mgmt_text": g("관리비"), "transit": g("대중교통"), "car": g("자가용"),
+             "mgmt_text": g("관리비"), "transit": g("대중교통"), "car": g("자가용"), "shuttle": g("셔틀"), "parking": g("주차"),
              "points": [x.strip() for x in g("특징").split(";") if x.strip()],
-             "images": [n for n in imgs if n.lower().startswith(slug + "-") or n.lower().startswith(slug + ".")][:4]}
+             "images": [n for n in imgs if n.lower().startswith(slug + "-") or n.lower().startswith(slug + ".")][:7]}
         p["url"] = f"partner/{slug}.html"
         p["price_tables"] = load_partner_prices(slug)
         if p["price_tables"] and p["price_tables"]["min"] and not p["price_text"]:
@@ -3114,7 +3114,9 @@ def load_partner_prices(slug):
         hall = g("관")
         if not hall:
             continue
-        h = halls.setdefault(hall, {"name": hall, "group": g("묶음"), "mgmt": g("관리비(1위·1년)") or g("관리비"), "cols": [], "rows": OrderedDict(), "img": "", "note": ""})
+        h = halls.setdefault(hall, {"name": hall, "group": g("묶음"), "mgmt": g("관리비(1위·1년)") or g("관리비"), "cols": [], "rows": OrderedDict(), "img": "", "note": "", "rowname": ""})
+        if g("행이름") and not h["rowname"]:
+            h["rowname"] = g("행이름")
         if g("비고") and not h["note"]:
             h["note"] = g("비고")
         if g("사진") and not h["img"] and (PARTNER_DIR / "halls" / g("사진")).exists():
@@ -3128,14 +3130,15 @@ def load_partner_prices(slug):
     for h in halls.values():
         for r in h["rows"].values():
             for v in r.values():
-                nums += [int(x.replace(",", "")) for x in re.findall(r"\d[\d,]*", v or "")]
+                if v and not re.search(r"위|연 |만 원|단$", v):
+                    nums += [int(x.replace(",", "")) for x in re.findall(r"\d[\d,]*", v)]
     return {"halls": list(halls.values()), "source": src, "date": day, "min": min(nums) if nums else None, "max": max(nums) if nums else None}
 
 
 def price_tables_html(pt, r=""):
-    def cell(v):
+    def cell(v, split=True):
         v = v or "–"
-        if "~" in v:
+        if " ~ " in v and split:
             a, z = [x.strip() for x in v.split("~", 1)]
             return f'<span class="pt-rng"><span>{E(a)}</span><span>~ {E(z)}</span></span>'
         return E(v)
@@ -3143,9 +3146,14 @@ def price_tables_html(pt, r=""):
     def table(h, show_img=True):
         img = f'<img class="pt-img" src="{r}partner/img/{E(h["img"])}" alt="{E(h["name"])}" loading="lazy">' if h["img"] and show_img else ""
         head = "".join(f"<th>{E(c)}</th>" for c in h["cols"])
-        body = "".join(f'<tr><th scope=row>{E(rn)}</th>' + "".join(f'<td>{cell(rr.get(c, ""))}</td>' for c in h["cols"]) + "</tr>" for rn, rr in h["rows"].items())
-        return (f'<div class="pt-hall{" has-img" if img else ""}">{img}<div class="pt-h"><strong>{E(h["name"])}</strong>' + (f'<span>관리비 1위 {E(h["mgmt"])}/1년</span>' if h["mgmt"] else "") + '</div>'
-                f'<div class="table-wrap"><table class="list pt-table"><thead><tr><th>안치단</th>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+        body = "".join(f'<tr><th scope=row>{E(rn)}</th>' + "".join(f'<td>{cell(rr.get(c, ""), len(h["cols"]) > 2)}</td>' for c in h["cols"]) + "</tr>" for rn, rr in h["rows"].items())
+        mobile = ""
+        if len(h["cols"]) > 4 and len(h["rows"]) <= 4:
+            mhead = "".join(f"<th>{E(rn)}</th>" for rn in h["rows"])
+            mbody = "".join(f'<tr><th scope=row>{E(c)}</th>' + "".join(f'<td>{cell(rr.get(c, ""), len(h["rows"]) > 2)}</td>' for rr in h["rows"].values()) + "</tr>" for c in h["cols"])
+            mobile = f'<table class="list pt-table pt-m"><thead><tr><th>{"안치단" if all(c.endswith("단") for c in h["cols"]) else "위치"}</th>{mhead}</tr></thead><tbody>{mbody}</tbody></table>'
+        return (f'<div class="pt-hall{" has-img" if img else ""}{" narrow" if len(h["cols"]) == 1 else ""}{" has-m" if mobile else ""}{" wide-label" if max((len(k) for k in h["rows"]), default=0) > 6 else ""}">{img}<div class="pt-h"><strong>{E(h["name"])}</strong>' + ((f'<span>관리비 {E(h["mgmt"])}</span>' if h["mgmt"].startswith("연") else f'<span>관리비 1위 {E(h["mgmt"])}/1년</span>') if h["mgmt"] else "") + '</div>'
+                f'<div class="table-wrap"><table class="list pt-table pt-d"><thead><tr><th>{E(h["rowname"] or "안치단")}</th>{head}</tr></thead><tbody>{body}</tbody></table>{mobile}</div>'
                 + (f'<p class="pt-note">※ {E(h["note"])}</p>' if h["note"] else "") + '</div>')
 
     out, groups = [], OrderedDict()
@@ -3362,7 +3370,7 @@ def page_partner(out, p):
                        f'<p class="muted small">{"기준일 " + E(dates[-1]) + " · " if dates else ""}공개 가격 자료 기준이며 지금 가격과 다를 수 있습니다.</p>')
     if not price_rows:
         price_rows = '<p>분양가는 안치단 위치(층·높이)와 개인단·부부단에 따라 달라집니다. 상담을 신청하시면 지금 남아 있는 자리와 최신 분양가를 정리해 알려 드립니다.</p>'
-    price_html = f'<section class="card" id="price"><h2>{icon("won")}분양가</h2>{price_rows}<p class="small muted">최종 가격은 시설 상담실에서 계약서로 확인하세요.</p><a class="btn primary" href="#consult">최신 분양가 상담받기</a></section>'
+    price_html = f'<section class="card" id="price"><h2>{icon("won")}분양가</h2>{price_rows}<p class="small muted">최종 가격은 시설 상담실에서 계약서로 확인하세요. <a href="{r}guides/what-is-bongandang.html">단 높이마다 가격이 다른 이유 보기</a></p><a class="btn primary" href="#consult">최신 분양가 상담받기</a></section>'
     # 시설 정보
     rows = [("지역", E(region)), ("종류", E(p["kind"])), ("안치", E(p["period"]) or "상담 시 안내")]
     if p["address"]:
@@ -3401,6 +3409,10 @@ def page_partner(out, p):
     way = ""
     if p["car"]:
         way += f'<div class="way"><strong>자가용</strong><p>{E(p["car"])}</p></div>'
+    if p.get("shuttle"):
+        way += f'<div class="way"><strong>셔틀버스</strong><p>{E(p["shuttle"])}</p></div>'
+    if p.get("parking"):
+        way += f'<div class="way"><strong>주차</strong><p>{E(p["parking"])}</p></div>'
     if p["transit"]:
         way += f'<div class="way"><strong>대중교통</strong><p>{E(p["transit"])}</p></div>'
     if not way:
@@ -3415,8 +3427,8 @@ def page_partner(out, p):
            ("감사 선물은 어떻게 받나요?", f"상담을 신청해 1차 상담을 받으신 뒤 {p['name']}와 계약하실 때 회원코드 {MEMBER_CODE}를 알려 주세요. 계약이 확인되면 "
             + ", ".join(f'{g["name"]} {g["value"]}' for g in PARTNER_CFG.get("gifts", [])) + " 가운데 하나를 꼭 휴대폰으로 보내 드립니다."),
            ("방문 날짜는 어떻게 정하나요?", "상담 때 편하신 날짜를 여쭙고 시설에 연락해 방문 예약을 잡아 드립니다. 장례 중이라 급하시면 신청서에 적어 주세요."),
-           (f"{p['name']} 분양가는 얼마인가요?", (f"관과 안치단 높이에 따라 {p['price_tables']['min']:,}만 원부터 {p['price_tables']['max']:,}만 원까지입니다({', '.join(dict.fromkeys(h['group'] or h['name'] for h in p['price_tables']['halls']))}). "
-            + (("관리비는 1위 기준 1년에 " + ", ".join(sorted({h['mgmt'] for h in p['price_tables']['halls'] if h['mgmt']}, key=lambda x: int(re.sub(r'[^0-9]', '', x) or 0))) + "입니다. ") if any(h['mgmt'] for h in p['price_tables']['halls']) else "관리비는 상담 때 안내해 드립니다. ")
+           (f"{p['name']} 분양가는 얼마인가요?", (f"관과 안치단 높이에 따라 {p['price_text'][0].replace('부터', '') if p['price_text'] else str(p['price_tables']['min']) + '만 원'}부터 {p['price_tables']['max']:,}만 원까지입니다({', '.join(dict.fromkeys(h['group'] or h['name'] for h in p['price_tables']['halls']))}). "
+            + ("관리비는 관마다 다르며 가격표에 함께 적어 두었습니다. " if any("개인단" in h['mgmt'] for h in p['price_tables']['halls']) else ((("관리비는 1년에 " if any(h['mgmt'].startswith("연") for h in p['price_tables']['halls']) else "관리비는 1위 기준 1년에 ") + ", ".join(sorted({h['mgmt'].replace("연 ", "") for h in p['price_tables']['halls'] if h['mgmt']}, key=lambda x: int(re.sub(r'[^0-9]', '', x) or 0))) + "입니다. ") if any(h['mgmt'] for h in p['price_tables']['halls']) else "관리비는 상담 때 안내해 드립니다. "))
             + "상담을 신청하시면 남은 자리와 함께 다시 확인해 드립니다.")
             if p.get("price_tables") and p["price_tables"]["min"] else "안치단 위치와 개인단·부부단에 따라 다릅니다. 상담을 신청하시면 지금 남은 자리와 가격을 정리해 알려 드립니다.")]
     faq_html = "".join(f"<details><summary>{E(a)}</summary><p>{E(b)}</p></details>" for a, b in faq)

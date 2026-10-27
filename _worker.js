@@ -257,6 +257,7 @@ const PAGE_INFO = {
   "/guides/public-vs-private": ["가이드: 공설과 사설 차이", "공설 봉안당과 사설 봉안당의 자격·가격 차이"],
   "/guides/contract-checklist": ["가이드: 계약 주의사항", "사설 봉안당 계약 전에 꼭 확인할 것"],
   "/guides/enshrinement-period": ["가이드: 안치기간·연장", "봉안당에 몇 년 모실 수 있고 어떻게 연장하는지"],
+  "/guides/what-is-bongandang": ["가이드: 봉안당이란·단별 가격", "봉안당이 어떤 곳이고 안치단 높이·정면 측면·개인 부부단에 따라 가격이 왜 다른지 설명한 글"],
   "/guides/bongandang-vs-napgoldang": ["가이드: 봉안당과 납골당", "봉안당·납골당·봉안묘·봉안탑의 차이"],
   "/guides/natural-burial": ["가이드: 수목장·자연장", "수목장·잔디장 같은 자연장 비용과 방법"],
   "/guides/pre-planning": ["가이드: 미리 준비하기", "생전에 봉안당·장례를 미리 알아보는 법"],
