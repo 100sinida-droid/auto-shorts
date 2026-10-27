@@ -1036,3 +1036,9 @@ img, svg, video, table { max-width: 100%; }
   .pt-hall table.pt-table tbody th { overflow-wrap: normal; }
   .pt-hall.wide-label table.pt-table thead th:first-child, .pt-hall.wide-label table.pt-table tbody th { width: 38%; }
 }
+.area-tag { color: #f0cf86; font-size: .8em; white-space: nowrap; }
+.area-notice { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; padding: 10px 12px; border-radius: 10px; background: #fff6e5; border: 1px solid #ecd3a3; color: #6b4a1f; font-size: .92rem; line-height: 1.5; text-align: left; }
+.area-notice .ic { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; }
+.area-notice b { color: #8a4b2a; }
+.area-notice.dark { background: rgba(240,207,134,.12); border-color: rgba(240,207,134,.35); color: #e8dfc8; }
+.area-notice.dark b { color: #f0cf86; }

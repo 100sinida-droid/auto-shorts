@@ -893,7 +893,7 @@ SECTIONS = {
     "home": ("home", "처음 화면", "", "#2f5e4e"),
     "tools": ("brush", "장례 도우미", "지방·명정·축문 쓰기, 49재 계산, 부고 문자까지 장례 실무를 도와 드립니다", "#7a3b2e"),
     "info": ("info", "사이트 안내", "사이트 소개와 문의", "#4b5563"),
-    "partner": ("gift", "엄선 추천 추모공원", "봉안당 길잡이가 엄선해 추천하는 프리미엄 추모공원, 상담부터 방문 예약까지 도와 드립니다", "#8a4b2a"),
+    "partner": ("gift", "엄선 추천 추모공원 (수도권)", "봉안당 길잡이가 엄선해 추천하는 수도권 프리미엄 추모공원, 상담부터 방문 예약까지 도와 드립니다", "#8a4b2a"),
 }
 NAV = [("home", "index.html", "처음 화면"), ("bongan", "region/index.html", "봉안당"), ("funeral", "funeral/index.html", "장례식장·화장장"),
        ("price", "feature/price.html", "가격 비교"), ("recommend", "pages/recommend.html", "예산 추천"),
@@ -2761,8 +2761,8 @@ def page_index(out, facs, groups):
 <div class="wrap lh-in">
   <p class="lh-eye">MEMORIAL GUIDE</p>
   <h1 class="lh-title">소중한 분을 모실 곳,<br>품격 있게 찾아 드립니다</h1>
-  <p class="lh-lead">전국 봉안당의 가격과 위치를 한눈에 비교하고, 엄선한 추천 추모공원은 상담부터 방문 예약까지 함께합니다.</p>
-  <div class="lh-cta"><a class="lux-btn gold" href="partner/index.html#consult">{icon("gift")}무료 상담 신청</a><a class="lux-btn line" href="partner/index.html">추천 추모공원 보기</a></div>
+  <p class="lh-lead">전국 봉안당의 가격과 위치를 한눈에 비교하고, 엄선한 수도권 추천 추모공원은 상담부터 방문 예약까지 함께합니다.</p>
+  <div class="lh-cta"><a class="lux-btn gold" href="partner/index.html#consult">{icon("gift")}무료 상담 신청</a><a class="lux-btn line" href="partner/index.html">수도권 추천 추모공원 보기</a></div>
   <form class="lh-search" action="pages/search.html" method="get" role="search"><label class="sr-only" for="q">지역이나 시설 이름</label>
     {icon("search")}<input id="q" name="q" type="search" placeholder="지역이나 시설 이름으로 찾기 (예: 파주, 추모공원)" autocomplete="off"><button type="submit">찾기</button></form>
 </div>
@@ -3114,7 +3114,7 @@ def load_partner_prices(slug):
         hall = g("관")
         if not hall:
             continue
-        h = halls.setdefault(hall, {"name": hall, "group": g("묶음"), "mgmt": g("관리비(1위·1년)") or g("관리비"), "cols": [], "rows": OrderedDict(), "img": "", "note": "", "rowname": ""})
+        h = halls.setdefault((g("묶음"), hall), {"name": hall, "group": g("묶음"), "mgmt": g("관리비(1위·1년)") or g("관리비"), "cols": [], "rows": OrderedDict(), "img": "", "note": "", "rowname": ""})
         if g("행이름") and not h["rowname"]:
             h["rowname"] = g("행이름")
         if g("비고") and not h["note"]:
@@ -3129,8 +3129,10 @@ def load_partner_prices(slug):
     nums = []
     for h in halls.values():
         for r in h["rows"].values():
-            for v in r.values():
-                if v and not re.search(r"위|연 |만 원|단$", v):
+            for col, v in r.items():
+                if "관리비" in col or "모실" in col:
+                    continue
+                if v and not re.search(r"위|연 |만 원|만$|단$", v):
                     nums += [int(x.replace(",", "")) for x in re.findall(r"\d[\d,]*", v)]
     return {"halls": list(halls.values()), "source": src, "date": day, "min": min(nums) if nums else None, "max": max(nums) if nums else None}
 
@@ -3152,7 +3154,7 @@ def price_tables_html(pt, r=""):
             mhead = "".join(f"<th>{E(rn)}</th>" for rn in h["rows"])
             mbody = "".join(f'<tr><th scope=row>{E(c)}</th>' + "".join(f'<td>{cell(rr.get(c, ""), len(h["rows"]) > 2)}</td>' for rr in h["rows"].values()) + "</tr>" for c in h["cols"])
             mobile = f'<table class="list pt-table pt-m"><thead><tr><th>{"안치단" if all(c.endswith("단") for c in h["cols"]) else "위치"}</th>{mhead}</tr></thead><tbody>{mbody}</tbody></table>'
-        return (f'<div class="pt-hall{" has-img" if img else ""}{" narrow" if len(h["cols"]) == 1 else ""}{" has-m" if mobile else ""}{" wide-label" if max((len(k) for k in h["rows"]), default=0) > 6 else ""}">{img}<div class="pt-h"><strong>{E(h["name"])}</strong>' + ((f'<span>관리비 {E(h["mgmt"])}</span>' if h["mgmt"].startswith("연") else f'<span>관리비 1위 {E(h["mgmt"])}/1년</span>') if h["mgmt"] else "") + '</div>'
+        return (f'<div class="pt-hall{" has-img" if img else ""}{" narrow" if len(h["cols"]) == 1 else ""}{" has-m" if mobile else ""}{" wide-label" if max((len(k) for k in h["rows"]), default=0) > 6 else ""}">{img}<div class="pt-h"><strong>{E(h["name"])}</strong>' + ((f'<span>관리비 {E(h["mgmt"])}</span>' if h["mgmt"].startswith(("연", "5년", "10년", "3년")) else f'<span>관리비 1위 {E(h["mgmt"])}/1년</span>') if h["mgmt"] else "") + '</div>'
                 f'<div class="table-wrap"><table class="list pt-table pt-d"><thead><tr><th>{E(h["rowname"] or "안치단")}</th>{head}</tr></thead><tbody>{body}</tbody></table>{mobile}</div>'
                 + (f'<p class="pt-note">※ {E(h["note"])}</p>' if h["note"] else "") + '</div>')
 
@@ -3214,12 +3216,13 @@ def center_banner(r, path=""):
         slides.append(f'<a class="cb-slide" href="{r}{p["url"]}" data-name="{E(p["name"])}">{partner_thumb(p, r, "cb-img")}'
                       f'<span class="cb-flag">PREMIUM</span><span class="cb-cap"><span class="cb-region">{E(SIDO_SHORT.get(p["sido"], p["sido"]))} {E(p["sigungu"])} · {E(p["kind"])}</span>'
                       f'<strong>{E(p["name"])}</strong><span class="cb-price">{E(price)}</span><span class="cb-go">상담·감사 선물 안내 ›</span></span></a>')
-    slides.append(f'<a class="cb-slide cb-ask" href="{r}partner/index.html#consult">{icon("gift")}<strong>어디가 좋을지<br>모르시겠다면</strong><span>지역과 예산만 말씀해 주시면<br>맞는 곳을 골라 드립니다</span><span class="cb-ask-btn">무료 상담 신청 ›</span></a>')
-    return f"""<section class="center-banner" aria-label="봉안당 길잡이 추천 추모공원">
-  <div class="cb-head"><div><p class="cb-eyebrow">PREMIUM · 봉안당 길잡이 엄선</p><h2>봉안당 길잡이 추천 추모공원</h2>
+    slides.append(f'<a class="cb-slide cb-ask" href="{r}partner/index.html#consult">{icon("gift")}<strong>어디가 좋을지<br>모르시겠다면</strong><span>수도권 안에서 지역과 예산만<br>말씀해 주시면 골라 드립니다</span><span class="cb-ask-btn">무료 상담 신청 ›</span></a>')
+    return f"""<section class="center-banner" aria-label="봉안당 길잡이 추천 추모공원 (수도권)">
+  <div class="cb-head"><div><p class="cb-eyebrow">PREMIUM · 봉안당 길잡이 엄선</p><h2>봉안당 길잡이 추천 추모공원 <span class="area-tag">(수도권)</span></h2>
   <p class="cb-sub">무료 상담 · 남은 자리와 분양가 안내 · 방문 예약 대행{f' · 계약하시면 <b>스타벅스·신세계상품권</b> 감사 선물을 꼭 드립니다' if top else ''}</p></div>
   <div class="cb-actions"><a class="cb-btn main" href="{r}partner/index.html#consult">{icon("gift")}무료 상담 신청</a><a class="cb-btn" href="{r}partner/index.html">전체 {len(PARTNERS)}곳 보기</a></div></div>
   <div class="cb-wrap"><button type="button" class="cb-nav prev" aria-label="이전">‹</button><div class="cb-track" data-cb>{"".join(slides)}</div><button type="button" class="cb-nav next" aria-label="다음">›</button></div>
+  <p class="area-notice dark">{icon("map")}<span>현재 <b>수도권(서울·경기·인천)</b>에서만 상담 서비스를 하고 있습니다.</span></p>
   <p class="cb-note">봉안당 길잡이가 엄선해 추천하는 프리미엄 추모공원입니다.</p>
 </section>"""
 
@@ -3293,7 +3296,8 @@ def consult_form(r, selected=None, fid="lead"):
         f'<option value="{E(p["slug"])}"{" selected" if selected and p["slug"] == selected["slug"] else ""}>{E(p["name"])} ({E(p["sigungu"])})</option>' for p in PARTNERS]
     to = selected["name"] if selected else "상담 중 방문을 원하신 추천 추모공원"
     budgets = ["", "300만 원 미만", "300만~500만 원", "500만~1,000만 원", "1,000만~2,000만 원", "2,000만 원 이상", "잘 모르겠어요"]
-    return f"""<form class="lead-form" id="{fid}" method="post" action="/api/lead" data-lead novalidate>
+    return f"""<p class="area-notice">{icon("map")}<span>현재 <b>수도권(서울·경기·인천)</b>에서만 상담 서비스를 하고 있습니다.</span></p>
+<form class="lead-form" id="{fid}" method="post" action="/api/lead" data-lead novalidate>
   <input type="hidden" name="page" value="">
   <div class="hp" aria-hidden="true"><label>홈페이지<input name="website" tabindex="-1" autocomplete="off"></label></div>
   <fieldset><legend>신청하시는 분 <span class="req">필수</span></legend>
@@ -3428,7 +3432,7 @@ def page_partner(out, p):
             + ", ".join(f'{g["name"]} {g["value"]}' for g in PARTNER_CFG.get("gifts", [])) + " 가운데 하나를 꼭 휴대폰으로 보내 드립니다."),
            ("방문 날짜는 어떻게 정하나요?", "상담 때 편하신 날짜를 여쭙고 시설에 연락해 방문 예약을 잡아 드립니다. 장례 중이라 급하시면 신청서에 적어 주세요."),
            (f"{p['name']} 분양가는 얼마인가요?", (f"관과 안치단 높이에 따라 {p['price_text'][0].replace('부터', '') if p['price_text'] else str(p['price_tables']['min']) + '만 원'}부터 {p['price_tables']['max']:,}만 원까지입니다({', '.join(dict.fromkeys(h['group'] or h['name'] for h in p['price_tables']['halls']))}). "
-            + ("관리비는 관마다 다르며 가격표에 함께 적어 두었습니다. " if any("개인단" in h['mgmt'] for h in p['price_tables']['halls']) else ((("관리비는 1년에 " if any(h['mgmt'].startswith("연") for h in p['price_tables']['halls']) else "관리비는 1위 기준 1년에 ") + ", ".join(sorted({h['mgmt'].replace("연 ", "") for h in p['price_tables']['halls'] if h['mgmt']}, key=lambda x: int(re.sub(r'[^0-9]', '', x) or 0))) + "입니다. ") if any(h['mgmt'] for h in p['price_tables']['halls']) else "관리비는 상담 때 안내해 드립니다. "))
+            + ("관리비는 관마다 다르며 가격표에 함께 적어 두었습니다. " if any("개인단" in h['mgmt'] or re.match(r"\d+년", h['mgmt']) for h in p['price_tables']['halls']) else ((("관리비는 1년에 " if any(h['mgmt'].startswith("연") for h in p['price_tables']['halls']) else "관리비는 1위 기준 1년에 ") + ", ".join(sorted({h['mgmt'].replace("연 ", "") for h in p['price_tables']['halls'] if h['mgmt']}, key=lambda x: int(re.sub(r'[^0-9]', '', x) or 0))) + "입니다. ") if any(h['mgmt'] for h in p['price_tables']['halls']) else "관리비는 상담 때 안내해 드립니다. "))
             + "상담을 신청하시면 남은 자리와 함께 다시 확인해 드립니다.")
             if p.get("price_tables") and p["price_tables"]["min"] else "안치단 위치와 개인단·부부단에 따라 다릅니다. 상담을 신청하시면 지금 남은 자리와 가격을 정리해 알려 드립니다.")]
     faq_html = "".join(f"<details><summary>{E(a)}</summary><p>{E(b)}</p></details>" for a, b in faq)
@@ -3458,7 +3462,7 @@ def page_partner(out, p):
 {consult_form(r, p)}</section>
 <section class="card"><h2>자주 묻는 질문</h2><div class="faq">{faq_html}</div></section>
 {partner_disclosure(r)}
-<section class="card"><h2>다른 추천 추모공원</h2><div class="p-grid small">{"".join(partner_card(x, r) for x in others)}</div>
+<section class="card"><h2>다른 추천 추모공원 (수도권)</h2><div class="p-grid small">{"".join(partner_card(x, r) for x in others)}</div>
 <p><a class="more-link" href="{r}partner/index.html">추천 추모공원 전체 보기 ›</a></p></section>
 </article>
 {sticky_cta(r)}"""
@@ -3468,7 +3472,7 @@ def page_partner(out, p):
     ld = {"@context": "https://schema.org", "@type": "Cemetery", "name": p["name"],
           "address": {"@type": "PostalAddress", "streetAddress": p["address"], "addressRegion": p["sido"], "addressLocality": p["sigungu"], "addressCountry": "KR"}}
     write(out, p["url"], layout(p["url"], f"{p['name']} 분양가·위치·상담 ({region})", desc, body,
-                                crumbs=[("추천 추모공원", "partner/index.html"), (p["name"], None)], jsonld=ld, depth=depth, hero=""))
+                                crumbs=[("추천 추모공원 (수도권)", "partner/index.html"), (p["name"], None)], jsonld=ld, depth=depth, hero=""))
 
 
 def page_partner_index(out):
@@ -3484,8 +3488,9 @@ def page_partner_index(out):
                    for k, v in groups.items())
     kinds = '<div class="p-filter" role="group" aria-label="종류로 거르기"><button type="button" class="on" data-pf="">전체</button><button type="button" data-pf="봉안당">봉안당</button><button type="button" data-pf="수목장">수목장</button></div>'
     body = f"""
-<header class="page-head"><p class="eyebrow premium-eyebrow">PREMIUM · 봉안당 길잡이 엄선</p><h1>봉안당 길잡이가 엄선한 추천 추모공원 {len(PARTNERS)}곳</h1>
+<header class="page-head"><p class="eyebrow premium-eyebrow">PREMIUM · 봉안당 길잡이 엄선</p><h1>봉안당 길잡이 추천 추모공원 (수도권) {len(PARTNERS)}곳</h1>
 <p class="lead">봉안당 길잡이가 엄선해 추천하는 수도권 봉안당·수목장입니다. 직접 상담을 연결해 드립니다. 상담을 신청하시면 남은 자리와 분양가를 알려 드리고, 방문 예약까지 도와 드립니다. 계약하시면 감사 선물도 꼭 드립니다.</p>
+<p class="area-notice">{icon("map")}<span>현재 <b>수도권(서울·경기·인천)</b>에서만 상담 서비스를 하고 있습니다. 지방 추모공원은 아직 상담을 도와 드리기 어렵습니다.</span></p>
 <div class="actions"><a class="btn primary big" href="#consult">{icon("gift")}무료 상담 신청</a><a class="btn big" href="#how">이용 방법</a></div></header>
 {kinds}
 {secs}
@@ -3493,8 +3498,8 @@ def page_partner_index(out):
 <section class="card consult" id="consult"><h2>{icon("phone")}상담 신청</h2><p>어느 시설이 좋을지 아직 모르셔도 괜찮습니다. 지역과 예산을 여쭙고 맞는 곳을 골라 드립니다.</p>{consult_form(r)}</section>
 {partner_disclosure(r)}
 {sticky_cta(r)}"""
-    write(out, "partner/index.html", layout("partner/index.html", "엄선 추천 추모공원 상담·감사 선물 안내", f"봉안당 길잡이가 엄선한 추천 봉안당·수목장 {len(PARTNERS)}곳의 분양가와 위치를 안내하고 방문 예약을 도와 드립니다. 상담 후 계약하면 감사 선물을 드립니다.",
-                                            body, crumbs=[("추천 추모공원", None)], depth=depth))
+    write(out, "partner/index.html", layout("partner/index.html", "수도권 엄선 추천 추모공원 상담·감사 선물 안내", f"봉안당 길잡이가 엄선한 수도권 추천 봉안당·수목장 {len(PARTNERS)}곳의 분양가와 위치를 안내하고 방문 예약을 도와 드립니다. 상담 후 계약하면 감사 선물을 드립니다.",
+                                            body, crumbs=[("추천 추모공원 (수도권)", None)], depth=depth))
     done = f"""<header class="page-head"><h1>상담 신청이 접수되었습니다</h1><p class="lead">남겨 주신 연락처로 확인하는 대로 연락드리겠습니다.</p></header>
 <section class="card"><p>시설과 계약하실 때 회원코드 <strong>{E(MEMBER_CODE)}</strong>를 꼭 알려 주세요. 계약이 확인되면 감사 선물을 보내 드립니다.</p>
 <div class="actions"><a class="btn primary" href="{r}partner/index.html">추천 추모공원 다시 보기</a><a class="btn" href="{r}index.html">처음 화면</a></div></section>"""
@@ -3540,7 +3545,7 @@ def partner_fac_cta(f, r):
     p = partner_of(f)
     if not p:
         return ""
-    return (f'<a class="partner-cta" href="{r}{p["url"]}">{icon("gift")}<span><strong>봉안당 길잡이가 엄선한 추천 추모공원입니다</strong>'
+    return (f'<a class="partner-cta" href="{r}{p["url"]}">{icon("gift")}<span><strong>봉안당 길잡이가 엄선한 수도권 추천 추모공원입니다</strong>'
             + (f'<span>최신 분양가 {p["price_text"][0]} · 관별 가격표를 추천 추모공원 페이지에서 보실 수 있습니다.</span>' if p.get("price_tables") and p["price_text"] else "")
             + f'<span>상담을 신청하시면 남은 자리·분양가 안내와 방문 예약을 도와 드리고, 계약하시면 감사 선물을 드립니다.</span></span><span class="btn primary">상담·감사 선물 안내</span></a>')
 
