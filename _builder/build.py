@@ -3643,7 +3643,7 @@ def page_partner(out, p):
     gallery = ""
     if len(p["images"]) > 1:
         gallery = '<div class="p-gallery">' + "".join(
-            f'<img src="{r}partner/img/{E(n)}" alt="{E(p["name"])} 사진 {i}" loading="lazy" onerror="this.remove()">' for i, n in enumerate(p["images"][1:], 2)) + "</div>"
+            f'<img src="{r}partner/img/{E(n)}" alt="{E(p["name"])} 사진 {i}" loading="lazy">' for i, n in enumerate(p["images"][1:], 2)) + "</div>"
     # 분양가
     price_rows = ""
     if p["price_text"]:
