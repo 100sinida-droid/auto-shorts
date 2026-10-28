@@ -3643,7 +3643,7 @@ def page_partner(out, p):
     gallery = ""
     if len(p["images"]) > 1:
         gallery = '<div class="p-gallery">' + "".join(
-            f'<img src="{r}partner/img/{E(n)}" alt="{E(p["name"])} 사진 {i}" loading="lazy">' for i, n in enumerate(p["images"][1:], 2)) + "</div>"
+            f'<img src="{r}partner/img/{E(n)}" alt="{E(p["name"])} 사진 {i}" loading="lazy" onerror="this.remove()">' for i, n in enumerate(p["images"][1:], 2)) + "</div>"
     # 분양가
     price_rows = ""
     if p["price_text"]:
@@ -3914,7 +3914,20 @@ def build_site(facs):
     page_404(out)
     seo_files(out)
     (out / ".gitignore").write_text("__pycache__/\n*.pyc\n_builder/inspect_result.txt\n", encoding="utf-8")
+    write_manifest(out)
     return out
+
+
+def write_manifest(out):
+    """배포 점검용: 올라가야 할 이미지·스크립트·데이터 파일 목록 (assets/manifest.json). /stats/check 에서 실제 서버와 비교한다."""
+    files = []
+    for p in sorted(out.rglob("*")):
+        rel_p = p.relative_to(out).as_posix()
+        if not p.is_file() or rel_p.startswith(("_builder/", ".github/", ".wrangler/", ".git/")) or rel_p in ("assets/manifest.json", "_worker.js"):
+            continue
+        if p.suffix.lower() in (".webp", ".jpg", ".jpeg", ".png", ".svg", ".ico", ".css", ".js", ".json", ".xml", ".txt") or rel_p in ("404.html", "index.html"):
+            files.append([rel_p, p.stat().st_size])
+    (out / "assets" / "manifest.json").write_text(json.dumps({"built": TODAY, "files": files}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
 def write_inspect(records, tags, fmap):

@@ -465,7 +465,7 @@ async function statsPage(request, env) {
 <div>${rows(L.bySrc, [["어디서 와서 신청했나", r => esc(r.s)], ["신청", r => num(r.n) + "건", 1]])}
 ${L.recent.length ? `<p class="small muted" style="margin-top:12px">최근 신청: ${L.recent.map(r => `#${r.id} ${esc(r.name)}(${esc(r.partner_name || "미정")}, ${esc(r.status)})`).join(" · ")}</p>` : ""}</div></div></section>`;
   const body = `<h1>방문 통계</h1><p class="muted small">한국 시간 기준 · ${from} ~ ${kstDay(now)} · 검색엔진 로봇은 빼고 셉니다. 같은 사람은 하루에 한 명으로 셉니다.</p>
-<nav class="tabs">${tabs}<a href="/stats/leads" style="margin-left:auto;background:#b08a3e;border-color:#b08a3e;color:#fff">상담 신청 관리${L.open ? " (신규 " + L.open + ")" : ""}</a></nav>
+<nav class="tabs">${tabs}<a href="/stats/check">배포 점검</a><a href="/stats/leads" style="margin-left:auto;background:#b08a3e;border-color:#b08a3e;color:#fff">상담 신청 관리${L.open ? " (신규 " + L.open + ")" : ""}</a></nav>
 ${leadCard}
 <section class="kpi"><div><span>오늘 방문자</span><strong>${num(today.uv)}명</strong></div><div><span>기간 방문자</span><strong>${num(uv)}명</strong>${prev.uv ? `<em>앞 기간 ${num(prev.uv)}명</em>` : ""}</div>
 <div><span>방문 횟수</span><strong>${num(tot.visits)}회</strong></div><div><span>바로 나간 비율 (이탈률)</span><strong>${bounceRate}%</strong><em>한 페이지만 보고 나감</em></div><div><span>전화 걸기 클릭</span><strong>${num(telClicks)}회</strong><em>지도 보기 ${num(evTotal.map || 0)}회</em></div><div><span>본 페이지 수</span><strong>${num(tot.pv)}회</strong><em>1회 방문당 ${perVisit.toFixed(1)}페이지</em></div></section>
@@ -799,7 +799,38 @@ async function stats(request, env, url) {
   }
   if (cookieOf(request, "st") !== token) return loginPage("", url.pathname + url.search);
   if (url.pathname.startsWith("/stats/leads") || url.pathname === "/stats/kakao") return leadsAdmin(request, env, url);
+  if (url.pathname === "/stats/check") return deployCheck();
   return statsPage(request, env);
+}
+
+// 배포 점검: 빌드 때 만든 파일 목록(assets/manifest.json)과 실제 서버에 올라간 파일을 브라우저에서 하나씩 비교
+function deployCheck() {
+  return page("배포 점검", `<div class="card"><h1>배포 점검</h1>
+<p class="muted">사이트를 만들 때 올라가야 했던 이미지·스크립트·데이터 파일이 실제 서버에 다 있는지 확인합니다. 1~2분 걸립니다.</p>
+<p id="st">확인 중…</p><div id="miss"></div><p><a href="/stats">← 통계로 돌아가기</a></p></div>
+<script>
+(async function(){
+  var st=document.getElementById("st"), out=document.getElementById("miss");
+  var m; try{ m=await (await fetch("/assets/manifest.json",{cache:"no-store"})).json(); }catch(e){ st.textContent="파일 목록(assets/manifest.json)을 찾지 못했습니다. 최신 버전이 올라가지 않은 것 같습니다."; return; }
+  var files=m.files, bad=[], done=0, i=0;
+  async function one(f){
+    var u="/"+f[0].split("/").map(encodeURIComponent).join("/"), ok=false;
+    try{
+      var r=await fetch(u,{method:"GET",cache:"no-store"});
+      var ct=(r.headers.get("content-type")||"").toLowerCase();
+      var isHtml=/\.html$/.test(f[0]);
+      ok=r.ok && (isHtml || ct.indexOf("text/html")<0);
+      if(ok && f[0]==="404.html"){ var t=await r.text(); ok=t.indexOf("찾을 수 없")>=0 || t.indexOf("404")>=0; }
+    }catch(e){}
+    if(!ok) bad.push(f[0]);
+    done++; if(done%20===0) st.textContent="확인 중… "+done+" / "+files.length;
+  }
+  async function worker(){ while(i<files.length){ var f=files[i++]; await one(f); } }
+  await Promise.all([worker(),worker(),worker(),worker(),worker(),worker()]);
+  st.innerHTML="<b>"+files.length+"개 중 "+(files.length-bad.length)+"개 정상, 빠진 파일 "+bad.length+"개</b> (빌드 "+m.built+")";
+  out.innerHTML=bad.length?"<p>아래 파일이 서버에 없습니다. GitHub 저장소에 이 파일이 올라갔는지 확인해 주세요.</p><ul>"+bad.map(function(b){return "<li><code>"+b+"</code></li>";}).join("")+"</ul>":"<p>모든 파일이 정상입니다.</p>";
+})();
+</script>`);
 }
 
 export default {
