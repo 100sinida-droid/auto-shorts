@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /stats
+Disallow: /api/
+Disallow: /_builder/
+
+Sitemap: https://stockmind.kr/sitemap.xml
