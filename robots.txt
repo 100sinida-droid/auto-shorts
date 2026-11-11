@@ -1,0 +1,52 @@
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: Yeti
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: Googlebot
+Allow: /
+Disallow: /stats
+Disallow: /api/
+
+User-agent: *
+Allow: /
+Disallow: /stats
+Disallow: /api/
+Disallow: /_builder/
+
+Sitemap: https://stockmind.kr/sitemap.xml
