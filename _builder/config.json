@@ -9,7 +9,7 @@
   "rows_per_page": 500,
   "mode": "pages",
   "naver_site_verification": "",
-  "google_site_verification": "",
+  "google_site_verification": "ofhCGwL2CYzcdbJXSpjz8oFHCRE48eZKcGhVuI3JbWI",
   "daum_webmaster": "",
   "ads": {
     "_설명": "광고 자리 설정. 지금은 사이트에 표시하지 않고 문의 페이지의 가격표에만 씁니다. 나중에 show_empty 를 true 로 바꾸면 빈 자리에 '광고 문의' 안내가 보이고, 광고주가 생기면 ad 에 내용을 채운 뒤 build.bat 를 다시 실행하세요. 이미지는 인터넷 주소(URL)로 넣습니다.",

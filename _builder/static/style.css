@@ -1112,3 +1112,27 @@ table.info.fn-price th { width: 55% !important; }
 @media (max-width: 600px) { .cp-row { justify-content: flex-start; } }
 .cp-swipe { display: none; margin: 0; font-size: .82rem; color: var(--ink-2); text-align: right; }
 @media (max-width: 760px) { .cp-swipe { display: block; } }
+
+/* 무빈소 장례식장 찾기 */
+.fn-card[hidden], .fn-sec[hidden], #crematorium[hidden] { display: none !important; }
+.mb-hero { margin: 22px 0; border-radius: 14px; background: linear-gradient(135deg, #15211c 0%, #1f4d3f 100%); color: #fff; overflow: hidden; }
+.mb-hero .mb-in { padding: 26px 22px; max-width: 760px; }
+.mb-hero .mb-eye { margin: 0 0 6px; font-size: 13px; letter-spacing: .08em; color: var(--gold, #b08a3e); font-weight: 700; }
+.mb-hero h2 { margin: 0 0 10px; font-size: clamp(21px, 5vw, 28px); line-height: 1.35; color: #fff; word-break: keep-all; }
+.mb-hero h2::after { display: none; }
+.mb-hero p { margin: 0 0 16px; color: rgba(255,255,255,.86); line-height: 1.65; word-break: keep-all; }
+.mb-hero .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mb-hero .btn.ghost { color: #fff; border-color: rgba(255,255,255,.55); background: transparent; }
+.mb-cta { border: 2px solid var(--gold, #b08a3e); background: var(--gold-soft, #f5ecd9); }
+.mb-cta h2 { display: flex; align-items: center; gap: 6px; }
+.mb-find { border: 2px solid var(--accent); }
+.mb-gps { width: 100%; justify-content: center; font-size: 17px; padding: 14px; margin: 4px 0 14px; }
+.mb-script { margin: 10px 0; padding: 12px 14px; background: var(--accent-soft); border-left: 4px solid var(--accent); border-radius: 6px; line-height: 1.7; word-break: keep-all; }
+.badge.mb-ok { background: #e8f5e9; color: #1b5e20; }
+.fn-mb { margin: 6px 0; font-size: 14px; color: var(--ink-2); }
+.fn-mb strong { color: var(--accent); }
+.fn-filter .seg { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.fn-filter .seg button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 14px; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.fn-filter .seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.fn-filter .fn-sort { display: flex; align-items: center; gap: 6px; font-size: 14.5px; margin-bottom: 6px; }
+.chip-link.mb-chip { background: var(--gold, #b08a3e); color: #fff; border-color: var(--gold, #b08a3e); }

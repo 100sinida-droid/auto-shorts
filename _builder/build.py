@@ -1059,6 +1059,8 @@ def prepare_seo(facs, groups):
                             ["부고 문자", "부고 문자 양식", "모바일 부고장", "부고장 만들기", "부고 답례 문자", "장례 감사 문자", "부고 알림"]),
         "tools/after-death.html": ("장례 후 해야 할 일 체크리스트 (사망신고·상속·세금 기한)", "사망신고 1개월, 상속 포기 3개월, 상속세 6개월 등 장례 후 해야 할 일과 마감 날짜를 돌아가신 날 기준으로 계산해 드립니다.",
                                    ["장례 후 해야 할 일", "사망 후 해야 할 일", "사망신고 기한", "사망신고 방법", "안심상속 원스톱", "상속 포기 기간", "상속세 신고 기한", "유족연금 신청"]),
+        "funeral/mubinso.html": ("가까운 무빈소 장례식장 찾기 · 내 주변 무빈소 장례 비용 비교", "지금 위치나 사는 곳에서 가까운 장례식장을 거리순으로 찾고, 무빈소 장례에 드는 안치료·염습·관·수의 가격과 전화번호를 비교하세요. 시도별 무빈소 비용이 낮은 장례식장과 공설 장례식장도 정리했습니다.",
+                              ["무빈소 장례식장", "무빈소 장례식장 찾기", "근처 무빈소 장례식장", "내 주변 장례식장", "가까운 장례식장", "무빈소 장례 비용", "무빈소 장례 가능한 곳", "서울 무빈소 장례식장", "경기 무빈소 장례식장", "인천 무빈소 장례식장", "공설 장례식장", "가족장 장례식장"]),
         "feature/near.html": ("가까운 봉안당 찾기 · 서울 근교 납골당 거리순", "사는 곳을 고르면 가까운 봉안당을 거리순으로 보여 드립니다. 서울·인천·부산·대구 근교 봉안당 목록도 정리했습니다.",
                               ["가까운 납골당", "서울 근교 납골당", "서울 근교 봉안당", "인천 근교 납골당", "부산 근교 납골당", "내 주변 봉안당", "근처 납골당"]),
         "feature/cost.html": ("봉안당 총비용 계산기 · 납골당 관리비·연장비 포함 비용 계산", "사용료에 관리비와 연장 비용까지 더해 15년·30년·45년 모실 때 총비용을 봉안당끼리 비교하세요.",
@@ -2430,10 +2432,14 @@ def funeral_card(x, depth):
         prices = [(lbl, x["price"][k]) for k, lbl in FUNERAL_PRICE_COLS if x["price"].get(k)]
     price_html = ("<ul class=\"price-chips\">" + "".join(f"<li><span>{E(l)}</span><strong>{fmt_won(v)}{'~' if '최저' in l or l in ('빈소 1일', '관', '수의') else ''}</strong></li>" for l, v in prices) + "</ul>") if prices else ""
     amen = "".join(f'<span class="chip">{E(a)}</span>' for a in x["amen"])
-    return (f'<article class="fn-card" id="x-{x["id"]}"><div class="fn-head"><h3><a href="{r}{funeral_url(x)}">{E(x["name"])}</a></h3>{_fn_badges(x)}</div>'
+    mb = mubinso_base(x) if x["kind"] == "장례식장" else None
+    okb = '<span class="badge mb-ok">무빈소 확인</span>' if x["kind"] == "장례식장" and mb_ok(x) else ""
+    mb_html = (f'<p class="fn-mb">무빈소 기본 품목 합계 <strong>{fmt_won(mb)}</strong> <span class="small muted">(안치 {MB_DAYS}일·염습·관·수의, 화장료 등 제외)</span></p>') if mb else ""
+    return (f'<article class="fn-card" id="x-{x["id"]}" data-kind="{"c" if x["kind"] == "화장시설" else "f"}" data-mb="{mb or 0}" data-pub="{1 if x["pubpri"] == "공설" else 0}" data-ok="{1 if mb_ok(x) else 0}">'
+            f'<div class="fn-head"><h3><a href="{r}{funeral_url(x)}">{E(x["name"])}</a></h3>{_fn_badges(x)}{okb}</div>'
             f'<p class="fn-addr">{E(x["address"])}</p>'
             + (f'<p class="fn-facts">{" · ".join(facts)}</p>' if facts else "")
-            + price_html + (f'<div class="fn-amen">{amen}</div>' if amen else "")
+            + mb_html + price_html + (f'<div class="fn-amen">{amen}</div>' if amen else "")
             + f'<div class="actions">{tel}<a class="btn big" href="https://map.naver.com/p/search/{q}" target="_blank" rel="noopener">지도 보기</a><a class="btn big" href="{r}{funeral_url(x)}">비용·주차 자세히</a></div></article>')
 
 
@@ -2503,7 +2509,12 @@ def page_funeral(out, items):
         if room:
             lead += f" 빈소 하루 사용료(가장 작은 방 기준)는 중간값이 {fmt_won(room)}입니다."
         body = f"""<header class="page-head with-thumb">{art.region_thumb(sido)}<div><h1>{E(sido)} 장례식장·화장장</h1><p class="lead">{E(lead)}</p>
-<p class="small">시군구를 누르면 바로 이동합니다.</p><nav class="rank-nav">{'<a class="chip-link" href="#crematorium">화장시설</a>' if scr else ''}{toc}</nav></div></header>
+<p class="small">시군구를 누르면 바로 이동합니다.</p><nav class="rank-nav"><a class="chip-link mb-chip" href="{r}funeral/mubinso.html">무빈소 장례식장 찾기</a>{'<a class="chip-link" href="#crematorium">화장시설</a>' if scr else ''}{toc}</nav></div></header>
+{mubinso_cta(r, True)}
+<section class="card fn-filter" id="fn-filter" data-hasok="{1 if any(mb_ok(x) for x in sfh) else 0}"><h2>원하는 장례식장만 보기</h2>
+<div class="seg" role="group" aria-label="보기"><button type="button" class="on" data-f="all">전체 {len(sfh)}곳</button><button type="button" data-f="mb">무빈소 비용 공개 {sum(1 for x in sfh if mubinso_base(x))}곳</button>{f'<button type="button" data-f="ok">무빈소 확인 {sum(1 for x in sfh if mb_ok(x))}곳</button>' if any(mb_ok(x) for x in sfh) else ''}<button type="button" data-f="pub">공설만 {sum(1 for x in sfh if x["pubpri"] == "공설")}곳</button></div>
+<label class="fn-sort"><input type="checkbox" id="fn-sort"> 무빈소 기본 품목 합계 낮은 순으로</label>
+<p class="small muted" id="fn-fcount">무빈소 가능 여부는 공공데이터에 없어 장례식장마다 전화로 확인해야 합니다. <b>무빈소 비용 공개</b>는 무빈소에 필요한 안치료·염습·관·수의 가격이 모두 공개된 곳입니다. 대부분의 장례식장은 문의하면 무빈소로 진행해 줍니다.</p></section>
 <section class="card fc-cta"><h2>{icon("won")}장례비용, 모두 얼마나 들까요?</h2><p>장례식장을 고르면 빈소·안치료·염습·관·수의 가격이 자동으로 들어가고, 조문객 음식값과 화장료·장지까지 더해 계산합니다.</p><div class="actions"><a class="btn primary big" href="{r}tools/funeral-cost.html">장례비용 계산기</a><a class="btn big" href="{r}tools/bugo.html">부고 문자 만들기</a></div></section>
 {cre_html}{sgg_html}{src}
 {guide_links(depth, ["procedure-after-cremation", "ehaneul-guide", "public-vs-private"], "장례를 치르실 때 함께 보세요")}"""
@@ -2523,6 +2534,7 @@ def page_funeral(out, items):
                    f'<td class="hide-sm">{tel_link(x["tel"])}</td></tr>' for x in cr)
     body = f"""<header class="page-head"><h1>전국 장례식장·화장장 찾기</h1>
 <p class="lead">전국 장례식장 {len(fh):,}곳과 화장시설 {len(cr)}곳의 위치, 전화번호, 빈소 사용료와 화장료를 지역별로 정리했습니다. 사시는 곳을 눌러 주세요.</p></header>
+{mubinso_cta(r)}
 <section class="block"><div class="block-head"><h2>지역을 고르세요</h2></div><div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">지도에서 지역을 누르면 그 지역 장례식장·화장장 목록으로 갑니다.</p></div><div class="region-grid compact">{cards}</div></div></section>
 <section class="card fc-cta"><h2>{icon("won")}장례비용, 모두 얼마나 들까요?</h2><p>장례식장을 고르면 빈소·안치료·염습·관·수의 가격이 자동으로 들어가고, 조문객 음식값과 화장료·장지까지 더해 계산합니다.</p><div class="actions"><a class="btn primary big" href="{r}tools/funeral-cost.html">장례비용 계산기</a><a class="btn big" href="{r}tools/bugo.html">부고 문자 만들기</a></div></section>
 <section class="card"><h2>장례비·상조, 많이 묻는 것</h2><ul class="link-list">
@@ -2685,9 +2697,18 @@ def page_funeral_detail(out, x, items):
     kind_word = "화장장" if is_cre else "장례식장"
     lead = (f"{x['name']}은(는) {short} {x['sigungu']}에 있는 {'화장시설' if is_cre else '장례식장'}입니다. "
             + ("전화번호, 주차, 화장 비용과 가는 길을 정리했습니다." if is_cre else "빈소 사용료, 안치료, 주차, 전화번호와 가는 길을 정리했습니다."))
+    mb_detail = ""
+    if not is_cre:
+        _mb = mubinso_base(x)
+        _m = MB_OK.get(x["name"])
+        st = ("무빈소 진행이 <b>가능하다고 확인</b>했습니다" + (f" ({E(_m['day'])} 확인)" if _m["day"] else "") + "." if _m and _m["ok"]
+              else "무빈소는 <b>받지 않는다고</b> 확인했습니다." if _m else "무빈소(빈소 없이 안치·입관·발인·화장만) 진행 여부는 전화로 확인해 주세요. 대부분의 장례식장은 문의하면 진행해 줍니다.")
+        mb_detail = (f'<section class="card"><h2>무빈소 장례로 하면</h2><p>{st}</p>'
+                     + (f'<p>공개 가격 기준 기본 품목 합계 <strong>{fmt_won(_mb)}</strong> <span class="small muted">(안치료 {MB_DAYS}일 + 염습 + 가장 싼 관 + 가장 싼 수의. 화장료·장의차·인력·유골함 제외)</span></p>' if _mb else "")
+                     + f'<p class="small"><a href="{r}funeral/mubinso.html">가까운 다른 무빈소 장례식장 찾기</a> · <a href="{r}guides/small-funeral.html">무빈소 장례 절차</a></p></section>')
     body = f"""<header class="page-head"><p class="eyebrow">{E(short)} {E(x["sigungu"])} · {kind_word}</p><h1>{E(x["name"])}</h1>
 <p class="lead">{E(lead)}</p>{notice}<div class="actions fn-acts">{acts}</div></header>
-{price_html}{info_html}{cre_html}{bong_html}{helper}{same_html}
+{price_html}{mb_detail}{info_html}{cre_html}{bong_html}{helper}{same_html}
 <p class="muted small">{FN_SRC_NOTE} 정보가 바뀌었으면 <a href="{r}pages/contact.html">알려 주세요</a>.</p>"""
     if is_cre:
         title = f"{x['name']} 화장 비용·예약·오시는 길 ({short} {x['sigungu']})"
@@ -3079,6 +3100,129 @@ def page_near(out, facs):
                                            crumbs=[("봉안당 찾기", "region/index.html"), ("가까운 봉안당", None)], depth=depth))
 
 
+# ---------------------------------------------------------------------------
+# 가까운 무빈소 장례식장 찾기 (funeral/mubinso.html + assets/mubinso.json)
+# 무빈소 가능 여부는 공공데이터에 없으므로, 가까운 장례식장과 무빈소에 드는 품목 가격(안치·염습·관·수의)을 보여 주고 전화로 확인하게 한다.
+# ---------------------------------------------------------------------------
+MB_DAYS = 2
+MB_FILE = ROOT / "funeral" / "mubinso_confirmed.csv"
+
+
+def load_mubinso_confirmed():
+    """_builder/funeral/mubinso_confirmed.csv : 전화 등으로 무빈소 가능 여부를 직접 확인한 장례식장"""
+    out = {}
+    if MB_FILE.exists():
+        for r in read_csv_any(MB_FILE):
+            nm = (r.get("시설명") or "").strip()
+            v = (r.get("무빈소") or "").strip()
+            if nm and not nm.startswith("예시") and v in ("가능", "불가"):
+                out[nm] = {"ok": v == "가능", "day": (r.get("확인일") or "").strip(), "memo": (r.get("메모") or "").strip()}
+    return out
+
+
+MB_OK = load_mubinso_confirmed()
+
+
+def mb_ok(x):
+    m = MB_OK.get(x["name"])
+    return bool(m and m["ok"])
+
+
+def mb_anchi(x):
+    """안치료 하루치. 공공데이터에 시간당 금액(2만 원 미만)으로 적힌 곳은 24시간으로 환산"""
+    a = x["price"].get("안치료1일")
+    if not a:
+        return None
+    return a * 24 if a < 20000 else a
+
+
+def mubinso_base(x):
+    p = x["price"]
+    a, y, g, s = mb_anchi(x), p.get("염습"), p.get("관최저"), p.get("수의최저")
+    # 단위가 다르게 적힌 것으로 보이는 값(염습·관 3만 원 미만, 수의 2만 원 미만)은 합계에서 뺀다
+    if not (a and y and g and s) or y < 30000 or g < 30000 or s < 20000:
+        return None
+    return a * MB_DAYS + y + g + s
+
+
+def mubinso_cta(r, compact=False):
+    if compact:
+        return (f'<section class="card mb-cta"><h2>{icon("map")}가까운 무빈소 장례식장 찾기</h2><p>빈소 없이 안치·입관·발인·화장만 하는 무빈소 장례, 우리 동네 어디서 할 수 있는지 거리순으로 보여 드립니다.</p>'
+                f'<div class="actions"><a class="btn primary big" href="{r}funeral/mubinso.html">무빈소 장례식장 찾기</a></div></section>')
+    return (f'<section class="mb-hero"><div class="mb-in"><p class="mb-eye">무빈소 · 가족장</p><h2>가까운 무빈소 장례식장, 지금 찾아 드립니다</h2>'
+            f'<p>빈소 없이 조용히 모시는 무빈소 장례. 지금 계신 곳에서 가까운 장례식장을 거리순으로 보여 드리고, 안치료·염습·관·수의 가격과 전화번호를 함께 보여 드립니다.</p>'
+            f'<div class="actions"><a class="btn gold big" href="{r}funeral/mubinso.html">{icon("map")}내 주변 무빈소 장례식장 찾기</a>'
+            f'<a class="btn ghost big mb-ghost" href="{r}guides/small-funeral.html">무빈소 장례란?</a></div></div></section>')
+
+
+def page_mubinso(out, items):
+    depth = 1
+    r = rel(depth)
+    fh = [x for x in items if x["kind"] == "장례식장" and not x["closed"]]
+    rows = []
+    for x in fh:
+        g = _fn_geo(x)
+        if not g:
+            continue
+        p = x["price"]
+        rows.append({"n": x["name"], "u": funeral_url(x), "a": x["address"], "t": x["tel"], "k": x["pubpri"], "s": x["sido"], "g": x["sigungu"],
+                     "la": g["la"], "lo": g["lo"], "m": x["morgue"] or 0, "pk": 1 if x["parking"] else 0,
+                     "p": [mb_anchi(x) or 0, p.get("염습") or 0, p.get("관최저") or 0, p.get("수의최저") or 0], "b": mubinso_base(x) or 0, "ok": 1 if mb_ok(x) else 0})
+    write(out, "assets/mubinso.json", json.dumps(rows, ensure_ascii=False, separators=(",", ":")))
+    # 시도별: 무빈소 기본 품목 합계가 공개된 장례식장 중 낮은 곳 + 공설 장례식장
+    groups = OrderedDict()
+    for x in fh:
+        groups.setdefault(x["sido"], []).append(x)
+    secs, toc = [], []
+    for sido, v in groups.items():
+        priced = sorted([x for x in v if mubinso_base(x)], key=mubinso_base)[:6]
+        pubs = [x for x in v if x["pubpri"] == "공설"][:8]
+        if not priced and not pubs:
+            continue
+        short = SIDO_SHORT.get(sido, sido)
+        toc.append(f'<a class="chip-link" href="#mb-{sido_slug(sido)}">{E(short)}</a>')
+        trs = "".join(f'<tr><td><a href="{r}{funeral_url(x)}">{E(x["name"])}</a>{" " + kind_badge(x["pubpri"]) if x["pubpri"] else ""}<span class="small muted" style="display:block">{E(x["sigungu"])}</span></td>'
+                      f'<td class="num">{fmt_won(mb_anchi(x))}</td><td class="num hide-sm">{fmt_won(x["price"]["염습"])}</td><td class="num"><b>{fmt_won(mubinso_base(x))}</b></td><td class="hide-sm">{tel_link(x["tel"])}</td></tr>' for x in priced)
+        tbl = (f'<div class="table-wrap"><table class="list"><thead><tr><th>장례식장</th><th class="num">안치료 1일</th><th class="num hide-sm">염습</th><th class="num">기본 품목 합계</th><th class="hide-sm">전화</th></tr></thead><tbody>{trs}</tbody></table></div>') if priced else ""
+        pub = (f'<p class="small"><b>{E(short)} 공설 장례식장</b>: ' + " · ".join(f'<a href="{r}{funeral_url(x)}">{E(x["name"])}</a>' for x in pubs) + "</p>") if pubs else ""
+        secs.append(f'<section class="card" id="mb-{sido_slug(sido)}"><h2>{E(short)} 무빈소 장례 비용이 낮은 장례식장</h2>{tbl}{pub}'
+                    f'<p class="small"><a href="{r}funeral/{sido_slug(sido)}.html">{E(short)} 장례식장 {len(v)}곳 전체 보기 →</a></p></section>')
+    sgg_json = json.dumps([{"s": g["s"], "n": g["n"], "la": g["la"], "lo": g["lo"]} for g in SGG], ensure_ascii=False, separators=(",", ":"))
+    sido_opts = "".join(f'<option value="{E(sd)}">{E(sd)}</option>' for sd in SIDO)
+    script = "안녕하세요. 무빈소로 장례를 치르려고 하는데 가능할까요? 빈소 없이 안치, 입관, 발인, 화장만 하려고 합니다. 안치료와 입관, 관·수의, 장의차까지 모두 합하면 얼마인지, 화장 예약도 도와주시는지 알고 싶습니다."
+    body = f"""<header class="page-head"><h1>가까운 무빈소 장례식장 찾기</h1>
+<p class="lead">빈소를 차리지 않고 <b>안치 → 입관 → 발인 → 화장</b>만 하는 무빈소 장례는 대부분의 장례식장에서 문의하면 진행할 수 있습니다. 지금 계신 곳이나 사는 곳에서 가까운 장례식장을 거리순으로 찾고, 무빈소에 드는 품목 가격과 전화번호를 바로 확인하세요.</p>
+<nav class="rank-nav">{"".join(toc)}</nav></header>
+<section class="card mb-find"><h2>{icon("map")}내 주변 장례식장 찾기</h2>
+<button type="button" id="mb-gps" class="btn primary big mb-gps">{icon("map")}지금 내 위치로 찾기</button>
+<form class="tool-form" id="mb-form" onsubmit="return false">
+<label>시도<select id="mb-sido"><option value="">시도를 고르세요</option>{sido_opts}</select></label>
+<label>시군구<select id="mb-sgg"><option value="">먼저 시도를 고르세요</option></select></label>
+<label>거리<select id="mb-km"><option value="10">10km 이내</option><option value="20" selected>20km 이내</option><option value="40">40km 이내</option><option value="80">80km 이내</option></select></label>
+<label>정렬<select id="mb-sort"><option value="near">가까운 순</option><option value="cheap">기본 품목 합계 낮은 순</option></select></label>
+<label class="check"><input type="checkbox" id="mb-pub"> 공설 장례식장만</label>{'<label class="check"><input type="checkbox" id="mb-okonly"> 무빈소 확인된 곳만</label>' if any(MB_OK.values()) else ''}</form>
+<p id="mb-count" class="muted" aria-live="polite"></p><div id="mb-out" class="results"></div>
+<script type="application/json" id="mb-sgg-data">{sgg_json}</script>
+<p class="small muted">거리는 장례식장 주소가 있는 시군구 중심에서 잰 직선거리라 실제 길과 다를 수 있습니다. <b>기본 품목 합계</b>는 공개된 가격으로 계산한 안치료 {MB_DAYS}일 + 염습 + 가장 싼 관 + 가장 싼 수의이며, 화장료·장의차·인력·유골함은 빠져 있습니다. 가격 출처: 한국장례문화진흥원 장사시설 가격정보(2023-06-01 기준). 지금 가격과 다를 수 있습니다.</p></section>
+<section class="card"><h2>무빈소 가능 여부, 전화로 이렇게 물어보세요</h2>
+<p>무빈소를 받는지는 공공데이터에 나오지 않습니다. 아래 문장을 그대로 읽거나 문자로 보내 확인하세요.</p>
+<blockquote class="mb-script" id="mb-script">{E(script)}</blockquote>
+<div class="actions"><button type="button" class="btn" id="mb-copy">문장 복사하기</button></div>
+<ul class="small"><li>새벽에 돌아가셔도 대부분의 장례식장은 24시간 안치를 받습니다. 병원에서 돌아가셨다면 그 병원 장례식장이 가장 빠릅니다.</li>
+<li>견적은 <b>안치료·염습·관·수의·장의차·인력(입관 도우미)</b>을 항목별로 받아 두 곳 이상 비교하세요.</li>
+<li>상조에 가입했다면 상조회사에 무빈소로 진행할 수 있는지, 남는 금액은 어떻게 되는지 먼저 물어보세요.</li></ul></section>
+{"".join(secs)}
+<section class="card"><h2>자주 묻는 질문</h2>
+<details><summary>무빈소 장례는 어디서 할 수 있나요?</summary><p>따로 정해진 무빈소 전문 시설이 있는 것이 아니라, 병원 장례식장·전문 장례식장·공설 장례식장 대부분에서 문의하면 진행할 수 있습니다. 가까운 장례식장에 빈소 없이 안치·입관·발인·화장만 하고 싶다고 전화로 물어보세요.</p></details>
+<details><summary>무빈소 장례 비용은 얼마인가요?</summary><p>빈소 사용료와 음식값이 빠져 일반 장례보다 크게 줄어듭니다. 안치료, 염습(입관), 관, 수의, 장의차, 화장료가 기본으로 들며 장례식장마다 차이가 큽니다. 이 페이지의 기본 품목 합계로 대략 비교한 뒤 전화로 전체 견적을 받아 보세요.</p></details>
+<details><summary>공설 장례식장은 더 저렴한가요?</summary><p>지자체가 운영하는 공설 장례식장은 사용료가 낮은 편이고 지역 주민 감면이 있는 곳도 있습니다. 이 페이지에서 공설 장례식장만 골라 볼 수 있습니다.</p></details>
+<details><summary>무빈소로 하면 조문은 못 받나요?</summary><p>빈소가 없어 조문객을 맞지 않습니다. 부고는 장례 후에 알리거나, 마음만 받겠다고 알리는 경우가 많습니다. <a href="{r}tools/bugo.html">부고 문자 만들기</a>에서 무빈소용 문구를 만들 수 있습니다.</p></details>
+</section>
+{guide_links(depth, ["small-funeral", "cheap-funeral", "funeral-help-desk"], "무빈소 장례 전에 함께 보세요")}"""
+    write(out, "funeral/mubinso.html", layout("funeral/mubinso.html", "가까운 무빈소 장례식장 찾기 · 내 주변 무빈소 장례 비용", "무빈소 장례식장 찾기", body,
+                                              crumbs=[("장례식장·화장장", "funeral/index.html"), ("무빈소 장례식장 찾기", None)], depth=depth))
+
+
 def page_cost(out, facs):
     depth = 1
     body = f"""<header class="page-head"><h1>봉안당 총비용 계산기</h1><p class="lead">봉안당 비용은 처음 내는 사용료만으로 끝나지 않습니다. 관리비와 기간 연장 비용까지 더해 「몇 년 모시면 모두 얼마」인지 시설끼리 비교해 보세요.</p></header>
@@ -3232,7 +3376,7 @@ def keyword_links():
              ("주차 되는 납골당", "feature/parking.html"), ("장례식장 비용", "funeral/index.html"), ("서울 장례식장", "funeral/seoul.html"),
              ("경기도 장례식장", "funeral/gyeonggi.html"), ("화장장 비용", "funeral/index.html#crematorium"), ("화장 예약 방법", "guides/ehaneul-guide.html"),
              ("장례 절차", "guides/procedure-after-cremation.html"), ("봉안당 고르는 법", "guides/how-to-choose.html"), ("수목장·자연장", "guides/natural-burial.html"),
-             ("봉안당이란", "guides/what-is-bongandang.html"), ("납골당 단별 가격", "guides/what-is-bongandang.html"), ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html"), ("저렴한 장례 방법", "guides/cheap-funeral.html"), ("장례비 지원금", "guides/funeral-support.html"), ("무빈소 장례", "guides/small-funeral.html"), ("무빈소 장례 문의", "guides/funeral-help-desk.html"), ("공영장례", "guides/funeral-help-desk.html"), ("상조회사 비교", "guides/sangjo-compare.html"), ("국내 상조회사 순위", "guides/sangjo-companies.html"), ("상조 해지 환급", "guides/sangjo-cancel.html")]
+             ("봉안당이란", "guides/what-is-bongandang.html"), ("납골당 단별 가격", "guides/what-is-bongandang.html"), ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html"), ("저렴한 장례 방법", "guides/cheap-funeral.html"), ("장례비 지원금", "guides/funeral-support.html"), ("무빈소 장례", "guides/small-funeral.html"), ("무빈소 장례식장 찾기", "funeral/mubinso.html"), ("무빈소 장례 문의", "guides/funeral-help-desk.html"), ("공영장례", "guides/funeral-help-desk.html"), ("상조회사 비교", "guides/sangjo-compare.html"), ("국내 상조회사 순위", "guides/sangjo-companies.html"), ("상조 해지 환급", "guides/sangjo-cancel.html")]
     return ('<section class="block"><div class="block-head"><div><p class="eyebrow">KEYWORD</p><h2>많이 찾는 정보</h2></div></div><nav class="kw-links" aria-label="많이 찾는 정보">'
             + "".join(f'<a href="{u}">{E(t)}</a>' for t, u in links) + "</nav></section>")
 
@@ -3266,6 +3410,7 @@ def page_index(out, facs, groups):
     rlinks = "".join(f'<a href="{region_url(s)}"><span>{E(SIDO_SHORT.get(s, s))}</span><b>{len(v)}</b></a>' for s, v in groups.items())
     body = f"""
 {center_banner("", "index.html")}
+{mubinso_cta("")}
 <section class="ed-sec"><div class="ed-head"><p class="ed-eye">SERVICE</p><h2>필요한 정보를 차분하게</h2><p>처음 겪는 일이라도 헤매지 않도록, 꼭 필요한 것만 모았습니다.</p></div>
 <div class="ed-grid">{svc}</div></section>
 <section class="ed-sec gift-sec"><div class="ed-head"><p class="ed-eye">BENEFIT</p><h2>상담하고 계약하시면 감사 선물을 드립니다</h2></div>{gift_box("")}</section>
@@ -4177,6 +4322,7 @@ def build_site(facs):
     page_tools(out)
     page_after_death(out)
     page_near(out, facs)
+    page_mubinso(out, FUNERAL)
     page_cost(out, facs)
     page_holiday(out, facs, groups)
     for p in PARTNERS:

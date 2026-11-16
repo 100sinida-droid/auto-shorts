@@ -840,6 +840,80 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
     }
   }
 
+  // ---- 가까운 무빈소 장례식장 ----
+  if ($("mb-form")) {
+    var MSGG = JSON.parse($("mb-sgg-data").textContent), mHere = null, mData = null;
+    var mSido = $("mb-sido"), mSgg = $("mb-sgg");
+    function mLoad() { return mData || (mData = fetch("../assets/mubinso.json").then(function (r) { return r.json(); })); }
+    mSido.addEventListener("change", function () {
+      mSgg.innerHTML = '<option value="">시군구를 고르세요</option>' + MSGG.filter(function (g) { return g.s === mSido.value; })
+        .map(function (g) { return '<option value="' + esc(g.n) + '">' + esc(g.n) + "</option>"; }).join("");
+      if (mSido.value === "세종특별자치시") { mSgg.selectedIndex = 1; mPick(); }
+    });
+    function mPick() { var g = MSGG.filter(function (x) { return x.s === mSido.value && x.n === mSgg.value; })[0]; if (g) { mHere = { la: g.la, lo: g.lo, label: g.s + " " + g.n }; mRun(); } }
+    mSgg.addEventListener("change", mPick);
+    ["mb-km", "mb-sort", "mb-pub", "mb-okonly"].forEach(function (id) { if ($(id)) $(id).addEventListener("change", function () { if (mHere) mRun(); }); });
+    $("mb-gps").onclick = function () {
+      if (!navigator.geolocation) { $("mb-count").textContent = "이 기기에서는 위치를 쓸 수 없습니다. 시도와 시군구를 골라 주세요."; return; }
+      $("mb-count").textContent = "위치를 확인하는 중입니다…";
+      navigator.geolocation.getCurrentPosition(function (p) { mHere = { la: p.coords.latitude, lo: p.coords.longitude, label: "지금 계신 곳" }; mRun(); if (window.__track) window.__track("near", "무빈소 위치찾기"); },
+        function () { $("mb-count").textContent = "위치 사용이 허락되지 않았습니다. 아래에서 시도와 시군구를 골라 주세요."; }, { timeout: 10000 });
+    };
+    function mRun() {
+      mLoad().then(function (d) {
+        var km = +$("mb-km").value, pub = $("mb-pub").checked, okOnly = $("mb-okonly") && $("mb-okonly").checked, cheap = $("mb-sort").value === "cheap";
+        var list = d.filter(function (x) { return (!pub || x.k === "공설") && (!okOnly || x.ok); })
+          .map(function (x) { return { x: x, km: hav(mHere.la, mHere.lo, x.la, x.lo) }; })
+          .filter(function (o) { return o.km <= km; });
+        list.sort(cheap ? function (a, b) { return (a.x.b || 9e9) - (b.x.b || 9e9) || a.km - b.km; } : function (a, b) { return a.km - b.km; });
+        $("mb-count").textContent = mHere.label + "에서 " + km + "km 안에 장례식장 " + list.length + "곳" + (cheap ? " (기본 품목 합계 낮은 순)" : " (가까운 순)");
+        $("mb-out").innerHTML = list.slice(0, 40).map(function (o) {
+          var x = o.x, tel = (x.t || "").replace(/[^0-9+]/g, "");
+          var parts = [["안치료 1일", x.p[0]], ["염습", x.p[1]], ["관", x.p[2]], ["수의", x.p[3]]].filter(function (q) { return q[1]; })
+            .map(function (q) { return "<li><span>" + q[0] + "</span><strong>" + won(q[1]) + "</strong></li>"; }).join("");
+          return '<div class="result"><a class="rec-name" href="../' + esc(x.u) + '"><strong>' + esc(x.n) + "</strong></a>" +
+            (x.k ? ' <span class="badge ' + (x.k === "공설" ? "pub" : "pri") + '">' + esc(x.k) + "</span>" : "") + (x.ok ? ' <span class="badge mb-ok">무빈소 확인</span>' : "") +
+            '<span class="addr">' + esc(x.a) + "</span>" +
+            '<p class="near-dist"><strong>직선 약 ' + Math.max(1, Math.round(o.km)) + "km</strong>" + (x.b ? " · 무빈소 기본 품목 합계 <strong>" + won(x.b) + "</strong>" : " · 가격 미공개(전화 문의)") + "</p>" +
+            (parts ? '<ul class="price-chips">' + parts + "</ul>" : "") +
+            '<div class="actions">' + (tel ? '<a class="btn primary" href="tel:' + esc(tel) + '">무빈소 문의 전화</a>' : "") +
+            '<a class="btn" href="https://map.naver.com/p/search/' + encodeURIComponent(x.a || x.n) + '" target="_blank" rel="noopener">지도 보기</a><a class="btn" href="../' + esc(x.u) + '">자세히</a></div></div>';
+        }).join("") || '<p class="muted">조건에 맞는 장례식장이 없습니다. 거리를 늘려 보세요.</p>';
+      });
+    }
+    if ($("mb-copy")) $("mb-copy").onclick = function () {
+      var t = $("mb-script").textContent;
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $("mb-copy").textContent = "복사했습니다"; }, function () { window.prompt("복사해서 쓰세요", t); });
+    };
+  }
+
+  // ---- 지역 장례식장 목록 필터 (전체 / 무빈소 비용 공개 / 무빈소 확인 / 공설) ----
+  if ($("fn-filter")) {
+    var fBtns = Array.prototype.slice.call(document.querySelectorAll("#fn-filter .seg button")), fMode = "all";
+    var secs = Array.prototype.slice.call(document.querySelectorAll(".fn-sec")).filter(function (sec) { return sec.id !== "crematorium"; });
+    secs.forEach(function (sec) { var g = sec.querySelector(".fn-grid"); if (g) Array.prototype.slice.call(g.children).forEach(function (c, i) { c.setAttribute("data-i", i); }); });
+    function fApply() {
+      var sort = $("fn-sort").checked, shown = 0;
+      secs.forEach(function (sec) {
+        var g = sec.querySelector(".fn-grid"); if (!g) return;
+        var cards = Array.prototype.slice.call(g.children), vis = 0;
+        cards.forEach(function (c) {
+          var ok = fMode === "all" || (fMode === "mb" && +c.getAttribute("data-mb") > 0) || (fMode === "ok" && c.getAttribute("data-ok") === "1") || (fMode === "pub" && c.getAttribute("data-pub") === "1");
+          c.hidden = !ok; if (ok) vis++;
+        });
+        cards.sort(sort ? function (a, b) { return (+a.getAttribute("data-mb") || 9e9) - (+b.getAttribute("data-mb") || 9e9); } : function (a, b) { return a.getAttribute("data-i") - b.getAttribute("data-i"); })
+          .forEach(function (c) { g.appendChild(c); });
+        sec.hidden = vis === 0; shown += vis;
+      });
+      var cr = $("crematorium"); if (cr) cr.hidden = fMode !== "all";
+      try { history.replaceState(null, "", fMode === "all" ? location.pathname : location.pathname + "?f=" + fMode); } catch (e) {}
+    }
+    fBtns.forEach(function (b) { b.onclick = function () { fBtns.forEach(function (x) { x.classList.toggle("on", x === b); }); fMode = b.getAttribute("data-f"); if (fMode === "mb" && !$("fn-sort").checked) $("fn-sort").checked = true; fApply(); }; });
+    $("fn-sort").addEventListener("change", fApply);
+    var qf = (location.search.match(/[?&]f=(\w+)/) || [])[1];
+    if (qf) fBtns.forEach(function (b) { if (b.getAttribute("data-f") === qf) b.click(); });
+  }
+
   // ---- 총비용 계산기 ----
   if ($("cc-years")) {
     var byName = {}, cols = Array.prototype.slice.call(document.querySelectorAll(".cc-col"));
