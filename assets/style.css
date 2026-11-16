@@ -1136,3 +1136,10 @@ table.info.fn-price th { width: 55% !important; }
 .fn-filter .seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .fn-filter .fn-sort { display: flex; align-items: center; gap: 6px; font-size: 14.5px; margin-bottom: 6px; }
 .chip-link.mb-chip { background: var(--gold, #b08a3e); color: #fff; border-color: var(--gold, #b08a3e); }
+
+/* 광고·제휴 영역 표시, 지역 분석 */
+.ad-sec { border: 1px dashed var(--line); }
+.ad-label { display: inline-block; margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #6b6b6b; background: #f0eee8; border-radius: 4px; padding: 1px 8px; }
+.region-analysis h3 { margin: 18px 0 8px; font-size: 17px; }
+.region-analysis p { line-height: 1.75; word-break: keep-all; }
+.region-analysis tr.me th, .region-analysis tr.me td { background: var(--accent-soft); font-weight: 700; }

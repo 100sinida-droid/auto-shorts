@@ -1,13 +1,15 @@
 # 봉안당 길잡이
 
-> 전국 봉안당(납골당) 694곳, 장례식장 1,100여 곳, 화장장 62곳의 가격·위치·주차·참배시간을 공공데이터로 정리한 한국어 장례 정보 사이트. 장례비용 계산기, 부고 문자·지방·축문 작성기, 사망신고·상속 안내, 수도권 추천 추모공원 무료 상담을 제공한다.
+> 전국 봉안당(납골당) 694곳, 장례식장 1,100여 곳, 화장장 62곳의 가격·위치·주차·참배시간을 공공데이터로 정리한 한국어 장례 정보 사이트. 장례비용 계산기, 부고 문자·지방·축문 작성기, 사망신고·상속 안내, 수도권 일부 추모공원과는 소개 제휴를 맺고 상담을 연결한다(제휴 관계는 사이트에 공개).
 
 ## 봉안당·납골당
 - [지역별 봉안당 찾기](https://stockmind.kr/bongan/)
 - [봉안당 가격 비교](https://stockmind.kr/bongan/price)
 - [예산으로 봉안당 추천](https://stockmind.kr/bongan/recommend)
 - [가까운 봉안당 찾기](https://stockmind.kr/bongan/near)
-- [수도권 추천 추모공원·무료 상담](https://stockmind.kr/partner/)
+- [수도권 제휴 추모공원 상담](https://stockmind.kr/partner/)
+- [제휴 관계·추천 기준 공개](https://stockmind.kr/info/partnership)
+- [데이터 출처·관리 정책](https://stockmind.kr/info/data-policy)
 
 ## 장례식장·화장장
 - [전국 장례식장·화장장](https://stockmind.kr/funeral/)

@@ -135,5 +135,13 @@
     "center_banner": true
   },
   "indexnow_key": "180c744c53e06f026230ea379ee28a70",
-  "bing_site_verification": ""
+  "bing_site_verification": "",
+  "coupang_enabled": false,
+  "operator": {
+    "_설명": "사이트 소개·제휴 관계 공개 페이지에 표시되는 운영자 정보. 비워 두면 표시하지 않습니다.",
+    "name": "",
+    "type": "개인 운영",
+    "business_no": "",
+    "since": "2026"
+  }
 }
