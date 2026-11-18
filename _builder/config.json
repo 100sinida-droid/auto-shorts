@@ -144,6 +144,9 @@
     "business_no": "",
     "since": "2026"
   },
-  "kakao_js_key": "",
-  "_kakao_js_key_설명": "카카오 developers의 JavaScript 키. 넣으면 공유 버튼이 카카오톡 공유 창으로 바로 열립니다(사이트 도메인을 카카오 앱 플랫폼 Web에 등록해야 함). 비워 두면 휴대폰 기본 공유 창을 씁니다."
+  "kakao_js_key": "d453822cb7cb33406a188d8890eb0bf3",
+  "_kakao_js_key_설명": "카카오 developers의 JavaScript 키. 넣으면 공유 버튼이 카카오톡 공유 창으로 바로 열립니다(사이트 도메인을 카카오 앱 플랫폼 Web에 등록해야 함). 비워 두면 휴대폰 기본 공유 창을 씁니다.",
+  "kakao_rest_key": "cdab16e154b37e68a32ae0e6d9d91b9d",
+  "kakao_native_key": "6557e09bdaa0521874b6a49f454abdf3",
+  "_kakao_키_설명": "kakao_rest_key: 주소→좌표 변환(geocode.py)에만 씀, 사이트 페이지에는 들어가지 않음. kakao_js_key: 지도·카카오톡 공유(웹페이지에 공개되는 키). kakao_native_key: 앱용, 지금은 쓰지 않음."
 }

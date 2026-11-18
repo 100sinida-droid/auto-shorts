@@ -1367,7 +1367,7 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
     var url = o.url || location.href, title = o.title || document.title.split("|")[0].trim(), text = o.text || title;
     if (window.__track) window.__track("share", title.slice(0, 60));
     try {
-      if (window.Kakao && window.Kakao.isInitialized && window.Kakao.isInitialized() && window.Kakao.Share) {
+      if (!navigator.share && window.Kakao && window.Kakao.isInitialized && window.Kakao.isInitialized() && window.Kakao.Share) {
         window.Kakao.Share.sendDefault({ objectType: "text", text: (o.text ? text : title).slice(0, 190), link: { mobileWebUrl: url, webUrl: url } });
         return;
       }
@@ -1383,4 +1383,140 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
     e.preventDefault();
     window.__share({ title: b.getAttribute("data-share") || "" });
   });
+})();
+
+/* 카카오 지도: 지도로 찾기 페이지 · 상세 페이지 작은 지도 */
+(function () {
+  var sdkP = null;
+  function loadSdk(key) {
+    if (sdkP) return sdkP;
+    sdkP = new Promise(function (ok, no) {
+      if (window.kakao && window.kakao.maps && window.kakao.maps.LatLng) return ok();
+      var s = document.createElement("script");
+      s.src = "https://dapi.kakao.com/v2/maps/sdk.js?appkey=" + encodeURIComponent(key) + "&autoload=false";
+      s.onload = function () { window.kakao.maps.load(ok); };
+      s.onerror = no;
+      document.head.appendChild(s);
+    });
+    return sdkP;
+  }
+  function esc(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function man(n) { if (!n) return ""; var m = n / 10000; return m >= 1 ? (m >= 100 ? Math.round(m).toLocaleString() : (Math.round(m * 10) / 10)) + "만" : Math.round(n).toLocaleString() + "원"; }
+  function hav(a, b, c, d) { var p = Math.PI / 180, x = Math.sin((c - a) * p / 2), y = Math.sin((d - b) * p / 2); return 12742 * Math.asin(Math.sqrt(x * x + Math.cos(a * p) * Math.cos(c * p) * y * y)); }
+  var CNAME = { b: "봉안시설", f: "장례식장", c: "화장장" };
+
+  // ---- 상세 페이지 작은 지도 ----
+  var minis = document.querySelectorAll(".mini-map");
+  if (minis.length) {
+    var io = new IntersectionObserver(function (ents) {
+      ents.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        var el = en.target;
+        loadSdk(el.dataset.key).then(function () {
+          var k = window.kakao.maps, pos = new k.LatLng(+el.dataset.la, +el.dataset.lo);
+          var m = new k.Map(el, { center: pos, level: 4 });
+          m.setZoomable(false);
+          new k.Marker({ position: pos, map: m });
+          new k.CustomOverlay({ position: pos, yAnchor: 2.4, content: '<div class="mk-name">' + esc(el.dataset.name) + "</div>", map: m });
+        }).catch(function () { el.innerHTML = '<p class="small muted" style="padding:12px">지도를 불러오지 못했습니다.</p>'; });
+      });
+    }, { rootMargin: "200px" });
+    Array.prototype.forEach.call(minis, function (el) { io.observe(el); });
+  }
+
+  // ---- 지도로 찾기 ----
+  var app = document.getElementById("map-app");
+  if (!app) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var st = { c: "", k: "", sort: "near", priced: false }, data = [], map = null, overlays = [], me = null;
+  var q = new URLSearchParams(location.search);
+  if (q.get("c")) st.c = q.get("c");
+  function btns(sel, key, attr) {
+    var bs = app.querySelectorAll(sel + " button");
+    Array.prototype.forEach.call(bs, function (b) {
+      if (b.getAttribute(attr) === st[key]) { Array.prototype.forEach.call(bs, function (x) { x.classList.remove("on"); }); b.classList.add("on"); }
+      b.onclick = function () { Array.prototype.forEach.call(bs, function (x) { x.classList.toggle("on", x === b); }); st[key] = b.getAttribute(attr); draw(); };
+    });
+  }
+  btns(".ma-tabs", "c", "data-c"); btns(".ma-kind", "k", "data-k"); btns(".ma-sort", "sort", "data-s");
+  $("ma-priced").onchange = function () { st.priced = this.checked; draw(); };
+  function pass(x) { return (!st.c || x.c === st.c) && (!st.k || x.k === st.k) && (!st.priced || x.p > 0); }
+  function clear() { overlays.forEach(function (o) { o.setMap(null); }); overlays = []; }
+  function draw() {
+    if (!map) return;
+    var k = window.kakao.maps, b = map.getBounds(), sw = b.getSouthWest(), ne = b.getNorthEast(), c = map.getCenter(), lv = map.getLevel();
+    var inb = data.filter(function (x) { return pass(x) && x.la >= sw.getLat() && x.la <= ne.getLat() && x.lo >= sw.getLng() && x.lo <= ne.getLng(); });
+    inb.forEach(function (x) { x.d = hav(c.getLat(), c.getLng(), x.la, x.lo); });
+    clear();
+    if (lv >= 10) {
+      // 멀리서 볼 때는 시군구별 개수로 묶어서
+      var g = {};
+      inb.forEach(function (x) { var key = x.s + " " + x.g; (g[key] = g[key] || { n: 0, la: 0, lo: 0, name: x.g }); g[key].n++; g[key].la += x.la; g[key].lo += x.lo; });
+      Object.keys(g).forEach(function (key) {
+        var v = g[key], pos = new k.LatLng(v.la / v.n, v.lo / v.n), el = document.createElement("button");
+        el.type = "button"; el.className = "mk-cl"; el.innerHTML = "<b>" + v.n + "</b><span>" + esc(v.name) + "</span>";
+        el.onclick = function () { map.setLevel(7, { anchor: pos }); };
+        overlays.push(new k.CustomOverlay({ position: pos, content: el, map: map, yAnchor: 0.5 }));
+      });
+    } else {
+      inb.slice().sort(function (a, b) { return (b.pt || 0) - (a.pt || 0) || (b.p ? 1 : 0) - (a.p ? 1 : 0); }).slice(0, 400).forEach(function (x) {
+        var el = document.createElement("a");
+        el.href = "../" + x.u; el.className = "mk mk-" + x.c + (x.pt ? " mk-pt" : "");
+        el.innerHTML = "<b>" + (x.c === "b" ? (x.k === "공설" ? "공설" : "봉안") : x.c === "f" ? "장례식장" : "화장장") + "</b>" + (x.p ? "<span>" + man(x.p) + "</span>" : "");
+        el.title = x.n;
+        x.el = el;
+        overlays.push(new k.CustomOverlay({ position: new k.LatLng(x.la, x.lo), content: el, map: map, yAnchor: 1.15, zIndex: x.pt ? 3 : 1 }));
+      });
+    }
+    var list = inb.slice();
+    if (st.sort === "low") list.sort(function (a, b) { return (a.p || 9e12) - (b.p || 9e12); });
+    else if (st.sort === "high") list.sort(function (a, b) { return (b.p || 0) - (a.p || 0); });
+    else list.sort(function (a, b) { return a.d - b.d; });
+    $("ma-count").textContent = "지도 화면 안에 " + inb.length.toLocaleString() + "곳" + (lv >= 10 ? " · 확대하면 가격이 보입니다" : "");
+    $("ma-list").innerHTML = list.slice(0, 80).map(function (x, i) {
+      return '<div class="ma-item" data-i="' + data.indexOf(x) + '"><div class="ma-it-top"><span class="ma-badge ma-' + x.c + '">' + CNAME[x.c] + "</span>" + (x.k ? '<span class="ma-k">' + esc(x.k) + "</span>" : "") + (x.pt ? '<span class="ma-k pt">제휴</span>' : "") +
+        '<span class="ma-d">' + (x.d < 1 ? "1km 안" : Math.round(x.d) + "km") + "</span></div>" +
+        '<a class="ma-name" href="../' + esc(x.u) + '">' + esc(x.n) + '</a><p class="ma-addr">' + esc(x.a) + "</p>" +
+        '<p class="ma-price">' + (x.p ? (x.c === "b" ? "개인단 " : x.c === "f" ? "빈소 하루 " : "관내 화장료 ") + "<strong>" + man(x.p) + (x.p >= 10000 ? " 원~" : "~") + "</strong>" : '<span class="muted">가격 문의</span>') +
+        (x.t ? ' · <a href="tel:' + esc(x.t.replace(/[^0-9]/g, "")) + '">전화</a>' : "") + "</p></div>";
+    }).join("") + (list.length > 80 ? '<p class="small muted ma-more">지도를 확대하면 더 자세히 볼 수 있습니다.</p>' : "") || '<p class="muted ma-more">이 화면에는 조건에 맞는 시설이 없습니다. 지도를 움직이거나 축소해 보세요.</p>';
+    try { var cc = map.getCenter(); history.replaceState(null, "", location.pathname + "?la=" + cc.getLat().toFixed(4) + "&lo=" + cc.getLng().toFixed(4) + "&lv=" + lv + (st.c ? "&c=" + st.c : "")); } catch (e) {}
+  }
+  $("ma-list").addEventListener("click", function (e) {
+    if (e.target.closest("a")) return;
+    var it = e.target.closest(".ma-item"); if (!it || !map) return;
+    var x = data[+it.dataset.i]; map.setLevel(Math.min(map.getLevel(), 5)); map.panTo(new window.kakao.maps.LatLng(x.la, x.lo));
+    if (window.innerWidth < 900) document.getElementById("ma-map").scrollIntoView({ behavior: "smooth" });
+  });
+  $("ma-search").onsubmit = function () {
+    var t = $("ma-q").value.trim(); if (!t || !map) return false;
+    var hit = data.filter(function (x) { return x.n.indexOf(t) >= 0; });
+    var area = hit.length ? [] : data.filter(function (x) { return (x.s + " " + x.g + " " + x.a).indexOf(t) >= 0; });
+    var k = window.kakao.maps, use = hit.length ? hit : area;
+    if (!use.length) { $("ma-count").textContent = "「" + t + "」을(를) 찾지 못했습니다. 시군구 이름이나 시설 이름으로 다시 찾아보세요."; return false; }
+    var b = new k.LatLngBounds(); use.slice(0, 200).forEach(function (x) { b.extend(new k.LatLng(x.la, x.lo)); });
+    map.setBounds(b); if (map.getLevel() < 5) map.setLevel(5);
+    return false;
+  };
+  $("ma-me").onclick = function () {
+    if (!navigator.geolocation || !map) return;
+    $("ma-count").textContent = "위치를 확인하는 중입니다…";
+    navigator.geolocation.getCurrentPosition(function (p) {
+      var k = window.kakao.maps, pos = new k.LatLng(p.coords.latitude, p.coords.longitude);
+      if (me) me.setMap(null);
+      me = new k.CustomOverlay({ position: pos, content: '<div class="mk-me"></div>', map: map, zIndex: 5 });
+      map.setLevel(7); map.setCenter(pos);
+    }, function () { $("ma-count").textContent = "위치 사용이 허락되지 않았습니다. 검색창에 지역 이름을 넣어 주세요."; }, { timeout: 10000 });
+  };
+  $("ma-toggle").onclick = function () { document.getElementById("ma-list").scrollIntoView({ behavior: "smooth" }); };
+  Promise.all([fetch("../assets/map.json").then(function (r) { return r.json(); }), loadSdk(app.dataset.key)]).then(function (res) {
+    data = res[0];
+    var k = window.kakao.maps, la = +q.get("la") || 37.5665, lo = +q.get("lo") || 126.978, lv = +q.get("lv") || 8;
+    map = new k.Map($("ma-map"), { center: new k.LatLng(la, lo), level: lv });
+    map.addControl(new k.ZoomControl(), k.ControlPosition.RIGHT);
+    var t = null;
+    k.event.addListener(map, "idle", function () { clearTimeout(t); t = setTimeout(draw, 120); });
+    draw();
+  }).catch(function () { $("ma-count").textContent = "지도를 불러오지 못했습니다. 잠시 뒤 다시 열어 주세요."; });
 })();

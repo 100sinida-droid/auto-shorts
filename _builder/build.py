@@ -1838,6 +1838,7 @@ def page_facility(out, f, same_sgg, same_sido):
   <section class="card"><h2>방문·계약 전 확인할 점</h2><ul class="tips">{tip_html}</ul>
     <p class="small"><a href="{r}guides/how-to-choose.html">봉안당 고르는 체크리스트</a> · <a href="{r}guides/contract-checklist.html">사설 봉안당 계약 전 주의사항</a> · <a href="{r}feature/cost.html">총비용 계산기</a></p></section>
   <section class="card"><h2>자주 묻는 질문</h2><div class="faq">{faq_html}</div></section>
+  {mini_map(geo_of(f["address"]), f["name"], r)}
   {fac_price_context(f, r)}
   {neard_html}
   {fun_html}
@@ -2970,7 +2971,7 @@ def page_funeral_detail(out, x, items):
             faq.append((f"{x['name']}에서 가까운 화장장은 어디인가요?", f"직선거리로 가장 가까운 곳은 {nc[0][1]['name']}(약 {max(1, round(nc[0][0]))}km)입니다. 화장 예약은 장례식장에서 e하늘 장사정보시스템으로 도와줍니다."))
     body = f"""<header class="page-head"><p class="eyebrow">{E(short)} {E(x["sigungu"])} · {kind_word}</p><h1>{E(x["name"])}</h1>
 <p class="lead">{E(lead)}</p>{notice}<div class="actions fn-acts">{acts}</div></header>
-{visit_html}{price_html}{cmp_html}{mb_detail}{info_html}{cre_html}{bong_html}{helper}{same_html}
+{visit_html}{price_html}{cmp_html}{mb_detail}{info_html}{mini_map(geo_of(x["address"]), x["name"], r)}{cre_html}{bong_html}{helper}{same_html}
 <p class="muted small">{FN_SRC_NOTE} 정보가 바뀌었으면 <a href="{r}pages/contact.html">알려 주세요</a>.</p>"""
     if is_cre:
         title = f"{x['name']} 화장 비용·예약·오시는 길 ({short} {x['sigungu']})"
@@ -3750,6 +3751,74 @@ def page_seollal(out, facs):
                                               crumbs=[("봉안당 찾기", "region/index.html"), ("2027 설 성묘 안내", None)], depth=depth))
 
 
+def map_items(facs):
+    rows = []
+    for f in facs:
+        g = geo_of(f["address"])
+        if not g or not g.get("exact"):
+            continue
+        rows.append({"n": f["name"], "c": "b", "k": f["kind"], "la": g["la"], "lo": g["lo"], "u": newpath(facility_url(f)), "a": f["address"], "t": f["tel"],
+                     "p": f.get("p_single") or f.get("price_min") or 0, "pt": 1 if f.get("partner") else 0, "g": f["sigungu"], "s": f["sido"]})
+    for x in FUNERAL:
+        if x["closed"]:
+            continue
+        g = geo_of(x["address"])
+        if not g or not g.get("exact"):
+            continue
+        cre = x["kind"] == "화장시설"
+        rows.append({"n": x["name"], "c": "c" if cre else "f", "k": x["pubpri"] or "", "la": g["la"], "lo": g["lo"], "u": newpath(funeral_url(x)), "a": x["address"], "t": x["tel"],
+                     "p": (x["cre_in"] or 0) if cre else (x["price"].get("빈소1일최저") or 0), "g": x["sigungu"], "s": x["sido"]})
+    return rows
+
+
+def page_map(out, facs):
+    depth = 1
+    r = rel(depth)
+    rows = map_items(facs)
+    (out / "assets").mkdir(parents=True, exist_ok=True)
+    (out / "assets" / "map.json").write_text(json.dumps(rows, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    nb = sum(1 for x in rows if x["c"] == "b")
+    nf = sum(1 for x in rows if x["c"] == "f")
+    nc = sum(1 for x in rows if x["c"] == "c")
+    key = CONFIG.get("kakao_js_key") or ""
+    body = f"""<div class="map-app" id="map-app" data-key="{E(key)}">
+<aside class="ma-side">
+  <div class="ma-head"><h1>지도로 찾기</h1><p class="small muted">봉안시설 {nb:,}곳 · 장례식장 {nf:,}곳 · 화장장 {nc}곳</p>
+    <form class="ma-search" id="ma-search" role="search" onsubmit="return false"><input id="ma-q" type="search" placeholder="지역·시설 이름 (예: 파주, 서울추모공원)" autocomplete="off"><button type="submit">찾기</button></form>
+    <div class="ma-tabs" role="group" aria-label="종류"><button type="button" class="on" data-c="">전체</button><button type="button" data-c="b">봉안시설</button><button type="button" data-c="f">장례식장</button><button type="button" data-c="c">화장장</button></div>
+    <div class="ma-opts"><div class="ma-kind" role="group" aria-label="공설·사설"><button type="button" class="on" data-k="">전체</button><button type="button" data-k="공설">공설</button><button type="button" data-k="사설">사설</button></div>
+      <label class="check"><input type="checkbox" id="ma-priced"> 가격 공개만</label></div>
+    <div class="ma-sort" role="group" aria-label="정렬"><button type="button" class="on" data-s="near">가까운 순</button><button type="button" data-s="low">낮은 가격순</button><button type="button" data-s="high">높은 가격순</button></div>
+  </div>
+  <p class="ma-count" id="ma-count" aria-live="polite">지도를 불러오는 중입니다…</p>
+  <div class="ma-list" id="ma-list"></div>
+</aside>
+<div class="ma-map-wrap"><div id="ma-map" class="ma-map" role="application" aria-label="봉안당·장례식장 지도"></div>
+  <button type="button" class="ma-me" id="ma-me" aria-label="내 위치로">{icon("map")}<span>내 위치</span></button>
+  <button type="button" class="ma-here" id="ma-here" hidden>이 지역 목록 보기</button>
+  <button type="button" class="ma-toggle" id="ma-toggle">목록 보기</button></div>
+</div>
+<section class="card"><h2>지도 이용 안내</h2><ul class="tips">
+<li>지도를 움직이거나 확대하면 왼쪽(휴대폰은 아래) 목록이 화면 안의 시설로 바뀝니다. 표시 위 숫자는 봉안시설은 개인단 가장 싼 자리, 장례식장은 가장 작은 빈소 하루 사용료, 화장장은 관내 화장료입니다.</li>
+<li>위치는 시설 주소를 카카오 지도 좌표로 바꾼 것이라 입구 위치와 조금 다를 수 있습니다. 찾아가실 때는 시설 상세 페이지의 길찾기를 이용하세요.</li>
+<li>가격은 한국장례문화진흥원 공개 가격(2023-06-01 기준)이며 지금과 다를 수 있습니다.</li></ul>
+<p class="small"><a href="{r}feature/near.html">가까운 봉안당 찾기 (목록)</a> · <a href="{r}funeral/mubinso.html">무빈소 장례식장 찾기</a> · <a href="{r}region/index.html">지역별 봉안당</a></p></section>"""
+    SEO_OVERRIDE["feature/map.html"] = {"title": "봉안당·납골당·장례식장 지도 · 내 주변 시설 가격 한눈에",
+                                        "desc": f"전국 봉안시설 {nb:,}곳, 장례식장 {nf:,}곳, 화장장 {nc}곳을 지도에서 가격과 함께 찾아보세요. 내 위치 주변, 공설·사설, 낮은 가격순으로 비교할 수 있습니다.",
+                                        "kw": ["봉안당 지도", "납골당 지도", "장례식장 지도", "내 주변 봉안당", "근처 납골당", "근처 장례식장", "봉안당 위치", "추모공원 지도"]}
+    write(out, "feature/map.html", layout("feature/map.html", "봉안당·장례식장 지도", "지도로 찾기", body,
+                                          crumbs=[("봉안당 찾기", "region/index.html"), ("지도로 찾기", None)], depth=depth))
+
+
+def mini_map(g, name, r):
+    """시설 상세 페이지의 작은 위치 지도 (화면에 보일 때 카카오 지도를 불러옴)"""
+    if not g or not g.get("exact") or not CONFIG.get("kakao_js_key"):
+        return ""
+    return (f'<section class="card"><h2>위치</h2><div class="mini-map" data-la="{g["la"]}" data-lo="{g["lo"]}" data-name="{E(name)}" data-key="{E(CONFIG["kakao_js_key"])}"></div>'
+            f'<p class="small"><a href="{r}feature/map.html?la={g["la"]}&lo={g["lo"]}">큰 지도에서 주변 시설 보기</a> · '
+            f'<a href="https://map.kakao.com/link/to/{urllib.parse.quote(name)},{g["la"]},{g["lo"]}" target="_blank" rel="noopener">카카오맵 길찾기</a></p></section>')
+
+
 AFTER_DEATH = [
     ("당일", "임종 직후", [
         ("ad-cert", "사망진단서(또는 시체검안서) 받기", "병원에서 발급합니다. 사망신고·보험·은행 등에 계속 쓰이니 5~10부를 넉넉히 받아 두세요.", "", ""),
@@ -3831,7 +3900,7 @@ def keyword_links():
              ("주차 되는 납골당", "feature/parking.html"), ("장례식장 비용", "funeral/index.html"), ("서울 장례식장", "funeral/seoul.html"),
              ("경기도 장례식장", "funeral/gyeonggi.html"), ("화장장 비용", "funeral/index.html#crematorium"), ("화장 예약 방법", "guides/ehaneul-guide.html"),
              ("장례 절차", "guides/procedure-after-cremation.html"), ("봉안당 고르는 법", "guides/how-to-choose.html"), ("수목장·자연장", "guides/natural-burial.html"),
-             ("봉안당이란", "guides/what-is-bongandang.html"), ("납골당 단별 가격", "guides/what-is-bongandang.html"), ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("부의금 봉투 쓰는 법", "tools/bueui.html"), ("기일 계산기", "tools/gijil.html"), ("제사 날짜 계산", "tools/gijil.html"), ("조문 위로 문자", "tools/condolence-msg.html"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html"), ("2027 설 성묘", "feature/seollal.html"), ("설 차례상", "guides/seollal-charye.html"), ("저렴한 장례 방법", "guides/cheap-funeral.html"), ("장례비 지원금", "guides/funeral-support.html"), ("무빈소 장례", "guides/small-funeral.html"), ("무빈소 장례식장 찾기", "funeral/mubinso.html"), ("무빈소 장례 문의", "guides/funeral-help-desk.html"), ("공영장례", "guides/funeral-help-desk.html"), ("상조회사 비교", "guides/sangjo-compare.html"), ("국내 상조회사 순위", "guides/sangjo-companies.html"), ("상조 해지 환급", "guides/sangjo-cancel.html")]
+             ("봉안당이란", "guides/what-is-bongandang.html"), ("납골당 단별 가격", "guides/what-is-bongandang.html"), ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("부의금 봉투 쓰는 법", "tools/bueui.html"), ("기일 계산기", "tools/gijil.html"), ("제사 날짜 계산", "tools/gijil.html"), ("조문 위로 문자", "tools/condolence-msg.html"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html"), ("2027 설 성묘", "feature/seollal.html"), ("봉안당 지도", "feature/map.html"), ("장례식장 지도", "feature/map.html"), ("설 차례상", "guides/seollal-charye.html"), ("저렴한 장례 방법", "guides/cheap-funeral.html"), ("장례비 지원금", "guides/funeral-support.html"), ("무빈소 장례", "guides/small-funeral.html"), ("무빈소 장례식장 찾기", "funeral/mubinso.html"), ("무빈소 장례 문의", "guides/funeral-help-desk.html"), ("공영장례", "guides/funeral-help-desk.html"), ("상조회사 비교", "guides/sangjo-compare.html"), ("국내 상조회사 순위", "guides/sangjo-companies.html"), ("상조 해지 환급", "guides/sangjo-cancel.html")]
     return ('<section class="block"><div class="block-head"><div><p class="eyebrow">KEYWORD</p><h2>많이 찾는 정보</h2></div></div><nav class="kw-links" aria-label="많이 찾는 정보">'
             + "".join(f'<a href="{u}">{E(t)}</a>' for t, u in links) + "</nav></section>")
 
@@ -3848,13 +3917,14 @@ def page_index(out, facs, groups):
   <p class="lh-eye">MEMORIAL GUIDE</p>
   <h1 class="lh-title">소중한 분을 모실 곳,<br>품격 있게 찾아 드립니다</h1>
   <p class="lh-lead">공공데이터로 전국 봉안당의 가격·위치·안치기간을 비교하고, 장례식장·화장장 비용과 장례 절차까지 한곳에서 확인하세요.</p>
-  <div class="lh-cta"><a class="lux-btn gold" href="region/index.html">{icon("search")}지역별 봉안당 찾기</a><a class="lux-btn line" href="funeral/index.html">장례식장·화장장 찾기</a></div>
+  <div class="lh-cta"><a class="lux-btn gold" href="region/index.html">{icon("search")}지역별 봉안당 찾기</a><a class="lux-btn line" href="feature/map.html">{icon("map")}지도로 찾기</a><a class="lux-btn line" href="funeral/index.html">장례식장·화장장 찾기</a></div>
   <form class="lh-search" action="pages/search.html" method="get" role="search"><label class="sr-only" for="q">지역이나 시설 이름</label>
     {icon("search")}<input id="q" name="q" type="search" placeholder="지역이나 시설 이름으로 찾기 (예: 파주, 추모공원)" autocomplete="off"><button type="submit">찾기</button></form>
 </div>
 <div class="wrap lh-stats"><div><strong>{st['n']:,}</strong><span>전국 봉안시설</span></div><div><strong>{nf:,}</strong><span>장례식장</span></div><div><strong>{nc}</strong><span>화장시설</span></div><div><strong>{n_price:,}</strong><span>가격 공개 봉안당</span></div></div>
 </section>"""
-    services = [("bongan", "region/index.html", "봉안당 찾기", f"전국 {st['n']:,}곳을 지역·공설/사설·편의시설로"),
+    services = [("map", "feature/map.html", "지도로 찾기", "내 주변 봉안당·장례식장을 가격과 함께 지도에서"),
+                ("bongan", "region/index.html", "봉안당 찾기", f"전국 {st['n']:,}곳을 지역·공설/사설·편의시설로"),
                 ("funeral", "funeral/index.html", "장례식장 · 화장장", f"장례식장 {nf:,}곳과 화장시설 {nc}곳의 비용·연락처"),
                 ("won", "feature/price.html", "가격 비교", f"가격이 공개된 {n_price:,}곳을 종류·지역별로"),
                 ("recommend", "pages/recommend.html", "예산으로 추천", "예산과 지역을 넣으면 맞는 곳을 골라 드립니다")]
@@ -3932,7 +4002,24 @@ SGG_FILE = ROOT / "data" / "sgg_centroids.json"
 SGG = json.loads(SGG_FILE.read_text(encoding="utf-8"))["items"] if SGG_FILE.exists() else []
 
 
+GEOCODE_FILE = ROOT / "data" / "geocode.json"
+EXACT_GEO = {}
+if GEOCODE_FILE.exists():
+    for _k, _v in json.loads(GEOCODE_FILE.read_text(encoding="utf-8")).items():
+        if _v and not _v.get("miss"):
+            EXACT_GEO[_k.split("|", 1)[1]] = _v
+
+
 def geo_of(address):
+    g = _geo_sgg(address)
+    ex = EXACT_GEO.get(address or "")
+    if ex:
+        g = dict(g or {})
+        g["la"], g["lo"], g["exact"] = ex["la"], ex["lo"], 1
+    return g
+
+
+def _geo_sgg(address):
     toks = (address or "").replace(",", " ").split()
     if len(toks) < 2:
         return None
@@ -4796,6 +4883,7 @@ def build_site(facs):
     page_cost(out, facs)
     page_holiday(out, facs, groups)
     page_seollal(out, facs)
+    page_map(out, facs)
     for p in PARTNERS:
         page_partner(out, p)
     page_partner_index(out)
