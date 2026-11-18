@@ -158,7 +158,7 @@ async function ensure(db) {
   for (const col of ["title", "sub", "from_path", "cid", "sid", "os", "br", "region", "src_detail"]) {
     try { await db.prepare(`ALTER TABLE hits ADD COLUMN ${col} TEXT DEFAULT ''`).run(); } catch (e) { /* 이미 있음 */ }
   }
-  for (const col of ["sq", "nv", "vno", "sw"]) {
+  for (const col of ["sq", "nv", "vno", "sw", "bot"]) {
     try { await db.prepare(`ALTER TABLE hits ADD COLUMN ${col} INTEGER DEFAULT 0`).run(); } catch (e) { /* 이미 있음 */ }
   }
   for (const col of ["cid", "sid"]) {
@@ -205,6 +205,9 @@ async function recordHit(request, env) {
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(now, day, vid, normPath(page.pathname).slice(0, 200), entry,
     d.h ? "internal" : c.type, d.h ? "사이트 안 이동" : c.name.slice(0, 80), c.refHost.slice(0, 120), d.h ? "" : c.keyword, c.campaign.slice(0, 120), device, d.h ? "" : siteQ, title, sub, d.h ? "" : fromPath,
     cid, sid, Math.max(0, Math.min(9999, parseInt(d.q, 10) || 0)), nv, vno, Math.max(0, Math.min(9999, parseInt(d.w, 10) || 0)), U.os, U.br, region).run();
+  if ((U.os === "기타" && U.br === "기타") || /baidu\./.test(c.refHost)) {
+    await env.DB.prepare("UPDATE hits SET bot=1 WHERE id=last_insert_rowid()").run().catch(() => {});
+  }
   return new Response(null, { status: 204 });
 }
 
@@ -397,51 +400,67 @@ async function statsPage(request, env) {
   const from = kstDay(now - (days - 1) * 86400e3);
   const prevFrom = kstDay(now - (2 * days - 1) * 86400e3);
   await ensure(env.DB);
+  // 봇 추정 방문 표시 (기본은 통계에서 뺌, ?bots=1 이면 포함)
+  const showBots = url.searchParams.get("bots") === "1";
+  const BF = showBots ? "" : "bot=0 AND ";
+  const noAct = "NOT EXISTS (SELECT 1 FROM events e WHERE e.day=hits.day AND e.vid=hits.vid AND e.ev IN ('stay','tel','map','lead','copy','print','sms','home','ext'))";
+  try {
+    await env.DB.batch([
+      // 1) 브라우저·기기를 알 수 없는 방문, 바이두 출처 방문
+      env.DB.prepare(`UPDATE hits SET bot=1 WHERE day>=? AND bot=0 AND ((os='기타' AND br='기타') OR ref_host LIKE '%baidu.%')`).bind(from),
+      // 2) 해외 접속인데 30분이 지나도 머문 기록·행동이 전혀 없는 방문
+      env.DB.prepare(`UPDATE hits SET bot=1 WHERE day>=? AND bot=0 AND region LIKE '해외%' AND ts<? AND ${noAct}`).bind(from, now - 1800e3),
+      // 3) 2분 안에 3번 이상 새로 들어왔는데(서로 다른 페이지로 바로 진입) 머문 기록이 없는 방문
+      env.DB.prepare(`UPDATE hits SET bot=1 WHERE day>=? AND bot=0 AND ts<? AND (day || vid) IN (SELECT day || vid FROM hits WHERE day>=? AND entry=1 GROUP BY day, vid HAVING COUNT(*)>=3 AND MAX(ts)-MIN(ts)<120000) AND ${noAct}`).bind(from, now - 1800e3, from),
+    ]);
+  } catch (e) { /* 표시 실패해도 통계는 보여 줌 */ }
+  const [botN] = await env.DB.prepare(`SELECT COUNT(*) n, SUM(entry) e, COUNT(DISTINCT vid) u FROM hits WHERE bot=1 AND day>=?`).bind(from).all().then(r => r.results || [{}]).catch(() => [{}]);
+  const botSrc = await env.DB.prepare(`SELECT CASE WHEN ref_host LIKE '%baidu.%' THEN '바이두 출처' WHEN os='기타' AND br='기타' THEN '브라우저 정보 없음' WHEN region LIKE '해외%' THEN '해외 접속·행동 없음' ELSE '짧은 시간 연속 진입' END l, COUNT(*) n FROM hits WHERE bot=1 AND day>=? AND entry=1 GROUP BY l ORDER BY n DESC`).bind(from).all().then(r => r.results || []).catch(() => []);
   const q = (sql, ...b) => env.DB.prepare(sql).bind(from, ...b).all().then(r => r.results || []);
-  const [tot] = await q(`SELECT COUNT(*) pv, COUNT(DISTINCT vid) uv, SUM(entry) visits FROM hits WHERE day>=?`);
-  const [prev] = await env.DB.prepare(`SELECT COUNT(DISTINCT vid) uv FROM hits WHERE day>=? AND day<?`).bind(prevFrom, from).all().then(r => r.results || [{}]);
-  const [today] = await env.DB.prepare(`SELECT COUNT(DISTINCT vid) uv FROM hits WHERE day=?`).bind(kstDay(now)).all().then(r => r.results || [{}]);
-  const daily = await q(`SELECT day, COUNT(DISTINCT vid) uv, COUNT(*) pv FROM hits WHERE day>=? GROUP BY day ORDER BY day`);
-  const types = await q(`SELECT src_type t, COUNT(*) n FROM hits WHERE day>=? AND entry=1 GROUP BY src_type ORDER BY n DESC`);
-  const sources = await q(`SELECT src_type t, src_name s, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND entry=1 GROUP BY src_type, src_name ORDER BY n DESC LIMIT 30`);
-  const kws = await q(`SELECT keyword k, src_name s, COUNT(*) n, COUNT(DISTINCT vid) u, MAX(path) p FROM hits WHERE day>=? AND keyword<>'' GROUP BY keyword, src_name ORDER BY n DESC LIMIT 40`);
-  const camps = await q(`SELECT src_name s, campaign c, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND src_type='campaign' AND entry=1 GROUP BY src_name, campaign ORDER BY n DESC LIMIT 20`);
-  const pageRaw = await q(`SELECT path p, vid, MAX(title) t, COUNT(*) n, SUM(entry) e FROM hits WHERE day>=? GROUP BY path, vid`);
+  const [tot] = await q(`SELECT COUNT(*) pv, COUNT(DISTINCT vid) uv, SUM(entry) visits FROM hits WHERE ${BF}day>=?`);
+  const [prev] = await env.DB.prepare(`SELECT COUNT(DISTINCT vid) uv FROM hits WHERE ${BF}day>=? AND day<?`).bind(prevFrom, from).all().then(r => r.results || [{}]);
+  const [today] = await env.DB.prepare(`SELECT COUNT(DISTINCT vid) uv FROM hits WHERE ${BF}day=?`).bind(kstDay(now)).all().then(r => r.results || [{}]);
+  const daily = await q(`SELECT day, COUNT(DISTINCT vid) uv, COUNT(*) pv FROM hits WHERE ${BF}day>=? GROUP BY day ORDER BY day`);
+  const types = await q(`SELECT src_type t, COUNT(*) n FROM hits WHERE ${BF}day>=? AND entry=1 GROUP BY src_type ORDER BY n DESC`);
+  const sources = await q(`SELECT src_type t, src_name s, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE ${BF}day>=? AND entry=1 GROUP BY src_type, src_name ORDER BY n DESC LIMIT 30`);
+  const kws = await q(`SELECT keyword k, src_name s, COUNT(*) n, COUNT(DISTINCT vid) u, MAX(path) p FROM hits WHERE ${BF}day>=? AND keyword<>'' GROUP BY keyword, src_name ORDER BY n DESC LIMIT 40`);
+  const camps = await q(`SELECT src_name s, campaign c, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE ${BF}day>=? AND src_type='campaign' AND entry=1 GROUP BY src_name, campaign ORDER BY n DESC LIMIT 20`);
+  const pageRaw = await q(`SELECT path p, vid, MAX(title) t, COUNT(*) n, SUM(entry) e FROM hits WHERE ${BF}day>=? GROUP BY path, vid`);
   const pageAgg = {};
   for (const r of pageRaw) {
     const k = normPath(r.p), a = (pageAgg[k] = pageAgg[k] || { p: k, t: "", n: 0, e: 0, v: new Set() });
     a.n += r.n; a.e += r.e || 0; a.v.add(r.vid); if (r.t && !a.t) a.t = r.t;
   }
   const pages = Object.values(pageAgg).map(a => ({ p: a.p, t: a.t, n: a.n, e: a.e, u: a.v.size })).sort((x, y) => y.u - x.u || y.n - x.n).slice(0, 60);
-  const subs = await q(`SELECT sub s, path p, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND sub<>'' GROUP BY sub, path ORDER BY u DESC LIMIT 20`);
-  const visitPaths = await q(`SELECT vid, path FROM hits WHERE day>=? GROUP BY vid, path`);
-  const siteq = await q(`SELECT site_q k, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND site_q<>'' GROUP BY site_q ORDER BY n DESC LIMIT 30`);
-  const devices = await q(`SELECT device d, COUNT(DISTINCT vid) n FROM hits WHERE day>=? GROUP BY device ORDER BY n DESC`);
-  const recent = await q(`SELECT ts, path, title, src_type, src_name, keyword, campaign, device FROM hits WHERE day>=? AND entry=1 ORDER BY ts DESC LIMIT 30`);
+  const subs = await q(`SELECT sub s, path p, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE ${BF}day>=? AND sub<>'' GROUP BY sub, path ORDER BY u DESC LIMIT 20`);
+  const visitPaths = await q(`SELECT vid, path FROM hits WHERE ${BF}day>=? GROUP BY vid, path`);
+  const siteq = await q(`SELECT site_q k, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE ${BF}day>=? AND site_q<>'' GROUP BY site_q ORDER BY n DESC LIMIT 30`);
+  const devices = await q(`SELECT device d, COUNT(DISTINCT vid) n FROM hits WHERE ${BF}day>=? GROUP BY device ORDER BY n DESC`);
+  const recent = await q(`SELECT ts, path, title, src_type, src_name, keyword, campaign, device FROM hits WHERE ${BF}day>=? AND entry=1 ORDER BY ts DESC LIMIT 30`);
   // ---- 구글 애널리틱스식 지표 ----
-  const sessRaw = await q(`SELECT day, vid, COUNT(*) n FROM hits WHERE day>=? GROUP BY day, vid`);
-  const landRaw = await q(`SELECT day, vid, path, src_type, src_name, MIN(ts) ts FROM hits WHERE day>=? AND entry=1 GROUP BY day, vid`);
-  const hours = await q(`SELECT CAST(((ts/1000 + 32400) % 86400) / 3600 AS INTEGER) h, COUNT(DISTINCT day || vid) n FROM hits WHERE day>=? GROUP BY h`);
-  const wdays = await q(`SELECT CAST(strftime('%w', day) AS INTEGER) w, COUNT(DISTINCT day || vid) n FROM hits WHERE day>=? GROUP BY w`);
-  const flowsRaw = await q(`SELECT from_path f, path p, COUNT(*) n FROM hits WHERE day>=? AND from_path<>'' GROUP BY from_path, path ORDER BY n DESC LIMIT 60`);
+  const sessRaw = await q(`SELECT day, vid, COUNT(*) n FROM hits WHERE ${BF}day>=? GROUP BY day, vid`);
+  const landRaw = await q(`SELECT day, vid, path, src_type, src_name, MIN(ts) ts FROM hits WHERE ${BF}day>=? AND entry=1 GROUP BY day, vid`);
+  const hours = await q(`SELECT CAST(((ts/1000 + 32400) % 86400) / 3600 AS INTEGER) h, COUNT(DISTINCT day || vid) n FROM hits WHERE ${BF}day>=? GROUP BY h`);
+  const wdays = await q(`SELECT CAST(strftime('%w', day) AS INTEGER) w, COUNT(DISTINCT day || vid) n FROM hits WHERE ${BF}day>=? GROUP BY w`);
+  const flowsRaw = await q(`SELECT from_path f, path p, COUNT(*) n FROM hits WHERE ${BF}day>=? AND from_path<>'' GROUP BY from_path, path ORDER BY n DESC LIMIT 60`);
   const evs = await q(`SELECT ev, label, path, COUNT(*) n, COUNT(DISTINCT vid) u FROM events WHERE day>=? AND ev<>'stay' GROUP BY ev, label ORDER BY n DESC LIMIT 40`).catch(() => []);
   // 누가 들어오나: 신규·재방문, 기기 종류, 브라우저·앱, 지역 (이번 업데이트 뒤 기록부터)
-  const whoNew = await q(`SELECT SUM(CASE WHEN nv=1 THEN 1 ELSE 0 END) nw, SUM(CASE WHEN nv=0 AND vno>1 THEN 1 ELSE 0 END) rt, COUNT(*) n FROM hits WHERE day>=? AND entry=1 AND cid<>''`).catch(() => [{}]);
-  const vnoDist = await q(`SELECT CASE WHEN vno<=1 THEN '처음' WHEN vno=2 THEN '2번째' WHEN vno<=4 THEN '3~4번째' ELSE '5번 이상' END l, COUNT(*) n FROM hits WHERE day>=? AND entry=1 AND cid<>'' GROUP BY l ORDER BY MIN(vno)`).catch(() => []);
-  const oses = await q(`SELECT os l, COUNT(DISTINCT vid) n FROM hits WHERE day>=? AND os<>'' GROUP BY os ORDER BY n DESC`).catch(() => []);
-  const brs = await q(`SELECT br l, COUNT(DISTINCT vid) n FROM hits WHERE day>=? AND br<>'' GROUP BY br ORDER BY n DESC LIMIT 12`).catch(() => []);
-  const regs = await q(`SELECT region l, COUNT(DISTINCT vid) n FROM hits WHERE day>=? AND region<>'' GROUP BY region ORDER BY n DESC LIMIT 18`).catch(() => []);
-  const directs = await q(`SELECT src_name s, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE day>=? AND entry=1 AND src_type='direct' GROUP BY src_name ORDER BY n DESC`).catch(() => []);
-  const ais = await q(`SELECT src_name s, COUNT(*) n, COUNT(DISTINCT vid) u, MAX(path) p FROM hits WHERE day>=? AND entry=1 AND src_type='ai' GROUP BY src_name ORDER BY n DESC`).catch(() => []);
+  const whoNew = await q(`SELECT SUM(CASE WHEN nv=1 THEN 1 ELSE 0 END) nw, SUM(CASE WHEN nv=0 AND vno>1 THEN 1 ELSE 0 END) rt, COUNT(*) n FROM hits WHERE ${BF}day>=? AND entry=1 AND cid<>''`).catch(() => [{}]);
+  const vnoDist = await q(`SELECT CASE WHEN vno<=1 THEN '처음' WHEN vno=2 THEN '2번째' WHEN vno<=4 THEN '3~4번째' ELSE '5번 이상' END l, COUNT(*) n FROM hits WHERE ${BF}day>=? AND entry=1 AND cid<>'' GROUP BY l ORDER BY MIN(vno)`).catch(() => []);
+  const oses = await q(`SELECT os l, COUNT(DISTINCT vid) n FROM hits WHERE ${BF}day>=? AND os<>'' GROUP BY os ORDER BY n DESC`).catch(() => []);
+  const brs = await q(`SELECT br l, COUNT(DISTINCT vid) n FROM hits WHERE ${BF}day>=? AND br<>'' GROUP BY br ORDER BY n DESC LIMIT 12`).catch(() => []);
+  const regs = await q(`SELECT region l, COUNT(DISTINCT vid) n FROM hits WHERE ${BF}day>=? AND region<>'' GROUP BY region ORDER BY n DESC LIMIT 18`).catch(() => []);
+  const directs = await q(`SELECT src_name s, COUNT(*) n, COUNT(DISTINCT vid) u FROM hits WHERE ${BF}day>=? AND entry=1 AND src_type='direct' GROUP BY src_name ORDER BY n DESC`).catch(() => []);
+  const ais = await q(`SELECT src_name s, COUNT(*) n, COUNT(DISTINCT vid) u, MAX(path) p FROM hits WHERE ${BF}day>=? AND entry=1 AND src_type='ai' GROUP BY src_name ORDER BY n DESC`).catch(() => []);
   const stayRaw = await q(`SELECT path p, COUNT(*) n, AVG(CAST(substr(label,1,instr(label,'|')-1) AS INTEGER)) sec, AVG(CAST(substr(label,instr(label,'|')+1) AS INTEGER)) sc FROM events WHERE day>=? AND ev='stay' GROUP BY path`).catch(() => []);
   const stayBy = Object.fromEntries(stayRaw.map(r => [r.p, r]));
   // 방문자 여정: 최근 들어온 사람마다 본 페이지 순서·머문 시간·행동
   const jn = Math.min(200, Math.max(10, parseInt(url.searchParams.get("n") || "30", 10) || 30));
-  const jEntries = await q(`SELECT ts, day, vid, path, title, src_type, src_name, keyword, campaign, ref_host, device, os, br, region, nv, vno FROM hits WHERE day>=? AND entry=1 ORDER BY ts DESC LIMIT ${jn}`).catch(() => []);
+  const jEntries = await q(`SELECT ts, day, vid, path, title, src_type, src_name, keyword, campaign, ref_host, device, os, br, region, nv, vno FROM hits WHERE ${BF}day>=? AND entry=1 ORDER BY ts DESC LIMIT ${jn}`).catch(() => []);
   let jHits = [], jEvs = [];
   if (jEntries.length) {
     const vids = [...new Set(jEntries.map(r => r.vid))], ph = vids.map(() => "?").join(",");
-    jHits = await env.DB.prepare(`SELECT ts, day, vid, path, title, sub FROM hits WHERE day>=? AND vid IN (${ph}) ORDER BY ts`).bind(from, ...vids).all().then(r => r.results || []).catch(() => []);
+    jHits = await env.DB.prepare(`SELECT ts, day, vid, path, title, sub FROM hits WHERE ${BF}day>=? AND vid IN (${ph}) ORDER BY ts`).bind(from, ...vids).all().then(r => r.results || []).catch(() => []);
     jEvs = await env.DB.prepare(`SELECT ts, day, vid, ev, label, path FROM events WHERE day>=? AND vid IN (${ph}) ORDER BY ts`).bind(from, ...vids).all().then(r => r.results || []).catch(() => []);
   }
   const sessN = {};
@@ -567,6 +586,8 @@ ${L.recent.length ? `<p class="small muted" style="margin-top:12px">최근 신�
   const body = `<h1>방문 통계</h1><p class="muted small">한국 시간 기준 · ${from} ~ ${kstDay(now)} · 검색엔진 로봇은 빼고 셉니다. 같은 사람은 하루에 한 명으로 셉니다.</p>
 <nav class="tabs">${tabs}<a href="/stats/check">배포 점검</a><a href="/stats/leads" style="margin-left:auto;background:#b08a3e;border-color:#b08a3e;color:#fff">상담 신청 관리${L.open ? " (신규 " + L.open + ")" : ""}</a></nav>
 <div class="owner" id="owner"></div>
+${(botN && botN.n) || showBots ? `<div class="owner botbox">${showBots ? `지금은 <b>봇 추정 방문까지 포함</b>해서 보여 드립니다. <a href="/stats?d=${days}">봇 빼고 보기</a>` : `<b>봇 추정 방문 ${num(botN.e || 0)}회(페이지 ${num(botN.n)}건)</b>을 통계에서 뺐습니다${botSrc.length ? ": " + botSrc.map(b => `${esc(b.l)} ${num(b.n)}회`).join(" · ") : ""}. <a href="/stats?d=${days}&bots=1">포함해서 보기</a>`}
+<span class="small muted" style="display:block;margin-top:4px">기준: 브라우저·기기 정보가 없는 방문, 바이두 출처 방문, 해외 접속인데 머문 기록·클릭이 없는 방문, 2분 안에 서로 다른 페이지로 3번 이상 바로 들어왔는데 머문 기록이 없는 방문. 사람이 확실히 머문 방문은 빼지 않습니다.</span></div>` : ""}
 ${leadCard}
 <section class="kpi"><div><span>오늘 방문자</span><strong>${num(today.uv)}명</strong></div><div><span>기간 방문자</span><strong>${num(uv)}명</strong>${prev.uv ? `<em>앞 기간 ${num(prev.uv)}명</em>` : ""}</div>
 <div><span>방문 횟수</span><strong>${num(tot.visits)}회</strong></div><div><span>바로 나간 비율 (이탈률)</span><strong>${bounceRate}%</strong><em>한 페이지만 보고 나감</em></div><div><span>전화 걸기 클릭</span><strong>${num(telClicks)}회</strong><em>지도 보기 ${num(evTotal.map || 0)}회</em></div><div><span>본 페이지 수</span><strong>${num(tot.pv)}회</strong><em>1회 방문당 ${perVisit.toFixed(1)}페이지</em></div></section>

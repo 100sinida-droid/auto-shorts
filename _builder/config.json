@@ -143,5 +143,7 @@
     "type": "개인 운영",
     "business_no": "",
     "since": "2026"
-  }
+  },
+  "kakao_js_key": "",
+  "_kakao_js_key_설명": "카카오 developers의 JavaScript 키. 넣으면 공유 버튼이 카카오톡 공유 창으로 바로 열립니다(사이트 도메인을 카카오 앱 플랫폼 Web에 등록해야 함). 비워 두면 휴대폰 기본 공유 창을 씁니다."
 }

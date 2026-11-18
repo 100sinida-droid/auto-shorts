@@ -1151,7 +1151,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
     if jsonld:
         ld.extend(jsonld if isinstance(jsonld, list) else [jsonld])
     ld_html = "".join(f'<script type="application/ld+json">{json.dumps(x, ensure_ascii=False)}</script>' for x in ld)
-    robots = '<meta name="robots" content="noindex">' if noindex else '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">'
+    robots = '<meta name="robots" content="noindex, follow">' if noindex else '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">'
     sec = section_of(path)
     on = ' aria-current="page"'
     nav_html = "".join(f'<a class="nav-{k}{" on" if k == sec else ""}" href="{r}{u}"{on if k == sec else ""}>{icon(SECTIONS[k][0])}<span>{E(lbl)}</span></a>'
@@ -1240,7 +1240,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
   <div class="wrap f-bottom"><span>© {TODAY[:4]} {E(SITE)}</span><span>데이터 갱신일 {TODAY}</span><span>{art.MAP_CREDIT}</span></div>
 </footer>
 {quick_fab(r, path)}
-<script src="{r}static/site.js?v={ASSET_VER}" defer></script>
+<script src="{r}static/site.js?v={ASSET_VER}" defer></script>{(f'<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous" defer></script><script>window.addEventListener("load",function(){{try{{if(window.Kakao&&!Kakao.isInitialized())Kakao.init("{E(CONFIG.get("kakao_js_key"))}")}}catch(e){{}}}})</script>') if CONFIG.get("kakao_js_key") else ""}
 </body>
 </html>
 """
@@ -1341,6 +1341,31 @@ def seo_url(p):
     return p
 
 
+NOINDEX_WRITTEN = []   # 검색 제외(noindex)로 만든 페이지: 사이트맵에서도 뺀다
+
+
+def fac_info_score(f):
+    """시설 페이지에 담긴 정보의 양. 1 이하이면 검색 제외(정보가 거의 없는 페이지)"""
+    s = 0
+    if f.get("price_min"):
+        s += 2
+    if f["first_period"] is not None:
+        s += 1
+    if f.get("tel"):
+        s += 1
+    if any(f.get(k) is True for k, _ in AMENITIES):
+        s += 1
+    if f.get("cap"):
+        s += 1
+    if f["name"] in VISIT_HOURS or f["name"] in FAC_EXTRA:
+        s += 2
+    if f.get("homepage"):
+        s += 1
+    if f.get("partner"):
+        s += 3
+    return s
+
+
 def write(out_dir, path, content):
     if path.endswith(".html"):
         content = relink_html(email_off(content), path)
@@ -1348,8 +1373,10 @@ def write(out_dir, path, content):
     p = out_dir / path
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")
-    if path.endswith(".html") and path != "404.html":
+    if path.endswith(".html") and path != "404.html" and '<meta name="robots" content="noindex' not in content[:6000]:
         PAGES_WRITTEN.append(path)
+    elif path.endswith(".html"):
+        NOINDEX_WRITTEN.append(path)
 
 
 def fmt_years(n):
@@ -1471,7 +1498,7 @@ GUIDE_ART = {"what-is-bongandang": "price", "procedure-after-cremation": "funera
              "public-vs-private": "bongan", "how-to-choose": "search", "enshrinement-period": "guide", "natural-burial": "home",
              "bongandang-vs-napgoldang": "home", "pre-planning": "recommend", "reburial": "home", "visiting-etiquette": "guide",
              "accessibility-visit": "info", "condolence-etiquette": "funeral", "jesa-order": "guide", "death-report": "info",
-             "inheritance-renounce": "info", "funeral-support": "price", "sangjo-cancel": "price", "small-funeral": "funeral", "sea-burial": "home", "pamyo": "home", "cheap-funeral": "price", "sangjo-compare": "recommend", "sangjo-companies": "ranking", "funeral-help-desk": "info"}
+             "inheritance-renounce": "info", "funeral-support": "price", "sangjo-cancel": "price", "small-funeral": "funeral", "sea-burial": "home", "pamyo": "home", "cheap-funeral": "price", "sangjo-compare": "recommend", "sangjo-companies": "ranking", "funeral-help-desk": "info", "seollal-charye": "guide"}
 
 
 def guide_links(depth, slugs=None, title="함께 읽으면 좋은 가이드"):
@@ -1811,6 +1838,7 @@ def page_facility(out, f, same_sgg, same_sido):
   <section class="card"><h2>방문·계약 전 확인할 점</h2><ul class="tips">{tip_html}</ul>
     <p class="small"><a href="{r}guides/how-to-choose.html">봉안당 고르는 체크리스트</a> · <a href="{r}guides/contract-checklist.html">사설 봉안당 계약 전 주의사항</a> · <a href="{r}feature/cost.html">총비용 계산기</a></p></section>
   <section class="card"><h2>자주 묻는 질문</h2><div class="faq">{faq_html}</div></section>
+  {fac_price_context(f, r)}
   {neard_html}
   {fun_html}
   {near_html}
@@ -1847,7 +1875,29 @@ def page_facility(out, f, same_sgg, same_sido):
                                             f"{sg} 봉안당", f"{sg} 납골당", f"{SIDO_SHORT.get(f['sido'], f['sido'])} 납골당"]}
     write(out, facility_url(f), layout(facility_url(f), f"{f['name']} 참배시간·가격·위치·주차 ({SIDO_SHORT.get(f['sido'], f['sido'])} {f['sigungu']})", desc, body,
                                        crumbs=[(f["sido"], region_url(f["sido"])), (f["sigungu"], region_url(f["sido"], f["sigungu"])), (f["name"], None)],
-                                       jsonld=[place_ld, faq_ld], depth=depth))
+                                       jsonld=[place_ld, faq_ld], depth=depth, noindex=fac_info_score(f) <= 1))
+
+
+def fac_price_context(f, r):
+    """가격을 공개하지 않은 시설: 같은 시군구·시도의 공개 가격으로 예상 범위를 보여 준다"""
+    if f.get("price_min"):
+        return ""
+    allv = ALL_BY_SIDO.get(f["sido"]) or []
+    same_kind = [x for x in allv if x["kind"] == f["kind"] and x.get("p_single")]
+    sgg = sorted([x for x in allv if x["sigungu"] == f["sigungu"] and x.get("p_single") and x["id"] != f["id"]], key=lambda x: x["p_single"])[:5]
+    if not same_kind and not sgg:
+        return ""
+    short = SIDO_SHORT.get(f["sido"], f["sido"])
+    vals = sorted(x["p_single"] for x in same_kind)
+    txt = ""
+    if len(vals) >= 3:
+        q1, q3 = vals[len(vals) // 4], vals[(len(vals) * 3) // 4]
+        txt = (f"{E(f['name'])}{josa(f['name'], '은', '는')} 가격을 공개하지 않았습니다. 참고로 {E(short)}의 {E(f['kind'])} 봉안시설 {len(vals)}곳이 공개한 개인단 가장 싼 자리는 "
+               f"중간값 {fmt_won(_rmed(vals))}이고, 절반 정도가 {fmt_won(q1)}~{fmt_won(q3)} 사이입니다. 전화로 문의할 때 이 범위와 비교해 보세요.")
+    li = "".join(f'<li><a href="{r}{facility_url(x)}">{E(x["name"])}</a> <span class="small muted">개인단 {fmt_won(x["p_single"])}부터 · {E(x["kind"])}</span></li>' for x in sgg)
+    return (f'<section class="card"><h2>이 지역 봉안당 가격은 어느 정도일까</h2>' + (f"<p>{txt}</p>" if txt else "")
+            + (f'<h3>{E(f["sigungu"])}에서 가격을 공개한 곳</h3><ul class="link-list">{li}</ul>' if li else "")
+            + '<p class="small muted">한국장례문화진흥원 봉안시설 가격정보(2023-06-01) 기준이며, 지금 분양가와 다를 수 있습니다.</p></section>')
 
 
 def sgg_short(sgg):
@@ -2880,19 +2930,57 @@ def page_funeral_detail(out, x, items):
         mb_detail = (f'<section class="card"><h2>무빈소 장례로 하면</h2><p>{st}</p>'
                      + (f'<p>공개 가격 기준 기본 품목 합계 <strong>{fmt_won(_mb)}</strong> <span class="small muted">(안치료 {MB_DAYS}일 + 염습 + 가장 싼 관 + 가장 싼 수의. 화장료·장의차·인력·유골함 제외)</span></p>' if _mb else "")
                      + f'<p class="small"><a href="{r}funeral/mubinso.html">가까운 다른 무빈소 장례식장 찾기</a> · <a href="{r}guides/small-funeral.html">무빈소 장례 절차</a></p></section>')
+    visit_html = cmp_html = ""
+    if not is_cre:
+        # 같은 시도·시군구 장례식장과 가격 비교
+        sd = [c for c in items if c["kind"] == "장례식장" and c["sido"] == x["sido"] and not c["closed"]]
+        sg = [c for c in sd if c["sigungu"] == x["sigungu"]]
+        crow = ""
+        for k, lbl in (("빈소1일최저", "빈소 하루 (가장 작은 방)"), ("안치료1일", "안치료 하루"), ("염습", "염습"), ("관최저", "관 (가장 싼 것)"), ("수의최저", "수의 (가장 싼 것)")):
+            mine = x["price"].get(k)
+            if not mine:
+                continue
+            msd = _med([c["price"].get(k) for c in sd])
+            msg = _med([c["price"].get(k) for c in sg]) if len(sg) >= 3 else None
+            def tag(m):
+                if not m:
+                    return "–"
+                d = (mine - m) / m
+                return fmt_won(m) + (' <span class="tag-lo">낮음</span>' if d < -0.1 else ' <span class="tag-hi">높음</span>' if d > 0.1 else ' <span class="tag-mid">비슷</span>')
+            crow += f'<tr><th scope=row>{lbl}</th><td class="num"><b>{fmt_won(mine)}</b></td><td class="num hide-sm">{tag(msg)}</td><td class="num">{tag(msd)}</td></tr>'
+        if crow:
+            cmp_html = (f'<section class="card"><h2>{icon("won")}{E(short)} 다른 장례식장과 비교</h2><div class="table-wrap"><table class="list fn-cmp"><thead><tr><th>항목</th><th class="num">이곳</th>'
+                        f'<th class="num hide-sm">{E(x["sigungu"])} 중간값</th><th class="num">{E(short)} 중간값</th></tr></thead><tbody>{crow}</tbody></table></div>'
+                        f'<p class="small muted">「낮음·높음」은 이곳 가격이 중간값보다 10% 넘게 낮거나 높다는 뜻입니다. {E(short)} 장례식장 {len(sd)}곳'
+                        + (f", {E(x['sigungu'])} {len(sg)}곳" if len(sg) >= 3 else "") + '의 공개 가격으로 계산했습니다.</p></section>')
+        # 조문객 안내
+        qn = urllib.parse.quote(x["name"])
+        wreath = f'{x["address"]} {x["name"]} ○호실 (상주 ○○○)'
+        visit_html = (f'<section class="card fn-visit"><h2>{icon("phone")}{E(x["name"])}에 조문 가시나요</h2><ul class="tips">'
+                      + (f'<li><strong>호실·발인 시간 확인</strong>: 부고 문자에 호실이 없으면 장례식장 대표번호 <a href="tel:{E(tel)}">{E(x["tel"])}</a>로 고인 성함을 말하면 알려 줍니다.</li>' if tel else "")
+                      + (f'<li><strong>주차</strong>: 공공데이터 기준 {x["parking"]:,}대까지 댈 수 있습니다. 저녁 7~9시와 발인 날 아침에 가장 붐비니 대중교통도 고려하세요.</li>' if x["parking"]
+                         else '<li><strong>주차</strong>: 주차 대수 정보가 없습니다. 가기 전에 전화로 주차 가능 여부를 물어보세요.</li>')
+                      + f'<li><strong>가는 길</strong>: <a href="https://map.kakao.com/?eName={qn}" target="_blank" rel="noopener">카카오맵 길찾기</a> · <a href="https://map.naver.com/p/search/{qn}" target="_blank" rel="noopener">네이버 지도</a>에서 지금 위치부터 대중교통·자동차 경로를 볼 수 있습니다.</li>'
+                      + '<li><strong>조문 시간</strong>: 보통 첫날 입관 전후부터 발인 전날 밤까지 받습니다. 밤 늦게(10시 이후)나 발인 당일 새벽은 피하는 것이 예의입니다.</li>'
+                      + f'<li><strong>근조화환 받는 곳</strong>: <code class="copyable">{E(wreath)}</code> 형식으로 적으면 정확히 배달됩니다.</li></ul>'
+                      + f'<p class="small"><a href="{r}guides/condolence-etiquette.html">조문 예절·절하는 법</a> · <a href="{r}tools/bueui.html">부의금 봉투 쓰는 법</a> · <a href="{r}tools/condolence-msg.html">위로 문자 문구</a></p></section>')
+        if x["address"]:
+            faq.append((f"{x['name']}에 근조화환을 보내려면 주소를 어떻게 적나요?", f"「{x['address']} {x['name']} ○호실 상주 ○○○」처럼 장례식장 이름, 호실, 상주 이름을 함께 적으면 정확히 배달됩니다."))
+        if nc:
+            faq.append((f"{x['name']}에서 가까운 화장장은 어디인가요?", f"직선거리로 가장 가까운 곳은 {nc[0][1]['name']}(약 {max(1, round(nc[0][0]))}km)입니다. 화장 예약은 장례식장에서 e하늘 장사정보시스템으로 도와줍니다."))
     body = f"""<header class="page-head"><p class="eyebrow">{E(short)} {E(x["sigungu"])} · {kind_word}</p><h1>{E(x["name"])}</h1>
 <p class="lead">{E(lead)}</p>{notice}<div class="actions fn-acts">{acts}</div></header>
-{price_html}{mb_detail}{info_html}{cre_html}{bong_html}{helper}{same_html}
+{visit_html}{price_html}{cmp_html}{mb_detail}{info_html}{cre_html}{bong_html}{helper}{same_html}
 <p class="muted small">{FN_SRC_NOTE} 정보가 바뀌었으면 <a href="{r}pages/contact.html">알려 주세요</a>.</p>"""
     if is_cre:
         title = f"{x['name']} 화장 비용·예약·오시는 길 ({short} {x['sigungu']})"
         desc = f"{x['name']} 화장료(관내·관외), 화장로 수, 주차, 전화번호, 주소와 가까운 봉안당을 한눈에 확인하세요."
         kw = [x["name"], f"{x['name']} 화장 비용", f"{x['name']} 예약", f"{x['sigungu']} 화장장", "화장 비용", "화장장 예약"]
     else:
-        title = f"{x['name']} 비용·주차·오시는 길 ({short} {x['sigungu']})"
+        title = f"{x['name']} 주차·오시는 길·비용 · 조문 안내 ({short} {x['sigungu']})"
         desc = (f"{x['name']} 빈소 사용료" + (f" 하루 {fmt_won(x['price']['빈소1일최저'])}부터" if x["price"].get("빈소1일최저") else "")
                 + ", 안치료·염습·관·수의 가격, 주차" + (f" {x['parking']:,}대" if x["parking"] else "") + ", 전화번호와 가는 길, 3일장 예상 비용을 확인하세요.")
-        kw = [x["name"], f"{x['name']} 비용", f"{x['name']} 주차", f"{x['name']} 위치", f"{x['sigungu']} 장례식장", "장례식장 비용", "3일장 비용"]
+        kw = [x["name"], f"{x['name']} 비용", f"{x['name']} 주차", f"{x['name']} 위치", f"{x['name']} 전화번호", f"{x['name']} 오시는 길", f"{x['name']} 근조화환", f"{x['sigungu']} 장례식장", "장례식장 비용", "3일장 비용"]
     SEO_OVERRIDE[path] = {"title": title, "desc": desc, "kw": kw, "faq": faq}
     ld = {"@context": "https://schema.org", "@type": "LocalBusiness", "name": x["name"], "url": f"{SITE_URL}/{path}",
           "address": {"@type": "PostalAddress", "streetAddress": x["address"], "addressRegion": x["sido"], "addressLocality": x["sigungu"], "addressCountry": "KR"}}
@@ -2900,7 +2988,7 @@ def page_funeral_detail(out, x, items):
         ld["telephone"] = x["tel"]
     write(out, path, layout(path, title, desc, body,
                             crumbs=[("장례식장·화장장", "funeral/index.html"), (short, f"funeral/{sido_slug(x['sido'])}.html"), (x["name"], None)],
-                            jsonld=ld, depth=depth, noindex=x["closed"]))
+                            jsonld=ld, depth=depth, noindex=x["closed"] or (not is_cre and not any(x["price"].values()) and not x["rooms"])))
 
 
 
@@ -3045,9 +3133,15 @@ TOOLS = [
     ("49jae", "tools/49jae.html", "49재·삼우제 계산", "별세일로 삼우제·49재·100일 탈상·기일 날짜를 한 번에", "clock"),
     ("lunar", "tools/49jae.html#lunar", "음력·양력 변환", "기일을 음력으로 지낼 때 올해 양력 날짜 찾기", "clock"),
     ("bugo", "tools/bugo.html", "부고 문자 만들기", "빈소·발인·장지만 넣으면 부고 문자와 답례 문자 완성", "phone"),
+    ("gijil", "tools/gijil.html", "기일·제사 날짜 계산", "음력 기일을 올해·내년 양력 날짜로, 휴대폰 달력 저장까지", "clock"),
+    ("bueuienv", "tools/bueui.html", "부의금 봉투 쓰기", "앞면 문구·뒷면 이름 미리 보기와 인쇄, 관계별 금액", "won"),
+    ("wimun", "tools/condolence-msg.html", "조문 위로 문자", "상황별 위로·조의 문자 문구를 골라 바로 복사", "phone"),
     ("age", "tools/index.html#age", "나이·띠 계산", "만 나이, 예전 세는 나이, 띠와 간지", "info"),
-    ("bueui", "tools/index.html#bueui", "부의금 얼마? 봉투 쓰는 법", "관계별 부의금 관례와 봉투에 쓰는 글", "won"),
 ]
+
+
+def share_btn(title, label="카카오톡·문자로 공유"):
+    return f'<button type="button" class="btn share-btn" data-share="{E(title)}">{icon("phone")}{E(label)}</button>'
 
 
 def tool_cards(depth, skip=None):
@@ -3104,7 +3198,7 @@ def page_tools(out):
 <label>고인의 호칭<select id="jb-title"><option value="學生|학생">학생 (벼슬이 없는 경우, 가장 많이 씀)</option><option value="處士|처사">처사</option></select></label>
 </form>
 <div id="jb-out" class="jb-out print-area" aria-live="polite"></div>
-<div class="actions"><button type="button" id="jb-print">지방 인쇄하기</button></div>
+<div class="actions"><button type="button" id="jb-print">지방 인쇄하기</button>{share_btn("지방 쓰는 법 · 지방 작성기")}</div>
 <p class="small muted">인쇄할 때 한지나 흰 종이를 가로 6cm, 세로 22cm 정도로 잘라 쓰면 됩니다. 부모님을 함께 모시면 바라볼 때 아버지를 왼쪽, 어머니를 오른쪽에 둡니다.</p></section>
 <section class="card"><h2>지방 쓰는 법 한눈에 보기</h2><div class="table-wrap"><table class="list"><thead><tr><th>모실 분</th><th>한자 지방</th><th>읽는 법</th></tr></thead><tbody>
 <tr><td>아버지</td><td>顯考學生府君神位</td><td>현고학생부군신위</td></tr>
@@ -3146,7 +3240,7 @@ def page_tools(out):
 <label class="ch-w">본관 한자<input id="ch-bon-h" placeholder="金海"></label><label class="ch-w">성씨 한자<input id="ch-sung-h" placeholder="金"></label>
 </form>
 <div id="ch-out" class="ch-out print-area" aria-live="polite"></div>
-<div class="actions"><button type="button" id="ch-print">축문 인쇄하기</button></div>
+<div class="actions"><button type="button" id="ch-print">축문 인쇄하기</button>{share_btn("축문 쓰는 법 · 축문 작성기")}</div>
 <p class="small muted">음력 날짜와 간지는 한국천문연구원 기준 음력표로 계산합니다(1000~2050년). 기제사는 돌아가신 날 저녁에 지내는 집이 많고, 축문의 날짜는 돌아가신 날을 씁니다.</p></section>
 <section class="card"><h2>축문의 뜻</h2><div class="table-wrap"><table class="list"><tbody>
 <tr><td>維 歲次 ○○ ○月 ○○朔 ○日 ○○</td><td>○○년 ○월 초하루가 ○○인 달의 ○일(○○일)에</td></tr>
@@ -3169,6 +3263,7 @@ def page_tools(out):
 <label>기일 기준<select id="jae-basis"><option value="lunar">음력 (예전 방식)</option><option value="solar">양력</option></select></label>
 <button type="button" id="jae-go">계산하기</button></form>
 <div id="jae-out" class="tool-out" aria-live="polite"></div>
+<div class="actions" id="jae-ics-box" hidden><button type="button" class="btn primary" id="jae-ics">{icon("clock")}휴대폰 달력에 저장하기</button>{share_btn("49재·기일 날짜 계산기")}</div>
 <p class="small muted">돌아가신 날을 첫째 날로 세어 7일마다 재를 지내며, 일곱 번째가 49재입니다. 삼우제는 장례(발인)한 날을 첫째 날로 세어 셋째 날입니다. 사찰과 집안에 따라 세는 법이 다를 수 있으니 확인하세요.</p></section>
 <section class="card" id="lunar"><h2>음력·양력 변환기</h2>
 <form class="tool-form" id="lc-form" onsubmit="return false">
@@ -3206,7 +3301,8 @@ def page_tools(out):
 <label>문구 분위기<select id="bg-tone"><option value="formal">정중하게</option><option value="simple">짧고 간단하게</option><option value="family">가족끼리만 조용히</option></select></label>
 </form></section>
 <section class="card"><h2>완성된 부고 문자</h2><pre id="bg-text" class="msg-box" aria-live="polite"></pre>
-<div class="actions"><button type="button" id="bg-copy">문자 복사하기</button><a class="btn" id="bg-sms" href="#">휴대폰 문자로 보내기</a></div>
+<div class="actions"><button type="button" id="bg-copy">문자 복사하기</button><a class="btn" id="bg-sms" href="#">휴대폰 문자로 보내기</a><button type="button" class="btn" id="bg-share">{icon("phone")}카카오톡으로 보내기</button></div>
+<label class="check bg-link"><input type="checkbox" id="bg-link" checked> 맨 아래에 장례식장 위치·주차 안내 링크 넣기 (장례식장을 목록에서 고른 경우)</label>
 <h3>장례 후 답례 문자</h3><pre id="bg-thanks" class="msg-box"></pre><div class="actions"><button type="button" id="bg-copy2">답례 문자 복사하기</button></div></section>
 <section class="card"><h2>부고 보낼 때 알아 둘 점</h2><ul class="tips">
 <li>부고는 돌아가신 날 장례식장과 발인 일정이 정해지면 바로 보냅니다. 가까운 친척과 어른께는 먼저 전화로 알리는 것이 예의입니다.</li>
@@ -3376,6 +3472,7 @@ def page_mubinso(out, items):
 <label>정렬<select id="mb-sort"><option value="near">가까운 순</option><option value="cheap">기본 품목 합계 낮은 순</option></select></label>
 <label class="check"><input type="checkbox" id="mb-pub"> 공설 장례식장만</label>{'<label class="check"><input type="checkbox" id="mb-okonly"> 무빈소 확인된 곳만</label>' if any(MB_OK.values()) else ''}</form>
 <p id="mb-count" class="muted" aria-live="polite"></p><div id="mb-out" class="results"></div>
+<div class="actions" id="mb-share-box" hidden>{share_btn("우리 동네 무빈소 장례식장", "이 결과 카카오톡으로 보내기")}</div>
 <script type="application/json" id="mb-sgg-data">{sgg_json}</script>
 <p class="small muted">거리는 장례식장 주소가 있는 시군구 중심에서 잰 직선거리라 실제 길과 다를 수 있습니다. <b>기본 품목 합계</b>는 공개된 가격으로 계산한 안치료 {MB_DAYS}일 + 염습 + 가장 싼 관 + 가장 싼 수의이며, 화장료·장의차·인력·유골함은 빠져 있습니다. 가격 출처: 한국장례문화진흥원 장사시설 가격정보(2023-06-01 기준). 지금 가격과 다를 수 있습니다.</p></section>
 <section class="card"><h2>무빈소 가능 여부, 전화로 이렇게 물어보세요</h2>
@@ -3424,6 +3521,126 @@ def page_cost(out, facs):
                                            crumbs=[("가격 비교", "feature/price.html"), ("총비용 계산기", None)], depth=depth))
 
 
+def page_tools_more(out):
+    depth = 1
+    r = rel(depth)
+    crumbs = lambda t: [("장례 도우미", "tools/index.html"), (t, None)]
+    # 1) 기일·제사 날짜 계산기
+    this_year = int(TODAY[:4])
+    yrs = "".join(f'<option value="{y}"{" selected" if y == this_year else ""}>{y}년</option>' for y in range(this_year - 1, this_year + 6))
+    body = f"""<header class="page-head"><h1>기일·제사 날짜 계산기</h1><p class="lead">음력으로 지내는 기일은 해마다 양력 날짜가 바뀝니다. 돌아가신 날이나 음력 기일을 넣으면 고른 해부터 10년치 제사 날짜를 요일과 함께 알려 드리고, 휴대폰 달력에 한 번에 저장할 수 있습니다.</p></header>
+<section class="card"><h2>제사 날짜 찾기</h2>
+<form class="tool-form" id="gj-form" onsubmit="return false">
+<label>무엇으로 찾을까요<select id="gj-mode"><option value="death">돌아가신 날(양력)을 알아요</option><option value="lunar">음력 기일(월·일)을 알아요</option></select></label>
+<label class="gj-death">돌아가신 날 (양력)<input type="date" id="gj-death"></label>
+<label class="gj-lunar" hidden>음력 월<input type="number" id="gj-m" min="1" max="12" placeholder="예: 3"></label>
+<label class="gj-lunar" hidden>음력 일<input type="number" id="gj-d" min="1" max="30" placeholder="예: 15"></label>
+<label>기일 기준<select id="gj-basis"><option value="lunar">음력으로 지냄</option><option value="solar">양력으로 지냄</option></select></label>
+<label>시작 연도<select id="gj-year">{yrs}</select></label>
+<label>고인 (달력 제목에 들어감, 선택)<input id="gj-who" placeholder="예: 아버지"></label>
+<button type="button" id="gj-go">날짜 계산하기</button></form>
+<div id="gj-out" class="tool-out" aria-live="polite"></div>
+<div class="actions" id="gj-act" hidden><button type="button" class="btn primary" id="gj-ics">{icon("clock")}휴대폰 달력에 10년치 저장</button>{share_btn("기일·제사 날짜 계산기")}</div>
+<p class="small muted">음력 날짜는 한국천문연구원 기준 음력표로 계산합니다(1000~2050년). 그해에 음력 30일이 없으면 29일로 계산합니다. 달력 저장 파일(.ics)은 아이폰 캘린더, 구글 캘린더, 삼성 캘린더에서 열립니다.</p></section>
+<section class="card"><h2>제사는 언제 지내나요</h2><ul class="tips">
+<li><strong>기제사(기일 제사)</strong>는 돌아가신 날에 지냅니다. 예전에는 돌아가신 날 첫 시각(자시, 밤 11시~1시)에 지내 <b>돌아가시기 전날 밤</b>에 상을 차렸지만, 요즘은 돌아가신 날 저녁에 지내는 집이 많습니다.</li>
+<li>음력·양력 중 어느 쪽으로 지낼지는 집안에서 정하면 됩니다. 한 번 정하면 해마다 같은 기준으로 지내는 것이 좋습니다.</li>
+<li>축문이 필요하면 <a href="{r}tools/chukmun.html">축문 쓰기</a>, 지방은 <a href="{r}tools/jibang.html">지방 쓰기</a>, 상차림은 <a href="{r}tools/jesasang.html">제사상 차리는 법</a>을 보세요.</li></ul></section>
+<section class="card"><h2>자주 묻는 질문</h2>
+<details><summary>음력 기일의 올해 양력 날짜는 어떻게 알 수 있나요?</summary><p>위 계산기에 음력 월·일을 넣고 시작 연도를 고르면 그해부터 10년치 양력 날짜가 나옵니다. 돌아가신 날(양력)만 알아도 음력 날짜를 찾아 자동으로 계산합니다.</p></details>
+<details><summary>제사는 기일 전날 밤에 지내나요, 당일 저녁에 지내나요?</summary><p>예전 방식은 돌아가신 날 자정 무렵이라 전날 밤에 상을 차렸고, 요즘은 돌아가신 날 저녁에 지내는 집이 많습니다. 집안 어른과 정한 방식을 따르면 됩니다.</p></details>
+<details><summary>윤달에 돌아가셨으면 기일은 언제인가요?</summary><p>윤달이 해마다 있지 않아 보통 평달의 같은 날에 지냅니다. 계산기는 평달 기준으로 계산합니다.</p></details>
+</section>
+<section class="block"><div class="block-head"><h2>다른 장례 도우미</h2></div>{tool_cards(depth, "gijil")}</section>"""
+    SEO_OVERRIDE["tools/gijil.html"] = {"title": "기일 계산기 · 음력 제사 날짜 양력 변환 (10년치 제사 날짜, 달력 저장)",
+                                        "desc": "음력 기일을 올해·내년 양력 날짜로 바꿔 10년치 제사 날짜를 요일과 함께 보여 드립니다. 휴대폰 달력에 한 번에 저장하고, 제사는 언제 지내는지도 확인하세요.",
+                                        "kw": ["기일 계산", "제사 날짜 계산", "음력 기일 양력 변환", "음력 제사 날짜", "2027 제사 날짜", "기일 날짜", "제사 언제 지내나", "음력 양력 변환"]}
+    write(out, "tools/gijil.html", layout("tools/gijil.html", "기일·제사 날짜 계산기", "기일 계산기", body, crumbs=crumbs("기일·제사 날짜"), depth=depth))
+
+    # 2) 부의금 봉투 쓰기
+    body = f"""<header class="page-head"><h1>부의금 봉투 쓰는 법 · 봉투 문구 만들기</h1><p class="lead">부의 봉투 앞면에는 조의 문구를, 뒷면에는 보내는 사람 이름을 세로로 씁니다. 이름과 소속을 넣으면 봉투 모양 그대로 미리 보여 드리고 인쇄해서 따라 쓸 수 있습니다.</p></header>
+<section class="card"><h2>봉투 만들기</h2>
+<form class="tool-form" id="be-form" onsubmit="return false">
+<label>앞면 문구<select id="be-front"><option value="賻儀|부의">賻儀 (부의) · 가장 많이 씀</option><option value="謹弔|근조">謹弔 (근조) · 삼가 조상함</option><option value="弔儀|조의">弔儀 (조의)</option><option value="追慕|추모">追慕 (추모)</option><option value="追悼|추도">追悼 (추도)</option><option value="香燭代|향촉대">香燭代 (향촉대) · 향과 초 값</option></select></label>
+<label>보내는 사람 이름<input id="be-name" placeholder="예: 홍길동"></label>
+<label>소속 (선택)<input id="be-org" placeholder="예: ○○주식회사 영업팀"></label>
+<label class="check"><input type="checkbox" id="be-han"> 앞면을 한글로 보기</label>
+</form>
+<div class="env-wrap" id="be-print"><div class="env env-front"><span class="env-lbl">앞면</span><div class="env-v" id="be-f"></div></div>
+<div class="env env-back"><span class="env-lbl">뒷면</span><div class="env-back-in"><div class="env-v env-org" id="be-o"></div><div class="env-v" id="be-n"></div></div></div></div>
+<div class="actions"><button type="button" class="btn primary" id="be-printbtn">인쇄해서 따라 쓰기</button>{share_btn("부의금 봉투 쓰는 법")}</div></section>
+<section class="card"><h2>부의금은 얼마가 적당할까</h2>
+<div class="table-wrap"><table class="list"><thead><tr><th>관계</th><th>흔히 하는 금액</th></tr></thead><tbody>
+<tr><td>얼굴만 아는 사이, 거래처</td><td>3만~5만 원</td></tr><tr><td>직장 동료, 지인</td><td>5만 원</td></tr>
+<tr><td>가까운 친구, 직장 상사·팀원</td><td>5만~10만 원</td></tr><tr><td>친한 친구, 친척</td><td>10만 원 이상</td></tr>
+<tr><td>가까운 가족·친척</td><td>20만 원 이상 (형편에 맞게)</td></tr></tbody></table></div>
+<p>예전부터 3·5·7처럼 홀수로 맞추는 관례가 있고, 10만 원부터는 짝수여도 괜찮다고 봅니다. 정해진 금액은 없으니 관계와 형편에 맞게 하세요.</p></section>
+<section class="card"><h2>봉투 쓸 때 알아 둘 점</h2><ul class="tips">
+<li><strong>앞면</strong>: 가운데에 세로로 크게 씁니다. 봉투에 이미 인쇄되어 있으면 쓰지 않아도 됩니다.</li>
+<li><strong>뒷면</strong>: 왼쪽 아래에 이름을 세로로 씁니다. 소속은 이름 오른쪽에 작게 씁니다.</li>
+<li><strong>여럿이 함께</strong>: 「○○팀 일동」처럼 쓰고, 이름이 많으면 따로 종이에 명단을 적어 넣습니다.</li>
+<li><strong>돈 넣는 법</strong>: 지폐 앞면(인물)이 봉투 앞쪽을 향하게 넣고, 봉투는 풀로 붙이지 않습니다. 새 돈보다 깨끗한 쓰던 돈이 낫다고 보는 집이 많습니다.</li>
+<li><strong>계좌로 보낼 때</strong>: 보내는 사람 이름이 보이게 보내고, 위로 문자를 함께 보내세요. <a href="{r}tools/condolence-msg.html">위로 문자 문구</a></li></ul></section>
+<section class="block"><div class="block-head"><h2>다른 장례 도우미</h2></div>{tool_cards(depth, "bueuienv")}</section>"""
+    SEO_OVERRIDE["tools/bueui.html"] = {"title": "부의금 봉투 쓰는 법 · 부의 봉투 문구·이름 쓰는 위치 (미리 보기·인쇄)",
+                                        "desc": "부의 봉투 앞면 문구(賻儀·謹弔), 뒷면 이름과 소속 쓰는 위치를 봉투 모양으로 미리 보고 인쇄하세요. 관계별 부의금 금액과 돈 넣는 법도 정리했습니다.",
+                                        "kw": ["부의금 봉투 쓰는 법", "부의 봉투", "부의금 봉투 이름", "조의금 봉투 쓰는법", "부의 한자", "근조 봉투", "부의금 얼마", "부의금 봉투 소속"],
+                                        "faq": [("부의 봉투 이름은 어디에 쓰나요?", "봉투 뒷면 왼쪽 아래에 세로로 씁니다. 소속이 있으면 이름 오른쪽에 작게 씁니다."),
+                                                ("부의 봉투 앞면에는 무엇을 쓰나요?", "가운데에 賻儀(부의)를 가장 많이 쓰고, 謹弔(근조), 弔儀(조의), 追慕(추모)도 씁니다. 한글로 써도 됩니다."),
+                                                ("부의금은 얼마가 적당한가요?", "직장 동료·지인은 5만 원, 가까운 친구나 상사는 5만~10만 원, 친척은 10만 원 이상을 흔히 합니다. 정해진 금액은 없습니다.")]}
+    write(out, "tools/bueui.html", layout("tools/bueui.html", "부의금 봉투 쓰는 법", "부의금 봉투 쓰기", body, crumbs=crumbs("부의금 봉투 쓰기"), depth=depth))
+
+    # 3) 조문 위로 문자
+    groups = [
+        ("부고를 받고 바로", [
+            "삼가 고인의 명복을 빕니다. 갑작스러운 소식에 얼마나 상심이 크실지 마음이 무겁습니다.",
+            "부고 소식 들었습니다. 깊은 위로의 말씀을 드립니다. 경황이 없으시겠지만 몸 잘 챙기세요.",
+            "삼가 조의를 표합니다. 슬픔 속에서도 가족분들 모두 건강 잃지 않으시길 바랍니다.",
+            "뭐라 위로의 말씀을 드려야 할지 모르겠습니다. 고인께서 편히 쉬시길 기도하겠습니다."]),
+        ("직장 동료·상사에게", [
+            "팀장님, 부친상 소식 들었습니다. 삼가 고인의 명복을 빕니다. 업무는 걱정하지 마시고 가족분들 곁을 지켜 주세요.",
+            "갑작스러운 비보에 마음이 아픕니다. 삼가 조의를 표하며, 회사 일은 저희가 잘 챙기겠습니다.",
+            "깊은 애도를 표합니다. 장례 잘 치르시고, 필요한 일 있으시면 언제든 말씀해 주세요."]),
+        ("가까운 친구에게", [
+            "소식 듣고 마음이 너무 아프다. 옆에 있어 주지 못해 미안해. 힘들면 언제든 연락해.",
+            "어떤 말로도 위로가 안 되겠지만, 네 곁에 있다는 것만 알아 줘. 밥 꼭 챙겨 먹고.",
+            "어머님 좋은 곳으로 가셨을 거야. 장례 치르느라 고생 많을 텐데 끝나면 꼭 얼굴 보자."]),
+        ("조문을 못 가서 부의금만 보낼 때", [
+            "직접 찾아뵙고 위로드려야 하는데 사정이 있어 마음만 전합니다. 삼가 고인의 명복을 빕니다.",
+            "멀리 있어 조문을 가지 못해 죄송합니다. 작은 정성이나마 보내 드리니 너그러이 받아 주세요.",
+            "함께하지 못해 마음이 무겁습니다. 부의금 조금 보냈습니다. 장례 잘 마치시길 바랍니다."]),
+        ("장례를 마친 뒤 안부", [
+            "장례 치르시느라 많이 지치셨지요. 이제는 몸과 마음 좀 쉬시길 바랍니다.",
+            "큰일 치르고 나면 허전함이 더 크다고 하더라고요. 힘드실 때 언제든 연락 주세요.",
+            "49재가 다가오네요. 고인을 기억하며 저도 마음 모으겠습니다. 건강 잘 챙기세요."]),
+        ("기독교 가정에", [
+            "소천 소식 들었습니다. 하나님의 위로와 평안이 유가족 모두에게 함께하시길 기도합니다.",
+            "주님 품에 안기신 고인을 기억하며, 남은 가족분들께 하늘의 위로가 넘치길 기도합니다."]),
+        ("천주교 가정에", [
+            "선종 소식 들었습니다. 고인의 영원한 안식을 위해 기도하겠습니다.",
+            "주님께서 고인에게 영원한 안식을 주시고, 유가족에게 위로를 주시길 기도합니다."]),
+        ("불교 가정에", [
+            "삼가 고인의 극락왕생을 기원합니다. 유가족 모두에게 부처님의 가피가 함께하길 바랍니다.",
+            "고인께서 좋은 곳에 왕생하시길 두 손 모아 기원합니다."]),
+    ]
+    secs = "".join(f'<section class="card"><h2>{E(t)}</h2><ul class="msg-list">' + "".join(
+        f'<li><p>{E(m)}</p><button type="button" class="btn small msg-copy">복사</button></li>' for m in ms) + "</ul></section>" for t, ms in groups)
+    body = f"""<header class="page-head"><h1>조문 위로 문자 문구 모음</h1><p class="lead">부고를 받았을 때, 조문을 못 가 부의금만 보낼 때, 장례를 마친 뒤 안부를 물을 때 보내기 좋은 위로 문구를 상황별로 모았습니다. 「복사」를 누르면 바로 붙여 넣을 수 있습니다.</p>
+<div class="actions">{share_btn("조문 위로 문자 문구 모음")}</div></header>
+{secs}
+<section class="card"><h2>위로 문자 보낼 때 피할 말</h2><ul class="tips">
+<li>「호상이네요」, 「그래도 오래 사셨네요」처럼 슬픔을 가볍게 여기는 말은 유족이 서운하게 느낄 수 있습니다.</li>
+<li>사인이나 투병 과정을 자세히 묻지 마세요.</li>
+<li>이모티콘, 「ㅠㅠ」 같은 표현은 가까운 친구 사이가 아니면 쓰지 않는 것이 좋습니다.</li>
+<li>답장을 기대하지 말고, 「답장 안 하셔도 됩니다」라고 덧붙이면 유족 마음이 편합니다.</li></ul>
+<p class="small"><a href="{r}guides/condolence-etiquette.html">조문 예절</a> · <a href="{r}tools/bueui.html">부의금 봉투 쓰기</a> · <a href="{r}tools/bugo.html">부고 문자 만들기 (답례 문자 포함)</a></p></section>
+<section class="block"><div class="block-head"><h2>다른 장례 도우미</h2></div>{tool_cards(depth, "wimun")}</section>"""
+    SEO_OVERRIDE["tools/condolence-msg.html"] = {"title": "조문 위로 문자 문구 모음 · 부고 받았을 때·부의금 보낼 때 보내는 말",
+                                                 "desc": "부고 문자 답장, 조문을 못 갈 때 부의금과 함께 보내는 말, 직장 상사·친구에게 보내는 위로 문구, 기독교·천주교·불교 가정에 쓰는 표현을 상황별로 골라 바로 복사하세요.",
+                                                 "kw": ["조문 문자", "위로 문자", "부고 답장", "조의 문구", "부의금 문자", "삼가 고인의 명복을 빕니다", "위로의 말", "소천 위로 문구", "부친상 위로 문자"]}
+    write(out, "tools/condolence-msg.html", layout("tools/condolence-msg.html", "조문 위로 문자 문구 모음", "위로 문자 문구", body, crumbs=crumbs("조문 위로 문자"), depth=depth))
+
+
 HOLIDAYS = [(2027, "2027-02-07", "일", "2027-09-15", "수"), (2028, "2028-01-27", "목", "2028-10-03", "화"), (2029, "2029-02-13", "화", "2029-09-22", "토")]
 
 
@@ -3442,7 +3659,8 @@ def page_holiday(out, facs, groups):
             pk_s = f"{int(pk):,}대" if isinstance(pk, (int, float)) and pk else "–"
             big.append(f'<tr><td>{E(SIDO_SHORT.get(sido, sido))}</td><td><a href="{r}{facility_url(f)}">{E(f["name"])}</a> {kind_badge(f["kind"])}</td>'
                        f'<td class="num">{cap_s}</td><td class="num">{pk_s}</td><td>{tel_link(f["tel"])}</td></tr>')
-    body = f"""<header class="page-head"><h1>명절 봉안당 성묘 안내</h1><p class="lead">설과 추석에는 봉안당마다 참배객이 몰려 길이 막히고 주차하기 어렵습니다. 미리 확인할 것과 붐비는 시간을 피하는 방법, 대형 봉안당 연락처를 모았습니다.</p>
+    body = f"""<p class="notice"><a href="{r}feature/seollal.html"><b>2027 설 성묘·차례 안내</b> · 설 연휴 2월 6일~9일, 봉안당 운영 방식과 혼잡 피하는 법 →</a></p>
+<header class="page-head"><h1>명절 봉안당 성묘 안내</h1><p class="lead">설과 추석에는 봉안당마다 참배객이 몰려 길이 막히고 주차하기 어렵습니다. 미리 확인할 것과 붐비는 시간을 피하는 방법, 대형 봉안당 연락처를 모았습니다.</p>
 <div id="hd-next" class="hd-next" aria-live="polite"></div></header>
 <section class="card"><h2>다가오는 설·추석</h2><div class="table-wrap"><table class="list"><thead><tr><th>해</th><th>설날</th><th>추석</th></tr></thead><tbody>{rows}</tbody></table></div>
 <p class="small muted">음력 날짜를 한국천문연구원 기준으로 바꾼 날입니다. 연휴는 보통 명절 앞뒤 하루씩이고, 대체공휴일에 따라 더 길어질 수 있습니다.</p></section>
@@ -3467,6 +3685,69 @@ def page_holiday(out, facs, groups):
 <a class="feature-card" href="{r}feature/near.html">{icon("map", "lg")}<strong>가까운 봉안당</strong><span>우리 집에서 거리순</span></a></div></section>"""
     write(out, "feature/holiday.html", layout("feature/holiday.html", "명절 봉안당 성묘 안내", "명절 성묘 안내", body,
                                               crumbs=[("봉안당 찾기", "region/index.html"), ("명절 성묘 안내", None)], depth=depth))
+
+
+def page_seollal(out, facs):
+    depth = 1
+    r = rel(depth)
+    byname = {f["name"]: f for f in facs}
+    rows = []
+    for name, ex in FAC_EXTRA.items():
+        hv = VISIT_HOURS.get(name) or {}
+        note = (hv.get("명절") or "").strip()
+        if not note or name.startswith("예시"):
+            continue
+        f = byname.get(name)
+        nm = f'<a href="{r}{facility_url(f)}">{E(name)}</a>' if f else E(name)
+        loc = (SIDO_SHORT.get(f["sido"], f["sido"]) + " " + f["sigungu"]) if f else ""
+        rows.append(f'<tr><td>{nm}<span class="small muted" style="display:block">{E(loc)}</span></td><td>{E(hv.get("평일") or "–")}</td><td>{E(note)}</td><td class="small">{E(ex.get("확인일") or hv.get("확인일") or "")}</td></tr>')
+    hours_tbl = ""
+    if rows:
+        hours_tbl = (f'<div class="table-wrap"><table class="list"><thead><tr><th>봉안당</th><th>평소 운영</th><th>명절 운영 방식 (지난 명절 기준)</th><th>확인일</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
+                     '<p class="small muted">시설 홈페이지·공지와 보도로 확인한 지난 명절 운영 방식입니다. 2027년 설 공지는 보통 설 2~3주 전에 올라오니, 가기 전에 시설 홈페이지나 전화로 꼭 확인하세요.</p>')
+    body = f"""<header class="page-head"><p class="eyebrow">2027 설날</p><h1>2027 설 성묘·차례 안내</h1>
+<p class="lead">2027년 설날은 <b>2월 7일(일)</b>, 연휴는 <b>2월 6일(토)~9일(화)</b> 4일입니다(9일은 대체공휴일). 봉안당 성묘를 가기 전에 알아 둘 운영 방식, 덜 붐비게 다녀오는 법, 설 차례상과 지방까지 한 페이지에 모았습니다.</p>
+<nav class="rank-nav"><a class="chip-link" href="#date">설 연휴 날짜</a><a class="chip-link" href="#hours">봉안당 운영</a><a class="chip-link" href="#crowd">혼잡 피하기</a><a class="chip-link" href="#charye">차례상·지방</a></nav>
+<div class="actions">{share_btn("2027 설 성묘·차례 안내")}</div></header>
+<section class="card" id="date"><h2>2027 설 연휴 날짜</h2>
+<div class="table-wrap"><table class="list"><thead><tr><th>날짜</th><th>구분</th><th>성묘 붐빔</th></tr></thead><tbody>
+<tr><td>1월 23일(토)~24일(일)</td><td>설 2주 전 주말</td><td>미리 성묘 가는 가족이 많음</td></tr>
+<tr><td>1월 30일(토)~31일(일)</td><td>설 1주 전 주말</td><td><b>붐빔</b> · 사전 성묘 몰림</td></tr>
+<tr><td>2월 6일(토)</td><td>설 연휴 첫날</td><td><b>매우 붐빔</b></td></tr>
+<tr><td>2월 7일(일)</td><td>설날</td><td><b>가장 붐빔</b> (오전 차례 뒤 오후)</td></tr>
+<tr><td>2월 8일(월)</td><td>설 연휴</td><td>붐빔</td></tr>
+<tr><td>2월 9일(화)</td><td>대체공휴일</td><td>비교적 덜함</td></tr>
+<tr><td>2월 10일(수) 이후 평일</td><td>연휴 뒤</td><td>한산</td></tr></tbody></table></div>
+<p class="small muted">붐빔 정도는 해마다 반복되는 일반적인 경향이며 시설마다 다릅니다.</p></section>
+<section class="card" id="hours"><h2>설 연휴 봉안당 운영, 이것부터 확인하세요</h2><ul class="tips">
+<li><strong>안치단(유리문) 개방</strong>: 명절 연휴에는 안치단 문을 열어 주지 않거나 개별 차례를 막는 곳이 많습니다. 꽃이나 사진을 바꾸려면 연휴 전에 다녀오세요.</li>
+<li><strong>제례실</strong>: 연휴 동안 제례실을 닫거나 예약제로 운영하는 곳이 많습니다.</li>
+<li><strong>사전 예약제·체류 시간 제한</strong>: 큰 공설 봉안당은 명절에 방문 예약을 받거나 머무는 시간을 제한하기도 합니다.</li>
+<li><strong>차량 통제·셔틀</strong>: 명절 당일 자가용 진입을 막고 임시 주차장에서 셔틀을 운행하는 곳이 있습니다.</li></ul>
+<h3>명절 운영 방식이 확인된 봉안당</h3>{hours_tbl or '<p class="small muted">아직 확인된 명절 운영 정보가 없습니다.</p>'}
+<p class="small"><a href="{r}feature/holiday.html">명절 성묘 안내 (대형 봉안당 연락처)</a> · <a href="{r}feature/parking.html">주차장 있는 봉안당</a></p></section>
+<section class="card" id="crowd"><h2>성묘 혼잡 피하는 법</h2><ul class="tips">
+<li><strong>연휴 2주 전 주말이나 연휴 뒤 평일</strong>에 다녀오면 길도 덜 막히고 안치단 앞에서 충분히 머물 수 있습니다.</li>
+<li>연휴 중에 가야 한다면 <strong>문 여는 시간에 맞춰 이른 아침</strong>에 출발하세요. 설날 당일은 차례를 마친 오후가 가장 붐빕니다.</li>
+<li>대중교통이나 시설 셔틀이 있으면 이용하세요. 주차장이 꽉 차면 진입로에서 오래 기다리게 됩니다.</li>
+<li>어르신과 함께라면 휠체어, 엘리베이터, 경사로를 미리 확인하세요. <a href="{r}guides/accessibility-visit.html">어르신과 함께 참배할 때</a></li>
+<li>참배 순서와 예절은 <a href="{r}guides/visiting-etiquette.html">봉안당 참배 예절</a>을 보세요.</li></ul></section>
+<section class="card" id="charye"><h2>설 차례상과 지방</h2>
+<p>설 차례는 떡국을 올리고 <b>술 한 잔, 축문 없이</b> 지내는 것이 원칙입니다. 성균관 표준안은 9가지 안팎의 음식이면 충분하고 전은 올리지 않아도 된다고 안내합니다.</p>
+<div class="helper-links"><a href="{r}guides/seollal-charye.html"><strong>설 차례상 차리는 법</strong><span>떡국 차례, 9가지 표준 상차림, 차례 순서</span></a>
+<a href="{r}tools/jesasang.html"><strong>차례상 그림·장보기 목록</strong><span>상차림 배치도와 준비물</span></a>
+<a href="{r}tools/jibang.html"><strong>지방 쓰기</strong><span>한자·한글 지방 바로 인쇄</span></a>
+<a href="{r}tools/gijil.html"><strong>기일·제사 날짜</strong><span>올해 제사 날짜와 달력 저장</span></a></div></section>
+<section class="card"><h2>자주 묻는 질문</h2>
+<details><summary>2027년 설 연휴는 며칠인가요?</summary><p>설날이 2월 7일 일요일이라 2월 6일(토)~8일(월)이 설 연휴이고, 일요일과 겹친 하루를 대신해 2월 9일(화)이 대체공휴일입니다. 모두 4일입니다.</p></details>
+<details><summary>설 연휴에 봉안당 문을 여나요?</summary><p>대부분 연휴에도 문을 엽니다. 다만 안치단 개방, 제례실, 개별 차례를 막거나 예약제로 운영하는 곳이 많으니 시설 공지를 확인하세요.</p></details>
+<details><summary>설 성묘는 언제 가는 게 덜 붐비나요?</summary><p>설 2주 전 주말이나 연휴가 끝난 뒤 평일이 가장 한산합니다. 연휴 중이라면 문 여는 시간에 맞춰 이른 아침에 가세요.</p></details>
+</section>"""
+    SEO_OVERRIDE["feature/seollal.html"] = {"title": "2027 설 성묘 안내 · 설 연휴 봉안당 운영시간·혼잡 피하는 법·차례상",
+                                            "desc": "2027년 설 연휴(2월 6일~9일) 봉안당 성묘 전에 확인할 운영 방식(안치단·제례실·예약제), 덜 붐비는 날짜와 시간, 설 차례상과 지방 쓰는 법을 한 번에 정리했습니다.",
+                                            "kw": ["2027 설 연휴", "설날 성묘", "설 연휴 봉안당", "설 봉안당 운영시간", "명절 납골당 운영", "설 성묘 혼잡", "설 차례상", "설 지방 쓰기", "2027 설날"]}
+    write(out, "feature/seollal.html", layout("feature/seollal.html", "2027 설 성묘·차례 안내", "2027 설 성묘 안내", body,
+                                              crumbs=[("봉안당 찾기", "region/index.html"), ("2027 설 성묘 안내", None)], depth=depth))
 
 
 AFTER_DEATH = [
@@ -3550,7 +3831,7 @@ def keyword_links():
              ("주차 되는 납골당", "feature/parking.html"), ("장례식장 비용", "funeral/index.html"), ("서울 장례식장", "funeral/seoul.html"),
              ("경기도 장례식장", "funeral/gyeonggi.html"), ("화장장 비용", "funeral/index.html#crematorium"), ("화장 예약 방법", "guides/ehaneul-guide.html"),
              ("장례 절차", "guides/procedure-after-cremation.html"), ("봉안당 고르는 법", "guides/how-to-choose.html"), ("수목장·자연장", "guides/natural-burial.html"),
-             ("봉안당이란", "guides/what-is-bongandang.html"), ("납골당 단별 가격", "guides/what-is-bongandang.html"), ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html"), ("저렴한 장례 방법", "guides/cheap-funeral.html"), ("장례비 지원금", "guides/funeral-support.html"), ("무빈소 장례", "guides/small-funeral.html"), ("무빈소 장례식장 찾기", "funeral/mubinso.html"), ("무빈소 장례 문의", "guides/funeral-help-desk.html"), ("공영장례", "guides/funeral-help-desk.html"), ("상조회사 비교", "guides/sangjo-compare.html"), ("국내 상조회사 순위", "guides/sangjo-companies.html"), ("상조 해지 환급", "guides/sangjo-cancel.html")]
+             ("봉안당이란", "guides/what-is-bongandang.html"), ("납골당 단별 가격", "guides/what-is-bongandang.html"), ("납골당 계약 주의사항", "guides/contract-checklist.html"), ("봉안당 안치기간", "guides/enshrinement-period.html"), ("지방 쓰는 법", "tools/jibang.html"), ("축문 쓰는 법", "tools/chukmun.html"), ("49재 계산", "tools/49jae.html"), ("부고 문자 양식", "tools/bugo.html"), ("부의금 얼마", "tools/index.html#bueui"), ("부의금 봉투 쓰는 법", "tools/bueui.html"), ("기일 계산기", "tools/gijil.html"), ("제사 날짜 계산", "tools/gijil.html"), ("조문 위로 문자", "tools/condolence-msg.html"), ("장례 후 할 일", "tools/after-death.html"), ("사망신고 기한", "tools/after-death.html"), ("서울 근교 납골당", "feature/near.html#near-seoul"), ("납골당 비용 계산", "feature/cost.html"), ("명절 성묘 안내", "feature/holiday.html"), ("2027 설 성묘", "feature/seollal.html"), ("설 차례상", "guides/seollal-charye.html"), ("저렴한 장례 방법", "guides/cheap-funeral.html"), ("장례비 지원금", "guides/funeral-support.html"), ("무빈소 장례", "guides/small-funeral.html"), ("무빈소 장례식장 찾기", "funeral/mubinso.html"), ("무빈소 장례 문의", "guides/funeral-help-desk.html"), ("공영장례", "guides/funeral-help-desk.html"), ("상조회사 비교", "guides/sangjo-compare.html"), ("국내 상조회사 순위", "guides/sangjo-companies.html"), ("상조 해지 환급", "guides/sangjo-cancel.html")]
     return ('<section class="block"><div class="block-head"><div><p class="eyebrow">KEYWORD</p><h2>많이 찾는 정보</h2></div></div><nav class="kw-links" aria-label="많이 찾는 정보">'
             + "".join(f'<a href="{u}">{E(t)}</a>' for t, u in links) + "</nav></section>")
 
@@ -3583,6 +3864,7 @@ def page_index(out, facs, groups):
     kmap = art.map_svg({s: region_url(s) for s in groups}, counts, "봉안당 지역 선택 지도")
     rlinks = "".join(f'<a href="{region_url(s)}"><span>{E(SIDO_SHORT.get(s, s))}</span><b>{len(v)}</b></a>' for s, v in groups.items())
     body = f"""
+<section class="season-strip"><a href="feature/seollal.html"><b>2027 설 성묘·차례 안내</b><span>설 연휴 2월 6일~9일 · 봉안당 운영 방식, 혼잡 피하는 법, 설 차례상·지방</span><span class="ss-go">보기 ›</span></a></section>
 {mubinso_cta("")}
 <section class="ed-sec"><div class="ed-head"><p class="ed-eye">SERVICE</p><h2>필요한 정보를 차분하게</h2><p>처음 겪는 일이라도 헤매지 않도록, 꼭 필요한 것만 모았습니다.</p></div>
 <div class="ed-grid">{svc}</div></section>
@@ -3836,7 +4118,7 @@ def seo_files(out):
         # 네이버 서치어드바이저에 제출하는 RSS (가이드 글 + 주요 페이지)
         now = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).strftime("%a, %d %b %Y %H:%M:%S +0900")
         items = [(g["title"], f"guides/{g['slug']}.html", g["description"]) for g in GUIDES]
-        for path in ("tools/funeral-cost.html", "tools/jesasang.html", "feature/price.html", "pages/recommend.html", "pages/ranking.html", "funeral/index.html", "region/index.html", "tools/index.html", "tools/jibang.html", "tools/chukmun.html", "tools/49jae.html", "tools/bugo.html", "tools/after-death.html", "feature/near.html", "feature/cost.html", "feature/holiday.html"):
+        for path in ("tools/funeral-cost.html", "tools/jesasang.html", "feature/price.html", "pages/recommend.html", "pages/ranking.html", "funeral/index.html", "region/index.html", "tools/index.html", "tools/jibang.html", "tools/chukmun.html", "tools/49jae.html", "tools/bugo.html", "tools/after-death.html", "feature/near.html", "feature/cost.html", "feature/holiday.html", "feature/seollal.html", "tools/gijil.html", "tools/bueui.html", "tools/condolence-msg.html", "funeral/mubinso.html"):
             o = SEO_OVERRIDE.get(path, {})
             items.append((o.get("title", path), path, o.get("desc", "")))
         rss = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0"><channel>',
@@ -4507,11 +4789,13 @@ def build_site(facs):
     page_funeral_cost(out)
     page_jesasang(out)
     page_tools(out)
+    page_tools_more(out)
     page_after_death(out)
     page_near(out, facs)
     page_mubinso(out, FUNERAL)
     page_cost(out, facs)
     page_holiday(out, facs, groups)
+    page_seollal(out, facs)
     for p in PARTNERS:
         page_partner(out, p)
     page_partner_index(out)

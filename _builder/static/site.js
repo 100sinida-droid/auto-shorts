@@ -530,7 +530,8 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
 /* 장례 도우미 (지방·명정·축문·49재·음력·부고·나이) */
 (function () {
   if (!document.getElementById("jb-form") && !document.getElementById("ch-form") && !document.getElementById("jae-form") &&
-      !document.getElementById("bg-form") && !document.getElementById("age-form")) return;
+      !document.getElementById("bg-form") && !document.getElementById("age-form") && !document.getElementById("gj-form") &&
+      !document.getElementById("be-form") && !document.querySelector(".msg-copy")) return;
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function val(id) { var e = $(id); return e ? e.value.trim() : ""; }
@@ -725,6 +726,116 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
     $("lc-y").value = new Date().getFullYear();
   }
 
+  // ---------------- 달력 저장(.ics) ----------------
+  function icsDate(d) { return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
+  function icsEsc(t) { return String(t).replace(/\\/g, "\\\\").replace(/[,;]/g, function (c) { return "\\" + c; }).replace(/\n/g, "\\n"); }
+  function saveIcs(name, events) {
+    var now = new Date(), stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//bongan-gil//ko", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    events.forEach(function (e, i) {
+      L.push("BEGIN:VEVENT", "UID:" + icsDate(e.d) + "-" + i + "-" + Math.random().toString(36).slice(2, 8) + "@bongan-gil", "DTSTAMP:" + stamp,
+        "DTSTART;VALUE=DATE:" + icsDate(e.d), "DTEND;VALUE=DATE:" + icsDate(addDays(e.d, 1)), "SUMMARY:" + icsEsc(e.t),
+        "DESCRIPTION:" + icsEsc((e.desc || "") + "\n" + location.origin + location.pathname),
+        "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(e.t), "TRIGGER:-PT15H", "END:VALARM", "END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    var blob = new Blob([L.join("\r\n")], { type: "text/calendar;charset=utf-8" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name + ".ics"; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    if (window.__track) window.__track("ics", name);
+  }
+
+  // 49재 결과를 달력에 저장
+  var lastJae = null;
+  if ($("jae-ics")) {
+    var _jae = jae;
+    jae = function () {
+      _jae();
+      var d = parseDate(val("jae-death"));
+      if (!d) return;
+      var burial = parseDate(val("jae-burial")) || addDays(d, 2), ev = [{ t: "삼우제", d: addDays(burial, 2) }];
+      ["초재", "이재", "삼재", "사재", "오재", "육재", "49재 (칠칠재)"].forEach(function (n, i) { ev.push({ t: n, d: addDays(d, 7 * (i + 1) - 1) }); });
+      ev.push({ t: "100일 탈상", d: addDays(d, 99) });
+      var lunar = val("jae-basis") === "lunar", x = lunarOf(d);
+      for (var k = 1; k <= 10; k++) {
+        var g = lunar && x ? (solarOfLunar(x.l.year + k, x.l.month, x.l.day, false) || solarOfLunar(x.l.year + k, x.l.month, x.l.day - 1, false)) : new Date(d.getFullYear() + k, d.getMonth(), d.getDate());
+        if (g) ev.push({ t: (k === 1 ? "첫 기일" : k + "주기 기일") + (lunar ? " (음력)" : ""), d: g });
+      }
+      lastJae = ev;
+      $("jae-ics-box").hidden = false;
+    };
+    $("jae-go").onclick = jae;
+    $("jae-ics").onclick = function () { if (lastJae) saveIcs("49재-기일-일정", lastJae.map(function (e) { return { t: e.t, d: e.d, desc: "봉안당 길잡이 49재·기일 계산기에서 저장한 일정입니다." }; })); };
+  }
+
+  // ---------------- 기일·제사 날짜 계산기 ----------------
+  if ($("gj-form")) {
+    var gjList = [];
+    function gjMode() {
+      var lunarMode = val("gj-mode") === "lunar";
+      Array.prototype.forEach.call(document.querySelectorAll(".gj-death"), function (e) { e.hidden = lunarMode; });
+      Array.prototype.forEach.call(document.querySelectorAll(".gj-lunar"), function (e) { e.hidden = !lunarMode; });
+      if (lunarMode) $("gj-basis").value = "lunar";
+    }
+    function gj() {
+      var out = $("gj-out"), start = +val("gj-year"), basis = val("gj-basis"), lm, ld, sd = null;
+      if (val("gj-mode") === "lunar") {
+        lm = +val("gj-m"); ld = +val("gj-d");
+        if (!(lm >= 1 && lm <= 12 && ld >= 1 && ld <= 30)) { out.innerHTML = '<p class="err">음력 월(1~12)과 일(1~30)을 넣어 주세요.</p>'; $("gj-act").hidden = true; return; }
+        basis = "lunar";
+      } else {
+        sd = parseDate(val("gj-death"));
+        if (!sd) { out.innerHTML = '<p class="err">돌아가신 날을 넣어 주세요.</p>'; $("gj-act").hidden = true; return; }
+        var x = lunarOf(sd); if (x) { lm = x.l.month; ld = x.l.day; }
+      }
+      gjList = [];
+      for (var y = start; y < start + 10; y++) {
+        var g;
+        if (basis === "lunar") g = solarOfLunar(y, lm, ld, false) || solarOfLunar(y, lm, ld - 1, false);
+        else g = new Date(y, sd.getMonth(), sd.getDate());
+        if (g) gjList.push([y, g]);
+      }
+      var who = val("gj-who"), today = new Date(), next = gjList.filter(function (r) { return r[1] >= addDays(today, -1); })[0];
+      var head = (sd ? fmt(sd) + " 별세 · " : "") + (lm ? "음력 " + lm + "월 " + ld + "일" : "") + (basis === "lunar" ? " (음력으로 지냄)" : " (양력으로 지냄)");
+      out.innerHTML = '<p class="lead">' + esc(head) + "</p>" + (next ? '<p class="gj-next">다음 기일은 <strong>' + esc(fmt(next[1])) + "</strong>" +
+        ' · 전날 밤에 지내면 <strong>' + esc(fmt(addDays(next[1], -1))) + "</strong> 저녁</p>" : "") +
+        '<div class="table-wrap"><table class="list"><thead><tr><th>해</th><th>기일 (양력)</th><th>전날 밤 제사라면</th></tr></thead><tbody>' +
+        gjList.map(function (r) { return "<tr><td>" + r[0] + "년</td><td><strong>" + esc(fmt(r[1])) + "</strong></td><td>" + esc(fmt(addDays(r[1], -1))) + "</td></tr>"; }).join("") + "</tbody></table></div>";
+      $("gj-act").hidden = false;
+      $("gj-ics").onclick = function () {
+        saveIcs("기일-제사-날짜", gjList.map(function (r) { return { t: (who ? who + " " : "") + "기일 (제사)", d: r[1], desc: (basis === "lunar" ? "음력 " + lm + "월 " + ld + "일 기일. " : "") + "전날 밤에 지내는 집은 하루 전 저녁에 준비하세요." }; }));
+      };
+    }
+    $("gj-mode").addEventListener("change", function () { gjMode(); });
+    $("gj-go").onclick = gj;
+    ["gj-death", "gj-m", "gj-d", "gj-basis", "gj-year", "gj-who"].forEach(function (id) { $(id).addEventListener("change", function () { if ($("gj-out").innerHTML) gj(); }); });
+    gjMode();
+  }
+
+  // ---------------- 부의금 봉투 ----------------
+  if ($("be-form")) {
+    function be() {
+      var f = val("be-front").split("|"), han = $("be-han").checked;
+      function col(t) { return Array.prototype.map.call(String(t).replace(/\s+/g, ""), function (ch) { return "<span>" + esc(ch) + "</span>"; }).join(""); }
+      $("be-f").innerHTML = col(han ? f[1] : f[0]);
+      $("be-n").innerHTML = col(val("be-name") || "홍길동");
+      $("be-o").innerHTML = col(val("be-org"));
+    }
+    Array.prototype.forEach.call(document.querySelectorAll("#be-form input, #be-form select"), function (e) { e.addEventListener("input", be); e.addEventListener("change", be); });
+    be();
+    $("be-printbtn").onclick = function () { document.body.setAttribute("data-print", "be-print"); window.print(); };
+  }
+
+  // ---------------- 위로 문자 복사 ----------------
+  Array.prototype.forEach.call(document.querySelectorAll(".msg-copy"), function (b) {
+    b.onclick = function () {
+      var t = b.parentNode.querySelector("p").textContent, done = function () { b.textContent = "복사했습니다"; setTimeout(function () { b.textContent = "복사"; }, 1600); };
+      if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, function () { prompt("아래 글을 길게 눌러 복사하세요", t); });
+      else prompt("아래 글을 길게 눌러 복사하세요", t);
+      if (window.__track) window.__track("copy", "위로 문자");
+    };
+  });
+
   // ---------------- 나이·띠 ----------------
   var TTI = ["원숭이", "닭", "개", "돼지", "쥐", "소", "호랑이", "토끼", "용", "뱀", "말", "양"];
   if ($("age-form")) {
@@ -767,6 +878,7 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
       if (val("bg-out")) L.push("■ 발인: " + dt(val("bg-out")));
       if (val("bg-place")) L.push("■ 장지: " + val("bg-place"));
       if (val("bg-tel")) L.push("■ 연락처: " + val("bg-tel"));
+      if (h && h.u && $("bg-link") && $("bg-link").checked) L.push("■ 오시는 길·주차 안내: " + location.origin + "/" + String(h.u).replace(/\.html$/, ""));
       if (tone === "family") L.push("\n유족의 뜻에 따라 가족끼리 조용히 장례를 치르고자 합니다.\n조문과 부의는 정중히 사양하오니 너른 마음으로 헤아려 주시기 바랍니다.");
       else {
         if (val("bg-bank")) L.push("■ 마음 전하실 곳: " + val("bg-bank"));
@@ -789,6 +901,8 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
       else prompt("아래 글을 길게 눌러 복사하세요", t);
     }
     $("bg-copy").onclick = function () { copy("bg-text", this); };
+    if ($("bg-link")) $("bg-link").addEventListener("change", bugo);
+    if ($("bg-share")) $("bg-share").onclick = function () { window.__share && window.__share({ text: $("bg-text").textContent }); };
     $("bg-copy2").onclick = function () { copy("bg-thanks", this); };
   }
 })();
@@ -850,7 +964,11 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
         .map(function (g) { return '<option value="' + esc(g.n) + '">' + esc(g.n) + "</option>"; }).join("");
       if (mSido.value === "세종특별자치시") { mSgg.selectedIndex = 1; mPick(); }
     });
-    function mPick() { var g = MSGG.filter(function (x) { return x.s === mSido.value && x.n === mSgg.value; })[0]; if (g) { mHere = { la: g.la, lo: g.lo, label: g.s + " " + g.n }; mRun(); } }
+    function mPick() { var g = MSGG.filter(function (x) { return x.s === mSido.value && x.n === mSgg.value; })[0]; if (g) { mHere = { la: g.la, lo: g.lo, label: g.s + " " + g.n, s: g.s, g: g.n }; mRun(); } }
+    (function () {
+      var q = new URLSearchParams(location.search), qs = q.get("s"), qg = q.get("g");
+      if (qs && qg) { mSido.value = qs; mSido.dispatchEvent(new Event("change")); mSgg.value = qg; mPick(); }
+    })();
     mSgg.addEventListener("change", mPick);
     ["mb-km", "mb-sort", "mb-pub", "mb-okonly"].forEach(function (id) { if ($(id)) $(id).addEventListener("change", function () { if (mHere) mRun(); }); });
     $("mb-gps").onclick = function () {
@@ -867,6 +985,11 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
           .filter(function (o) { return o.km <= km; });
         list.sort(cheap ? function (a, b) { return (a.x.b || 9e9) - (b.x.b || 9e9) || a.km - b.km; } : function (a, b) { return a.km - b.km; });
         $("mb-count").textContent = mHere.label + "에서 " + km + "km 안에 장례식장 " + list.length + "곳" + (cheap ? " (기본 품목 합계 낮은 순)" : " (가까운 순)");
+        if ($("mb-share-box")) {
+          $("mb-share-box").hidden = false;
+          if (mHere.s) try { history.replaceState(null, "", location.pathname + "?s=" + encodeURIComponent(mHere.s) + "&g=" + encodeURIComponent(mHere.g)); } catch (e) {}
+          var sb = $("mb-share-box").querySelector(".share-btn"); if (sb) sb.setAttribute("data-share", mHere.label + " 근처 무빈소 장례식장 " + list.length + "곳");
+        }
         $("mb-out").innerHTML = list.slice(0, 40).map(function (o) {
           var x = o.x, tel = (x.t || "").replace(/[^0-9+]/g, "");
           var parts = [["안치료 1일", x.p[0]], ["염습", x.p[1]], ["관", x.p[2]], ["수의", x.p[3]]].filter(function (q) { return q[1]; })
@@ -1229,5 +1352,35 @@ window.KoreanLunarCalendar = KoreanLunarCalendar;
         [].forEach.call(bs, function (x) { x.classList.toggle("on", x === b); var p = document.getElementById(x.getAttribute("data-tab")); if (p) p.hidden = x !== b; });
       });
     });
+  });
+})();
+
+
+/* 공유: 카카오톡(키가 있으면 카카오 공유, 없으면 휴대폰 공유 창) · 링크 복사 */
+(function () {
+  function toast(msg) {
+    var t = document.createElement("div"); t.className = "share-toast"; t.textContent = msg; document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 2200);
+  }
+  window.__share = function (o) {
+    o = o || {};
+    var url = o.url || location.href, title = o.title || document.title.split("|")[0].trim(), text = o.text || title;
+    if (window.__track) window.__track("share", title.slice(0, 60));
+    try {
+      if (window.Kakao && window.Kakao.isInitialized && window.Kakao.isInitialized() && window.Kakao.Share) {
+        window.Kakao.Share.sendDefault({ objectType: "text", text: (o.text ? text : title).slice(0, 190), link: { mobileWebUrl: url, webUrl: url } });
+        return;
+      }
+    } catch (e) {}
+    if (navigator.share) { navigator.share(o.text ? { text: text } : { title: title, text: title, url: url }).catch(function () {}); return; }
+    var payload = o.text ? text : title + "\n" + url;
+    if (navigator.clipboard) navigator.clipboard.writeText(payload).then(function () { toast("복사했습니다. 카카오톡 대화창에 붙여 넣으세요."); }, function () { prompt("아래 내용을 복사하세요", payload); });
+    else prompt("아래 내용을 복사하세요", payload);
+  };
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".share-btn");
+    if (!b) return;
+    e.preventDefault();
+    window.__share({ title: b.getAttribute("data-share") || "" });
   });
 })();

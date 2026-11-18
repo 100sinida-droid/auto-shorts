@@ -1143,3 +1143,34 @@ table.info.fn-price th { width: 55% !important; }
 .region-analysis h3 { margin: 18px 0 8px; font-size: 17px; }
 .region-analysis p { line-height: 1.75; word-break: keep-all; }
 .region-analysis tr.me th, .region-analysis tr.me td { background: var(--accent-soft); font-weight: 700; }
+.fn-cmp .tag-lo, .fn-cmp .tag-hi, .fn-cmp .tag-mid { font-size: 11.5px; font-weight: 700; border-radius: 4px; padding: 0 5px; margin-left: 3px; white-space: nowrap; }
+.tag-lo { background: #e8f5e9; color: #1b5e20; } .tag-hi { background: #fdecea; color: #a12a1a; } .tag-mid { background: #eee; color: #555; }
+.fn-visit code.copyable { display: inline-block; font-family: inherit; font-size: 13.5px; background: var(--accent-soft); padding: 2px 6px; border-radius: 4px; word-break: keep-all; }
+
+/* 새 도구: 봉투 미리 보기, 위로 문자, 공유 */
+.env-wrap { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 14px 0; }
+.env { position: relative; width: 150px; height: 260px; background: #fbfaf6; border: 1px solid #cfc8b6; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,.06); }
+.env-lbl { position: absolute; top: 6px; left: 8px; font-size: 11px; color: #8a8576; }
+.env-v { display: flex; flex-direction: column; align-items: center; line-height: 1.15; color: #222; font-family: var(--serif, serif); }
+.env-front .env-v { position: absolute; inset: 30px 0 20px; justify-content: center; font-size: 34px; gap: 10px; }
+.env-back-in { position: absolute; left: 14px; bottom: 16px; display: flex; flex-direction: row-reverse; gap: 4px; align-items: flex-end; }
+.env-back .env-v { font-size: 20px; gap: 2px; }
+.env-back .env-org { font-size: 12px; gap: 0; max-height: 210px; flex-wrap: wrap; }
+.msg-list { list-style: none; padding: 0; margin: 0; }
+.msg-list li { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); }
+.msg-list li:first-child { border-top: 0; }
+.msg-list p { margin: 0; line-height: 1.7; word-break: keep-all; }
+.msg-list .btn { flex: 0 0 auto; }
+.gj-next { font-size: 16px; background: var(--accent-soft); padding: 10px 12px; border-radius: 8px; }
+.share-toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #222; color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 9999; max-width: 90vw; text-align: center; }
+.bg-link { display: flex; gap: 6px; align-items: center; margin: 8px 0 4px; font-size: 14px; }
+@media print {
+  body[data-print] main > .card:has(#be-print) { display: block !important; border: 0; box-shadow: none; }
+  body[data-print="be-print"] #be-print { display: flex !important; }
+  body[data-print="be-print"] .env { width: 75mm; height: 135mm; }
+  body[data-print="be-print"] .env-front .env-v { font-size: 64px; }
+  body[data-print="be-print"] .env-back .env-v { font-size: 36px; }
+}
+.season-strip { margin: 16px 0 0; }
+.season-strip a { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding: 14px 16px; border-radius: 12px; background: #fdf3e3; border: 1px solid #ecd3a6; color: #6b4410; text-decoration: none; }
+.season-strip b { font-size: 16px; } .season-strip span { font-size: 14px; } .season-strip .ss-go { margin-left: auto; font-weight: 700; }
