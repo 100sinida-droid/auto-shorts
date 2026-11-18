@@ -1226,3 +1226,46 @@ table.info.fn-price th { width: 55% !important; }
   .ma-toggle { display: block; position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 5; padding: 9px 16px; border-radius: 999px; border: 0; background: #1d2320; color: #fff; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
   .ma-me { bottom: 64px; }
 }
+.lf-ov { background: none; border: 0; overflow: visible; }
+.lf-ov .mk, .lf-ov .mk-cl { white-space: nowrap; }
+[hidden] { display: none !important; }
+.leaflet-container { font: inherit; }
+
+/* 지도 전체 화면 · 팝업 · 지도 버튼 */
+body.page-map .topbar, body.page-map .pre-footer, body.page-map .site-footer, body.page-map .quick-fab { display: none !important; }
+body.page-map main#main { max-width: none; width: 100%; padding: 0; margin: 0; }
+body.page-map .map-app.map-full { height: calc(100vh - var(--hdr-h, 76px)); height: calc(100dvh - var(--hdr-h, 76px)); margin: 0; border: 0; border-radius: 0; grid-template-columns: 380px 1fr; }
+body.page-map .map-help { max-width: 1100px; margin: 24px auto; }
+@media (max-width: 899px) {
+  body.page-map .map-app.map-full { height: auto; grid-template-columns: 1fr; }
+  body.page-map .ma-map-wrap { height: 68vh; height: 68dvh; }
+  body.page-map .map-help { margin: 16px; }
+}
+button.mk { border: 0; cursor: pointer; font: inherit; }
+.mk.on { outline: 3px solid #fff; box-shadow: 0 0 0 5px rgba(176,138,62,.8); }
+.mk-pop { position: relative; width: 270px; margin-bottom: 44px; background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.22); overflow: hidden; font-size: 13.5px; color: var(--ink); text-align: left; white-space: normal; cursor: default; }
+.mk-pop::after { content: ""; position: absolute; left: 50%; bottom: -8px; margin-left: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #fff; }
+.mk-pop.is-pt { border: 2px solid #b08a3e; }
+.mp-x { position: absolute; top: 6px; right: 6px; z-index: 2; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; padding: 0; }
+.mp-img { display: block; width: 100%; height: 120px; object-fit: cover; }
+.mp-body { padding: 12px 14px 12px; }
+.mp-tags { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; padding-right: 26px; }
+.mp-name { margin: 6px 0 2px; font-size: 16.5px; font-weight: 800; line-height: 1.35; word-break: keep-all; }
+.mp-intro { margin: 0 0 4px; font-size: 13px; color: var(--ink-2); }
+.mp-price { margin: 4px 0 0; } .mp-price strong { font-size: 16px; color: var(--accent); }
+.mp-facts, .mp-addr { margin: 3px 0 0; font-size: 12.5px; color: var(--ink-2); }
+.mp-acts { display: flex; gap: 6px; margin-top: 10px; }
+.mp-acts a { flex: 0 0 auto; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 700; font-size: 13px; }
+.mp-acts a.mp-go { flex: 1; text-align: center; background: var(--accent); border-color: var(--accent); color: #fff; }
+.is-pt .mp-acts a.mp-go { background: #b08a3e; border-color: #b08a3e; }
+.map-chip { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 999px; background: var(--accent); color: #fff !important; font-weight: 700; font-size: 14.5px; text-decoration: none; margin: 2px 6px 2px 0; box-shadow: 0 2px 6px rgba(31,77,63,.25); }
+.map-chip .ic { width: 16px; height: 16px; }
+.map-chip:hover { filter: brightness(1.1); }
+@media (max-width: 899px) {
+  body.page-map .main-nav { display: flex !important; grid-template-columns: none !important; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  body.page-map .main-nav a { flex: 0 0 auto; flex-direction: row !important; gap: 4px; padding: 7px 11px !important; min-height: 0 !important; font-size: 14px; }
+  body.page-map .main-nav a .ic { width: 16px; height: 16px; }
+  body.page-map .main-nav a span br { display: none; }
+  .mk-pop { width: 240px; }
+}
+.ma-me, .ma-toggle, .ma-here { z-index: 1000 !important; }

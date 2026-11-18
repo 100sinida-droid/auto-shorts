@@ -894,15 +894,18 @@ SECTIONS = {
     "home": ("home", "처음 화면", "", "#2f5e4e"),
     "tools": ("brush", "장례 도우미", "지방·명정·축문 쓰기, 49재 계산, 부고 문자까지 장례 실무를 도와 드립니다", "#7a3b2e"),
     "info": ("info", "사이트 안내", "사이트 소개와 문의", "#4b5563"),
+    "map": ("map", "지도로 찾기", "봉안당·장례식장·화장장을 지도에서 가격과 함께", "#2f5e4e"),
     "partner": ("gift", "제휴 추모공원 (수도권)", "봉안당 길잡이와 소개 제휴를 맺은 수도권 추모공원. 상담과 방문 예약을 도와 드립니다", "#8a4b2a"),
 }
-NAV = [("home", "index.html", "처음 화면"), ("bongan", "region/index.html", "봉안당"), ("funeral", "funeral/index.html", "장례식장·화장장"),
+NAV = [("home", "index.html", "처음 화면"), ("bongan", "region/index.html", "봉안당"), ("funeral", "funeral/index.html", "장례식장·화장장"), ("map", "feature/map.html", "지도"),
        ("price", "feature/price.html", "가격 비교"), ("recommend", "pages/recommend.html", "예산 추천"),
        ("tools", "tools/index.html", "장례 도우미"), ("ranking", "pages/ranking.html", "순위"), ("guide", "guides/index.html", "가이드"),
        ("partner", "partner/index.html", "제휴 상담")]
 
 
 def section_of(path):
+    if path == "feature/map.html":
+        return "map"
     if path.startswith("partner/"):
         return "partner"
     if path.startswith("tools/"):
@@ -1096,7 +1099,7 @@ def verify_meta():
 
 
 ASSET_VER = hashlib.sha1(b"".join((ROOT / "static" / n).read_bytes() for n in ("style.css", "site.js"))).hexdigest()[:8]
-SECTION_ART = {"bongan": "bongan", "funeral": "funeral", "price": "price", "recommend": "recommend", "ranking": "ranking",
+SECTION_ART = {"map": "search", "bongan": "bongan", "funeral": "funeral", "price": "price", "recommend": "recommend", "ranking": "ranking",
                "guide": "guide", "search": "search", "info": "info", "tools": "tools", "partner": "recommend"}
 EMBLEM = ('<svg class="emblem" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect width="48" height="48" rx="12" fill="#1f4d3f"/>'
           '<circle cx="33" cy="15" r="5" fill="#d8b46a"/>'
@@ -1209,7 +1212,7 @@ def layout(path, title, description, body, crumbs=None, jsonld=None, depth=0, no
 {adsense_head()}
 {ld_html}
 </head>
-<body id="top">
+<body id="top"{' class="page-map"' if path == "feature/map.html" else ""}>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 {SPRITE}
 <div class="topbar"><div class="wrap topbar-in"><span class="tb-msg">공공데이터로 만든 전국 봉안당·장례식장·화장장 안내 서비스</span>
@@ -1941,7 +1944,7 @@ def page_sigungu(out, sido, sgg, facs):
   <p class="eyebrow"><a href="{r}{region_url(sido)}">{E(sido)}</a></p>
   <h1>{E(short)} 봉안당·납골당 {len(facs)}곳</h1>
   {summary_sentence(place, st)}
-  <nav class="rank-nav"><a class="chip-link" href="{r}{region_url(sido)}">{E(SEO_NAME.get(sido, sido))} 전체 보기</a><a class="chip-link" href="{r}feature/near.html">가까운 봉안당 찾기</a><a class="chip-link" href="{r}feature/cost.html">총비용 계산기</a></nav>
+  <nav class="rank-nav">{map_btn(r, "b", sido, "지도로 보기")}<a class="chip-link" href="{r}{region_url(sido)}">{E(SEO_NAME.get(sido, sido))} 전체 보기</a><a class="chip-link" href="{r}feature/near.html">가까운 봉안당 찾기</a><a class="chip-link" href="{r}feature/cost.html">총비용 계산기</a></nav>
 </header>
 {stat_cards(st)}
 {sgg_compare(sido, short, facs, depth)}
@@ -2138,7 +2141,7 @@ def page_sido(out, sido, facs):
 <header class="page-head with-thumb">{art.region_thumb(sido)}<div>
   <h1>{E(sido)} 봉안당·납골당 {len(facs)}곳</h1>
   {summary_sentence(sido, st)}
-  <div class="actions">{'' if COMPACT else f'<a class="btn" href="{r}type/public.html">{E(SIDO_SHORT.get(sido, sido))} 공설만 보기</a>' if st["pub"] else ''}{'' if COMPACT else f'<a class="btn" href="{r}type/private-{slug}.html">{E(SIDO_SHORT.get(sido, sido))} 사설만 보기</a>' if st["pri"] else ''}</div>
+  <div class="actions">{map_btn(r, "b", sido, SIDO_SHORT.get(sido, sido) + " 봉안당 지도")}{'' if COMPACT else f'<a class="btn" href="{r}type/public.html">{E(SIDO_SHORT.get(sido, sido))} 공설만 보기</a>' if st["pub"] else ''}{'' if COMPACT else f'<a class="btn" href="{r}type/private-{slug}.html">{E(SIDO_SHORT.get(sido, sido))} 사설만 보기</a>' if st["pri"] else ''}</div>
 </div></header>
 {stat_cards(st)}
 {ad_slot("region_top", depth, sido)}
@@ -2176,7 +2179,7 @@ def page_region_index(out, groups):
     r = rel(depth)
     cards = "".join(f'<a class="region-card" href="{r}{region_url(s)}">{art.region_thumb(s)}<span class="rc-txt"><strong>{E(s)}</strong><span>봉안시설 {len(v)}곳 · 공설 {sum(1 for f in v if f["kind"] == "공설")} · 사설 {sum(1 for f in v if f["kind"] == "사설")}</span></span></a>' for s, v in groups.items())
     kmap = art.map_svg({s: f"{r}{region_url(s)}" for s in groups}, {s: len(v) for s, v in groups.items()}, "봉안당 지역 선택 지도")
-    body = f"""<header class="page-head"><h1>지역별 봉안시설</h1><p class="lead">지도나 아래 목록에서 시도를 고르면 시군구별 봉안당·납골당 목록을 볼 수 있습니다.</p>
+    body = f"""<header class="page-head"><h1>지역별 봉안시설</h1><p class="lead">지도나 아래 목록에서 시도를 고르면 시군구별 봉안당·납골당 목록을 볼 수 있습니다.</p><div class="actions">{map_btn(r, "b", None, "봉안당 지도로 찾기")}</div>
 <nav class="rank-nav"><a class="chip-link" href="{r}feature/near.html">우리 집에서 가까운 봉안당</a><a class="chip-link" href="{r}feature/cost.html">총비용 계산기</a><a class="chip-link" href="{r}feature/holiday.html">명절 성묘 안내</a><a class="chip-link" href="{r}type/public.html">공설 봉안당</a><a class="chip-link" href="{r}type/private.html">사설 봉안당</a></nav></header>
 <div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">색이 진할수록 시설이 많은 지역입니다.</p></div><div class="region-grid compact">{cards}</div></div>
 """
@@ -2734,7 +2737,7 @@ def page_funeral(out, items):
         if room:
             lead += f" 빈소 하루 사용료(가장 작은 방 기준)는 중간값이 {fmt_won(room)}입니다."
         body = f"""<header class="page-head with-thumb">{art.region_thumb(sido)}<div><h1>{E(sido)} 장례식장·화장장</h1><p class="lead">{E(lead)}</p>
-<p class="small">시군구를 누르면 바로 이동합니다.</p><nav class="rank-nav"><a class="chip-link mb-chip" href="{r}funeral/mubinso.html">무빈소 장례식장 찾기</a>{'<a class="chip-link" href="#crematorium">화장시설</a>' if scr else ''}{toc}</nav></div></header>
+<p class="small">시군구를 누르면 바로 이동합니다.</p><nav class="rank-nav">{map_btn(r, "f", sido, "지도로 보기")}<a class="chip-link mb-chip" href="{r}funeral/mubinso.html">무빈소 장례식장 찾기</a>{'<a class="chip-link" href="#crematorium">화장시설</a>' if scr else ''}{toc}</nav></div></header>
 {mubinso_cta(r, True)}
 <section class="card fn-filter" id="fn-filter" data-hasok="{1 if any(mb_ok(x) for x in sfh) else 0}"><h2>원하는 장례식장만 보기</h2>
 <div class="seg" role="group" aria-label="보기"><button type="button" class="on" data-f="all">전체 {len(sfh)}곳</button><button type="button" data-f="mb">무빈소 비용 공개 {sum(1 for x in sfh if mubinso_base(x))}곳</button>{f'<button type="button" data-f="ok">무빈소 확인 {sum(1 for x in sfh if mb_ok(x))}곳</button>' if any(mb_ok(x) for x in sfh) else ''}<button type="button" data-f="pub">공설만 {sum(1 for x in sfh if x["pubpri"] == "공설")}곳</button></div>
@@ -2758,7 +2761,7 @@ def page_funeral(out, items):
                    f'<td class="num">{fmt_won(x["cre_in"]) if x["cre_in"] else "–"}</td><td class="num">{fmt_won(x["cre_out"]) if x["cre_out"] else "–"}</td>'
                    f'<td class="hide-sm">{tel_link(x["tel"])}</td></tr>' for x in cr)
     body = f"""<header class="page-head"><h1>전국 장례식장·화장장 찾기</h1>
-<p class="lead">전국 장례식장 {len(fh):,}곳과 화장시설 {len(cr)}곳의 위치, 전화번호, 빈소 사용료와 화장료를 지역별로 정리했습니다. 사시는 곳을 눌러 주세요.</p></header>
+<p class="lead">전국 장례식장 {len(fh):,}곳과 화장시설 {len(cr)}곳의 위치, 전화번호, 빈소 사용료와 화장료를 지역별로 정리했습니다. 사시는 곳을 눌러 주세요.</p><div class="actions">{map_btn(r, "f", None, "장례식장 지도로 찾기")}{map_btn(r, "c", None, "화장장 지도로 찾기")}</div></header>
 {mubinso_cta(r)}
 <section class="block"><div class="block-head"><h2>지역을 고르세요</h2></div><div class="map-wrap"><div class="map-box">{kmap}<p class="small muted">지도에서 지역을 누르면 그 지역 장례식장·화장장 목록으로 갑니다.</p></div><div class="region-grid compact">{cards}</div></div></section>
 <section class="card fc-cta"><h2>{icon("won")}장례비용, 모두 얼마나 들까요?</h2><p>장례식장을 고르면 빈소·안치료·염습·관·수의 가격이 자동으로 들어가고, 조문객 음식값과 화장료·장지까지 더해 계산합니다.</p><div class="actions"><a class="btn primary big" href="{r}tools/funeral-cost.html">장례비용 계산기</a><a class="btn big" href="{r}tools/bugo.html">부고 문자 만들기</a></div></section>
@@ -2771,7 +2774,7 @@ def page_funeral(out, items):
 <li><a href="{r}guides/sangjo-companies.html">국내 상조회사 현황: 등록업체·선수금 규모 큰 회사</a></li></ul></section>
 <section class="card"><h2>장례식장 비용, 이 정도가 보통입니다</h2><div class="stats">{stat}</div>
 <p class="small">각 장례식장의 가장 저렴한 상품을 모아 중간값을 구했습니다. 실제 비용은 빈소 크기, 조문객 수, 장례 기간에 따라 크게 달라집니다.</p></section>
-<section class="card" id="crematorium"><h2>전국 화장시설 {len(cr)}곳</h2>
+<section class="card" id="crematorium"><h2>전국 화장시설 {len(cr)}곳</h2><div class="actions">{map_btn(r, "c", None, "화장장 지도로 보기")}</div>
 <p class="small">화장료는 고인의 주소지가 그 지역이면(관내) 저렴하고, 다른 지역이면(관외) 몇 배 비쌉니다. 화장 예약은 <a href="https://www.15774129.go.kr" target="_blank" rel="noopener">e하늘 장사정보시스템</a>에서 합니다.</p>
 <div class="table-wrap"><table class="list"><thead><tr><th>화장시설</th><th class="hide-sm">지역</th><th class="num">화장로</th><th class="num">관내 요금</th><th class="num">관외 요금</th><th class="hide-sm">전화</th></tr></thead><tbody>{crow}</tbody></table></div></section>
 {src}
@@ -3353,7 +3356,7 @@ def page_near(out, facs):
     sgg_json = json.dumps([{"s": g["s"], "n": g["n"], "la": g["la"], "lo": g["lo"]} for g in SGG], ensure_ascii=False, separators=(",", ":"))
     sido_opts = "".join(f'<option value="{E(s)}">{E(s)}</option>' for s in SIDO)
     body = f"""<header class="page-head"><h1>우리 집에서 가까운 봉안당 찾기</h1><p class="lead">사는 곳을 고르면 가까운 봉안당을 거리순으로 보여 드립니다. 자주 찾아뵙기 쉬운 곳을 고르는 것이 봉안당 선택에서 가장 중요합니다.</p>
-<nav class="rank-nav">{"".join(toc)}</nav></header>
+<nav class="rank-nav">{map_btn(r, "b")}{"".join(toc)}</nav></header>
 <section class="card"><h2>사는 곳으로 찾기</h2>
 <form class="tool-form" id="near-form" onsubmit="return false">
 <label>시도<select id="near-sido"><option value="">시도를 고르세요</option>{sido_opts}</select></label>
@@ -3463,7 +3466,7 @@ def page_mubinso(out, items):
     script = "안녕하세요. 무빈소로 장례를 치르려고 하는데 가능할까요? 빈소 없이 안치, 입관, 발인, 화장만 하려고 합니다. 안치료와 입관, 관·수의, 장의차까지 모두 합하면 얼마인지, 화장 예약도 도와주시는지 알고 싶습니다."
     body = f"""<header class="page-head"><h1>가까운 무빈소 장례식장 찾기</h1>
 <p class="lead">빈소를 차리지 않고 <b>안치 → 입관 → 발인 → 화장</b>만 하는 무빈소 장례는 대부분의 장례식장에서 문의하면 진행할 수 있습니다. 지금 계신 곳이나 사는 곳에서 가까운 장례식장을 거리순으로 찾고, 무빈소에 드는 품목 가격과 전화번호를 바로 확인하세요.</p>
-<nav class="rank-nav">{"".join(toc)}</nav></header>
+<nav class="rank-nav">{map_btn(r, "f", None, "장례식장 지도로 보기")}{"".join(toc)}</nav></header>
 <section class="card mb-find"><h2>{icon("map")}내 주변 장례식장 찾기</h2>
 <button type="button" id="mb-gps" class="btn primary big mb-gps">{icon("map")}지금 내 위치로 찾기</button>
 <form class="tool-form" id="mb-form" onsubmit="return false">
@@ -3753,12 +3756,38 @@ def page_seollal(out, facs):
 
 def map_items(facs):
     rows = []
+    seen_partner = set()
     for f in facs:
         g = geo_of(f["address"])
         if not g or not g.get("exact"):
             continue
-        rows.append({"n": f["name"], "c": "b", "k": f["kind"], "la": g["la"], "lo": g["lo"], "u": newpath(facility_url(f)), "a": f["address"], "t": f["tel"],
-                     "p": f.get("p_single") or f.get("price_min") or 0, "pt": 1 if f.get("partner") else 0, "g": f["sigungu"], "s": f["sido"]})
+        pt = partner_of(f) if f.get("partner") else None
+        if pt and pt["slug"] in seen_partner:
+            continue
+        x = {"n": pt["name"] if pt else f["name"], "c": "b", "k": f["kind"], "la": g["la"], "lo": g["lo"],
+             "u": newpath(pt["url"] if pt else facility_url(f)), "a": f["address"], "t": f["tel"],
+             "p": f.get("p_single") or f.get("price_min") or 0, "g": f["sigungu"], "s": f["sido"]}
+        if f.get("first_period"):
+            x["per"] = f"{f['first_period']:g}년" + (f"(최대 {f['max_period']:g}년)" if f.get("max_period") and f["max_period"] != f["first_period"] else "")
+        if isinstance(f.get("parking_count"), (int, float)) and f["parking_count"]:
+            x["pk"] = int(f["parking_count"])
+        elif f.get("parking_lot"):
+            x["pk"] = -1
+        if pt:
+            seen_partner.add(pt["slug"])
+            x.update({"pt": 1, "pk_t": pt["kind"], "pr": pt["price_text"][0] if pt["price_text"] else "", "intro": pt["intro"],
+                      "img": newpath(f"partner/img/{pt['images'][0]}") if pt["images"] else "", "t": pt["tel"] or f["tel"]})
+        rows.append(x)
+    # 공공데이터 목록에 없는 제휴 시설(수목장 등)
+    for pt in PARTNERS:
+        if pt["slug"] in seen_partner:
+            continue
+        g = geo_of(pt["address"])
+        if not g or not g.get("exact"):
+            continue
+        rows.append({"n": pt["name"], "c": "b", "k": "사설", "la": g["la"], "lo": g["lo"], "u": newpath(pt["url"]), "a": pt["address"], "t": pt["tel"],
+                     "p": 0, "g": pt["sigungu"], "s": pt["sido"], "pt": 1, "pk_t": pt["kind"], "pr": pt["price_text"][0] if pt["price_text"] else "",
+                     "intro": pt["intro"], "img": newpath(f"partner/img/{pt['images'][0]}") if pt["images"] else ""})
     for x in FUNERAL:
         if x["closed"]:
             continue
@@ -3766,9 +3795,39 @@ def map_items(facs):
         if not g or not g.get("exact"):
             continue
         cre = x["kind"] == "화장시설"
-        rows.append({"n": x["name"], "c": "c" if cre else "f", "k": x["pubpri"] or "", "la": g["la"], "lo": g["lo"], "u": newpath(funeral_url(x)), "a": x["address"], "t": x["tel"],
-                     "p": (x["cre_in"] or 0) if cre else (x["price"].get("빈소1일최저") or 0), "g": x["sigungu"], "s": x["sido"]})
+        it = {"n": x["name"], "c": "c" if cre else "f", "k": x["pubpri"] or "", "la": g["la"], "lo": g["lo"], "u": newpath(funeral_url(x)), "a": x["address"], "t": x["tel"],
+              "p": (x["cre_in"] or 0) if cre else (x["price"].get("빈소1일최저") or 0), "g": x["sigungu"], "s": x["sido"]}
+        if cre and x["cre_out"]:
+            it["p2"] = x["cre_out"]
+        if not cre and x["rooms"]:
+            it["rm"] = x["rooms"]
+        if x["parking"]:
+            it["pk"] = x["parking"]
+        rows.append(it)
     return rows
+
+
+def sido_view(sido):
+    """시도의 지도 가운데·확대 단계"""
+    pts = [g for g in SGG if g["s"] == sido]
+    if not pts:
+        return 37.5665, 126.978, 9
+    la = sum(g["la"] for g in pts) / len(pts)
+    lo = sum(g["lo"] for g in pts) / len(pts)
+    lv = 11 if sido in ("경기도", "강원특별자치도", "경상북도", "경상남도", "전라남도", "충청남도", "충청북도", "전북특별자치도") else 9
+    if sido == "제주특별자치도":
+        lv = 10
+    return round(la, 4), round(lo, 4), lv
+
+
+def map_btn(r, c="", sido=None, label="지도로 찾기"):
+    q = []
+    if sido:
+        la, lo, lv = sido_view(sido)
+        q.append(f"la={la}&lo={lo}&lv={lv}")
+    if c:
+        q.append(f"c={c}")
+    return f'<a class="map-chip" href="{r}feature/map.html{"?" + "&".join(q) if q else ""}">{icon("map")}{E(label)}</a>'
 
 
 def page_map(out, facs):
@@ -3781,7 +3840,7 @@ def page_map(out, facs):
     nf = sum(1 for x in rows if x["c"] == "f")
     nc = sum(1 for x in rows if x["c"] == "c")
     key = CONFIG.get("kakao_js_key") or ""
-    body = f"""<div class="map-app" id="map-app" data-key="{E(key)}">
+    body = f"""<div class="map-app map-full" id="map-app" data-key="{E(key)}">
 <aside class="ma-side">
   <div class="ma-head"><h1>지도로 찾기</h1><p class="small muted">봉안시설 {nb:,}곳 · 장례식장 {nf:,}곳 · 화장장 {nc}곳</p>
     <form class="ma-search" id="ma-search" role="search" onsubmit="return false"><input id="ma-q" type="search" placeholder="지역·시설 이름 (예: 파주, 서울추모공원)" autocomplete="off"><button type="submit">찾기</button></form>
@@ -3798,7 +3857,7 @@ def page_map(out, facs):
   <button type="button" class="ma-here" id="ma-here" hidden>이 지역 목록 보기</button>
   <button type="button" class="ma-toggle" id="ma-toggle">목록 보기</button></div>
 </div>
-<section class="card"><h2>지도 이용 안내</h2><ul class="tips">
+<section class="card map-help"><h2>지도 이용 안내</h2><ul class="tips">
 <li>지도를 움직이거나 확대하면 왼쪽(휴대폰은 아래) 목록이 화면 안의 시설로 바뀝니다. 표시 위 숫자는 봉안시설은 개인단 가장 싼 자리, 장례식장은 가장 작은 빈소 하루 사용료, 화장장은 관내 화장료입니다.</li>
 <li>위치는 시설 주소를 카카오 지도 좌표로 바꾼 것이라 입구 위치와 조금 다를 수 있습니다. 찾아가실 때는 시설 상세 페이지의 길찾기를 이용하세요.</li>
 <li>가격은 한국장례문화진흥원 공개 가격(2023-06-01 기준)이며 지금과 다를 수 있습니다.</li></ul>
@@ -3806,8 +3865,7 @@ def page_map(out, facs):
     SEO_OVERRIDE["feature/map.html"] = {"title": "봉안당·납골당·장례식장 지도 · 내 주변 시설 가격 한눈에",
                                         "desc": f"전국 봉안시설 {nb:,}곳, 장례식장 {nf:,}곳, 화장장 {nc}곳을 지도에서 가격과 함께 찾아보세요. 내 위치 주변, 공설·사설, 낮은 가격순으로 비교할 수 있습니다.",
                                         "kw": ["봉안당 지도", "납골당 지도", "장례식장 지도", "내 주변 봉안당", "근처 납골당", "근처 장례식장", "봉안당 위치", "추모공원 지도"]}
-    write(out, "feature/map.html", layout("feature/map.html", "봉안당·장례식장 지도", "지도로 찾기", body,
-                                          crumbs=[("봉안당 찾기", "region/index.html"), ("지도로 찾기", None)], depth=depth))
+    write(out, "feature/map.html", layout("feature/map.html", "봉안당·장례식장 지도", "지도로 찾기", body, depth=depth, hero=""))
 
 
 def mini_map(g, name, r):
