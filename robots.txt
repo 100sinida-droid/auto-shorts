@@ -1,7 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /api/
-Disallow: /tools/
-Disallow: /functions/
-
-Sitemap: https://jimkkurim.pages.dev/sitemap.xml
